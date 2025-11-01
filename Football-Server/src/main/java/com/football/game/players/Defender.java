@@ -1,10 +1,9 @@
 package com.football.game.players;
 
 import com.football.game.Ball;
+import com.football.game.BotResult;
 import com.football.game.Team;
 import com.football.util.math.geometry.Translation2d;
-
-import java.util.Comparator;
 
 public class Defender extends Player {
 
@@ -13,26 +12,23 @@ public class Defender extends Player {
     }
 
     @Override
-    public void handleMovement() {
-        // Stay between ball and own goal
-        Translation2d goalPos = team.getOwnGoalPosition();
-        Translation2d target = ball.getPosition().minus(goalPos).times(0.5).plus(goalPos);
+    public BotResult attacking() {
+        return null;
+    }
 
-        // Mark closest opponent
-        Player closestOpponent = null;
-        if (this.team.getOpponent() != null) {
-             closestOpponent = this.team.getOpponent().getPlayers().stream()
-                    .min(Comparator.comparingDouble(p -> p.getPosition().minus(this.position).getNorm()))
-                    .orElse(null);
-        }
+    @Override
+    public BotResult defending() {
+        return null;
+    }
 
-        if (closestOpponent != null) {
-            Translation2d opponentPos = closestOpponent.getPosition();
-            target = opponentPos.plus(goalPos.minus(opponentPos).times(0.3));
-        }
+    @Override
+    public BotResult counterAttack() {
+        return null;
+    }
 
-        // Move toward target
-        setVelocity(target.minus(this.position).times(5));
+    @Override
+    public BotResult possession() {
+        return null;
     }
 }
 

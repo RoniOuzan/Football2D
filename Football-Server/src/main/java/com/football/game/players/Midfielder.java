@@ -1,8 +1,8 @@
 package com.football.game.players;
 
 import com.football.game.Ball;
+import com.football.game.BotResult;
 import com.football.game.Team;
-import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Translation2d;
 
 public class Midfielder extends Player {
@@ -12,24 +12,23 @@ public class Midfielder extends Player {
     }
 
     @Override
-    public void handleMovement() {
-        Player carrier = this.ball.getCarrier();
+    public BotResult attacking() {
+        return null;
+    }
 
-        Translation2d target;
+    @Override
+    public BotResult defending() {
+        return null;
+    }
 
-        if (carrier != null && this.team.getOpponent() != null) {
-            // Support attacker: find a spot between carrier and opponent goal
-            Translation2d goalPos = this.team.getOpponent().getOwnGoalPosition();
-            target = carrier.getPosition().plus(goalPos.minus(carrier.getPosition()).times(0.5));
+    @Override
+    public BotResult counterAttack() {
+        return null;
+    }
 
-            // Slight random offset for variability
-            target = target.plus(new Translation2d(MathUtil.random(-5,5), MathUtil.random(-3,3)));
-        } else {
-            // Move toward the ball if no one has it
-            target = this.ball.getPosition().minus(this.position).normalize();
-        }
-
-        setVelocity(target.times(6));
+    @Override
+    public BotResult possession() {
+        return null;
     }
 }
 

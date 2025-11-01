@@ -10,7 +10,7 @@ import java.util.Set;
 public class Client implements Element {
     private transient final Session session;
 
-    private transient ClientInput input = new ClientInput();
+    private final transient ClientInput input = new ClientInput();
     private transient Set<String> keys = new HashSet<>();
 
     private Team team = null;
@@ -46,7 +46,6 @@ public class Client implements Element {
 
     @Override
     public void update() {
-//        System.out.println(this.input.getInput());
         if (this.team != null) {
             this.team.update();
         }

@@ -2,9 +2,7 @@ package com.football.game.players;
 
 import com.football.Constants;
 import com.football.client.ClientInput;
-import com.football.game.Ball;
-import com.football.game.Element;
-import com.football.game.Team;
+import com.football.game.*;
 import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Rotation2d;
 import com.football.util.math.geometry.Translation2d;
@@ -24,6 +22,7 @@ public abstract class Player implements Element {
     protected transient final Ball ball;
 
     protected Translation2d position;
+    protected Translation2d originalPosition;
     protected Rotation2d direction;
 
     protected Translation2d velocity;
@@ -34,6 +33,7 @@ public abstract class Player implements Element {
         this.ball = ball;
 
         this.position = position;
+        this.originalPosition = new Translation2d(position.getX() * 2 - Game.MAX_X * this.team.getSideMultiplier(), position.getY());
         this.direction = new Rotation2d();
 
         this.velocity = new Translation2d();
@@ -56,7 +56,7 @@ public abstract class Player implements Element {
         return this.equals(this.ball.getCarrier());
     }
 
-    protected void setVelocity(Translation2d targetVelocity) {
+    public void setVelocity(Translation2d targetVelocity) {
         this.targetVelocity = targetVelocity;
 
         double currentSpeed = this.velocity.getNorm();
@@ -91,7 +91,27 @@ public abstract class Player implements Element {
         }
     }
 
-    public abstract void handleMovement();
+    public abstract BotResult attacking();
+    public abstract BotResult defending();
+    public abstract BotResult counterAttack();
+    public abstract BotResult possession();
+
+    public BotResult chaseBall() {
+        if (this.equals(this.team.getClosestPlayerToBall())) {
+            return new BotResult(this.ball.getPosition(), 100);
+        }
+
+        return new BotResult(this.originalPosition, 2);
+    }
+
+    public void moveTo(BotResult botResult) {
+        Translation2d direction = botResult.getTargetPosition().minus(getPosition());
+        if (direction.getNorm() > 0.5) {
+            setVelocity(direction.normalize().times(botResult.getSpeed()));
+        } else {
+            setVelocity(new Translation2d(0, 0)); // stop when close enough
+        }
+    }
 
     public void handleControlledMovement(ClientInput input) {
         double velocity = input.isHolding("shift") ? SPRINT_VELOCITY : WALK_VELOCITY;
@@ -105,6 +125,9 @@ public abstract class Player implements Element {
             if (input.isHolding("e")) {
                 Player playerToPass = getPlayerToPass();
                 pass(playerToPass);
+            } else if (input.isHolding("f")) {
+                Player playerToPass = getPlayerToPass();
+                through(playerToPass);
             } else if (input.isHolding("r")) {
                 shoot();
             }
@@ -113,12 +136,28 @@ public abstract class Player implements Element {
 
     private void pass(Player player) {
         Translation2d delta = player.getPosition().minus(this.position);
+        this.ball.kick(delta.times(1.2));
+    }
 
-        this.ball.kick(delta.times(1.5));
+    private void through(Player player) {
+        Translation2d delta = player.getPosition().minus(this.position);
+        this.ball.kick(delta.times(1.2).plus(player.getVelocity()));
     }
 
     private void shoot() {
-        this.ball.kick(new Translation2d(40, this.direction));
+        if (this.position.getX() * this.team.getSideMultiplier() < 10) {
+            this.ball.kick(new Translation2d(40, this.direction));
+        }
+
+        Translation2d opponentGoal = this.team.getOpponent().getOwnGoalPosition();
+
+        Translation2d nearPost = new Translation2d(0,Game.GOAL_WIDTH / 2 - 0.5);
+        if (Math.abs(opponentGoal.plus(nearPost).minus(this.position).getAngle().minus(this.direction).getRadians()) <
+                Math.abs(opponentGoal.minus(nearPost).minus(this.position).getAngle().minus(this.direction).getRadians())) {
+            this.ball.kick(opponentGoal.plus(nearPost).minus(this.position).times(2));
+        } else {
+            this.ball.kick(opponentGoal.minus(nearPost).minus(this.position).times(2));
+        }
     }
 
     private Player getPlayerToPass() {
@@ -128,7 +167,7 @@ public abstract class Player implements Element {
                     Translation2d delta = p.getPosition().minus(this.position);
                     double angleDiff = Math.abs(delta.getAngle().minus(this.direction).getRadians());
 
-                    return 1 * angleDiff + 0.1 * delta.getNorm();
+                    return 1 * angleDiff + 0.05 * delta.getNorm();
                 }))
                 .orElse(null);
     }

@@ -15,8 +15,9 @@ public class Team implements Element {
     private transient final Game game;
 
     private final List<Player> players;
+    private transient final StrategyChooser strategyChooser;
 
-    private final int sideMultiplier;
+    private transient final int sideMultiplier;
 
     private transient Player chosenPlayer = null;
     private int chosenPlayerIndex = -1; // for json
@@ -26,8 +27,9 @@ public class Team implements Element {
         this.game = game;
 
         this.players = new ArrayList<>();
+        this.strategyChooser =new StrategyChooser(this, this.game.getBall());
 
-        this.sideMultiplier = this.client.equals(this.game.getClient2()) ? -1 : 1;
+        this.sideMultiplier = this.client.equals(this.game.getClient2()) ? 1 : -1;
 
         initialize();
     }
@@ -52,6 +54,14 @@ public class Team implements Element {
         return players;
     }
 
+    public int getSideMultiplier() {
+        return sideMultiplier;
+    }
+
+    public Player getChosenPlayer() {
+        return chosenPlayer;
+    }
+
     private Player choosePlayer() {
         Ball ball = this.game.getBall();
         if (this.isBallInThisTeam()) {
@@ -70,14 +80,18 @@ public class Team implements Element {
         return this.chosenPlayer;
     }
 
-    private Player getClosestPlayerToBall(Predicate<Player> filter) {
+    public Player getClosestPlayerToBall(Predicate<Player> filter) {
         return this.players.stream()
                 .filter(filter)
                 .min(Comparator.comparingDouble(p -> p.getPosition().getDistance(this.game.getBall().getPosition())))
                 .orElse(null);
     }
 
-    private boolean isBallInThisTeam() {
+    public Player getClosestPlayerToBall() {
+        return this.getClosestPlayerToBall(p -> true);
+    }
+
+    public boolean isBallInThisTeam() {
         return this.players.contains(this.game.getBall().getCarrier());
     }
 
@@ -86,14 +100,10 @@ public class Team implements Element {
         this.chosenPlayer = choosePlayer();
 
         this.chosenPlayer.handleControlledMovement(this.client.getInput());
-        for (Player player : this.players) {
-            if (!player.equals(this.chosenPlayer)) {
-                player.handleMovement();
-            }
-        }
+        this.strategyChooser.update();
 
         if (!this.isBallInThisTeam()) {
-            Player closest = getClosestPlayerToBall(p -> true);
+            Player closest = getClosestPlayerToBall();
 
             if (this.game.getBall().shouldBePickedUpBy(closest)) {
                 this.game.getBall().setCarrier(closest);

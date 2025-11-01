@@ -187,7 +187,7 @@ function App() {
     const netLines = 6; // Number of vertical/horizontal lines to simulate net
 
     // LEFT GOAL
-    ctx.strokeStyle = "blue";
+    ctx.strokeStyle = "red";
     ctx.lineWidth = 4;
 
     // Goal rectangle (posts + crossbar)
@@ -219,7 +219,7 @@ function App() {
     ctx.stroke();
 
     // RIGHT GOAL
-    ctx.strokeStyle = "red";
+    ctx.strokeStyle = "blue";
     ctx.lineWidth = 4;
 
     // Goal rectangle

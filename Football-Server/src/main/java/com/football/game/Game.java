@@ -2,6 +2,7 @@ package com.football.game;
 
 import com.football.client.Client;
 import com.football.util.json.JsonUtil;
+import com.football.util.math.geometry.Translation2d;
 
 public class Game {
 
@@ -9,6 +10,11 @@ public class Game {
     public static final double MAX_X = LENGTH / 2;
     public static final double WIDTH = 64;
     public static final double MAX_Y = WIDTH / 2;
+
+    public static final Translation2d OWN_GOAL = new Translation2d(-Game.MAX_X, 0);
+    public static final Translation2d OPPONENT_GOAL = new Translation2d(Game.MAX_X, 0);
+
+    public static final double GOAL_WIDTH = 7.3;
 
     private final Ball ball;
     private Client client1 = null;
