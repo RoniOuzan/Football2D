@@ -1,37 +1,47 @@
 package com.football;
 
+import com.football.client.Client;
 import com.football.game.Ball;
-import com.football.game.Element;
+import com.football.game.Team;
 import com.football.util.json.JsonUtil;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class Game {
-    private final List<Element> elements;
+
+    public static final double LENGTH = 100;
+    public static final double MAX_X = LENGTH / 2;
+    public static final double WIDTH = 50;
+    public static final double MAX_Y = WIDTH / 2;
+
+    private final Ball ball;
+    private Client client1 = null;
+    private Client client2 = null;
 
     public Game() {
-        this.elements = new ArrayList<>();
-
-        this.reset();
+        this.ball = new Ball();
     }
 
-    public List<Element> getElements() {
-        return this.elements;
+    public Ball getBall() {
+        return this.ball;
     }
 
-    public void reset() {
-        this.elements.add(new Ball());
-//        this.elements.add(new Player());
+    public void setClient1(Client client1) {
+        this.client1 = client1;
+        this.client1.setTeam(new Team(client1, this));
+    }
+
+    public void setClient2(Client client2) {
+        this.client2 = client2;
+        this.client2.setTeam(new Team(client2, this));
     }
 
     public void update() {
-        for (Element element : this.elements) {
-            element.update();
-        }
+        if (this.client1 != null) this.client1.update();
+        if (this.client2 != null) this.client2.update();
+
+        this.ball.update();
     }
 
     public String toJson() {
-        return JsonUtil.toJson(this.elements.get(0));
+        return JsonUtil.toJson(this);
     }
 }
