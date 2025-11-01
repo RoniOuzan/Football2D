@@ -1,6 +1,5 @@
 package com.football.game;
 
-import com.football.Game;
 import com.football.client.Client;
 import com.football.game.players.*;
 import com.football.util.math.geometry.Translation2d;
@@ -8,17 +7,16 @@ import com.football.util.math.geometry.Translation2d;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
 public class Team implements Element {
-
-    private static final double TAKE_BALL_THRESHOLD = 1;
 
     private transient final Client client;
     private transient final Game game;
 
     private final List<Player> players;
+
+    private final int sideMultiplier;
 
     private transient Player chosenPlayer = null;
     private int chosenPlayerIndex = -1; // for json
@@ -29,23 +27,24 @@ public class Team implements Element {
 
         this.players = new ArrayList<>();
 
+        this.sideMultiplier = this.client.equals(this.game.getClient2()) ? -1 : 1;
+
         initialize();
     }
 
     private void initialize() {
-        int multiplier = 1;
-        this.players.add(new Goalkeeper(this, new Translation2d(Game.MAX_X * 0.9, 0).times(multiplier)));
+        this.players.add(new Goalkeeper(this, this.game.getBall(), new Translation2d(Game.MAX_X * 0.9, 0).times(sideMultiplier)));
 
         for (int i = 1; i <= 4; i++) {
-            this.players.add(new Defender(this, getPosition(Game.MAX_X * 2 / 3, i, 4).times(multiplier)));
+            this.players.add(new Defender(this, this.game.getBall(), getPosition(Game.MAX_X * 2 / 3, i, 4).times(sideMultiplier)));
         }
 
         for (int i = 1; i <= 3; i++) {
-            this.players.add(new Midfielder(this, getPosition(Game.MAX_X * 2.1 / 5, i, 3).times(multiplier)));
+            this.players.add(new Midfielder(this, this.game.getBall(), getPosition(Game.MAX_X * 2.1 / 5, i, 3).times(sideMultiplier)));
         }
 
         for (int i = 1; i <= 3; i++) {
-            this.players.add(new Attacker(this, getPosition(Game.MAX_X * 1 / 5, i, 3).times(multiplier)));
+            this.players.add(new Attacker(this, this.game.getBall(), getPosition(Game.MAX_X * 1 / 5, i, 3).times(sideMultiplier)));
         }
     }
 
@@ -55,7 +54,7 @@ public class Team implements Element {
 
     private Player choosePlayer() {
         Ball ball = this.game.getBall();
-        if (ball.getCarrier() != null) {
+        if (this.isBallInThisTeam()) {
             this.chosenPlayerIndex = this.players.indexOf(ball.getCarrier());
             return ball.getCarrier();
         }
@@ -78,6 +77,9 @@ public class Team implements Element {
                 .orElse(null);
     }
 
+    private boolean isBallInThisTeam() {
+        return this.players.contains(this.game.getBall().getCarrier());
+    }
 
     @Override
     public void update() {
@@ -86,14 +88,14 @@ public class Team implements Element {
         this.chosenPlayer.handleControlledMovement(this.client.getInput());
         for (Player player : this.players) {
             if (!player.equals(this.chosenPlayer)) {
-                player.handleMovement(this);
+                player.handleMovement();
             }
         }
 
-        if (this.game.getBall().getCarrier() == null) {
+        if (!this.isBallInThisTeam()) {
             Player closest = getClosestPlayerToBall(p -> true);
 
-            if (closest.getPosition().getDistance(this.game.getBall().getPosition()) <= TAKE_BALL_THRESHOLD) {
+            if (this.game.getBall().shouldBePickedUpBy(closest)) {
                 this.game.getBall().setCarrier(closest);
             }
         }
@@ -105,5 +107,24 @@ public class Team implements Element {
 
     private static Translation2d getPosition(double x, int index, int rowLength) {
         return new Translation2d(x, (index * (Game.WIDTH / (rowLength + 1))) - Game.MAX_Y);
+    }
+
+    public Translation2d getOwnGoalPosition() {
+        return new Translation2d(Game.MAX_X, 0).times(this.sideMultiplier);
+    }
+
+    public Team getOpponent() {
+        if (this.client.equals(this.game.getClient1())) {
+            if (this.game.getClient2() == null) {
+                return null;
+            }
+            return this.game.getClient2().getTeam();
+        } else if (this.client.equals(this.game.getClient2())) {
+            if (this.game.getClient1() == null) {
+                return null;
+            }
+            return this.game.getClient1().getTeam();
+        }
+        return null;
     }
 }

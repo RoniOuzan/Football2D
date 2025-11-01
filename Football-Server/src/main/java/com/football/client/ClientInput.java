@@ -13,6 +13,10 @@ public class ClientInput {
         this.lastInput = new InputValues();
     }
 
+    public InputValues getInput() {
+        return input;
+    }
+
     public void updateInput(InputValues input) {
         this.input = input;
     }

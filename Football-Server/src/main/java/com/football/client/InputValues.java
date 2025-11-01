@@ -1,8 +1,11 @@
 package com.football.client;
 
+import lombok.ToString;
+
 import java.util.HashSet;
 import java.util.Set;
 
+@ToString
 public class InputValues implements Cloneable {
     public Set<String> keys;
 
@@ -15,7 +18,7 @@ public class InputValues implements Cloneable {
     }
 
     @Override
-    protected InputValues clone() throws CloneNotSupportedException {
+    public InputValues clone() throws CloneNotSupportedException {
         InputValues input = (InputValues) super.clone();
         input.keys = new HashSet<>(this.keys);
         return input;

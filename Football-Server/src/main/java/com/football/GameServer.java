@@ -1,8 +1,8 @@
 package com.football;
 
 import com.football.client.Client;
-import com.football.client.ClientInput;
 import com.football.client.InputValues;
+import com.football.game.Game;
 import com.football.util.json.JsonUtil;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
@@ -40,15 +40,19 @@ public class GameServer {
     public void onConnect(Session session) {
         Client client = new Client(session);
         clients.put(session, client);
-        System.out.println("Client connected");
+        System.out.println("Client connected " + session.hashCode());
 
-        game.setClient1(client);
+        game.addClient(client);
     }
 
     @OnWebSocketClose
     public void onClose(Session session, int status, String reason) {
+        game.removeClient(getClient(session));
+
         clients.remove(session);
-        System.out.println("Client disconnected");
+        System.out.println("Client disconnected: " + session.hashCode()
+                + " status=" + status
+                + " reason=" + reason);
     }
 
     @OnWebSocketMessage

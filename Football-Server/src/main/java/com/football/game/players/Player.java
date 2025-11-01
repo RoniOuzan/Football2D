@@ -2,11 +2,14 @@ package com.football.game.players;
 
 import com.football.Constants;
 import com.football.client.ClientInput;
+import com.football.game.Ball;
 import com.football.game.Element;
 import com.football.game.Team;
 import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Rotation2d;
 import com.football.util.math.geometry.Translation2d;
+
+import java.util.Comparator;
 
 public abstract class Player implements Element {
 
@@ -17,17 +20,18 @@ public abstract class Player implements Element {
     private static final double MAX_SKID_ACCELERATION = 10;
     private static final double CARRYING_BALL_VELOCITY_MULTIPLIER = 0.8;
 
-    private final Team team;
-    private boolean isCarryingTheBall = false;
+    protected transient final Team team;
+    protected transient final Ball ball;
 
-    private Translation2d position;
-    private Rotation2d direction;
+    protected Translation2d position;
+    protected Rotation2d direction;
 
-    private Translation2d velocity;
-    private Translation2d targetVelocity;
+    protected Translation2d velocity;
+    protected Translation2d targetVelocity;
 
-    public Player(Team team, Translation2d position) {
+    protected Player(Team team, Ball ball, Translation2d position) {
         this.team = team;
+        this.ball = ball;
 
         this.position = position;
         this.direction = new Rotation2d();
@@ -48,8 +52,8 @@ public abstract class Player implements Element {
         return direction;
     }
 
-    public void setCarryingTheBall(boolean carryingTheBall) {
-        this.isCarryingTheBall = carryingTheBall;
+    public boolean isCarryingTheBall() {
+        return this.equals(this.ball.getCarrier());
     }
 
     protected void setVelocity(Translation2d targetVelocity) {
@@ -87,15 +91,46 @@ public abstract class Player implements Element {
         }
     }
 
-    public abstract void handleMovement(Team team);
+    public abstract void handleMovement();
 
     public void handleControlledMovement(ClientInput input) {
         double velocity = input.isHolding("shift") ? SPRINT_VELOCITY : WALK_VELOCITY;
-        if (this.isCarryingTheBall) {
+        if (this.isCarryingTheBall()) {
             velocity *= CARRYING_BALL_VELOCITY_MULTIPLIER;
         }
 
         this.setVelocity(input.getRequestedVelocity().times(velocity));
+
+        if (this.isCarryingTheBall()) {
+            if (input.isHolding("e")) {
+                Player playerToPass = getPlayerToPass();
+                pass(playerToPass);
+            } else if (input.isHolding("r")) {
+                shoot();
+            }
+        }
+    }
+
+    private void pass(Player player) {
+        Translation2d delta = player.getPosition().minus(this.position);
+
+        this.ball.kick(delta.times(1.5));
+    }
+
+    private void shoot() {
+        this.ball.kick(new Translation2d(40, this.direction));
+    }
+
+    private Player getPlayerToPass() {
+        return this.team.getPlayers().stream()
+                .filter(p -> !p.equals(this))
+                .min(Comparator.comparingDouble(p -> {
+                    Translation2d delta = p.getPosition().minus(this.position);
+                    double angleDiff = Math.abs(delta.getAngle().minus(this.direction).getRadians());
+
+                    return 1 * angleDiff + 0.1 * delta.getNorm();
+                }))
+                .orElse(null);
     }
 
     @Override

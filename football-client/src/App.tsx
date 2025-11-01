@@ -4,33 +4,29 @@ import React, { useEffect, useRef, useState } from "react";
 export const FPS = 30.0;
 
 export interface Translation2d {
-  x: number, y: number
+  x: number;
+  y: number;
 }
 
 interface Team {
   players: {
-    position: Translation2d,
-    velocity: Translation2d,
-  }[],
-  chosenPlayerIndex: number,
+    position: Translation2d;
+    velocity: Translation2d;
+  }[];
+  chosenPlayerIndex: number;
 }
 
 interface JsonData {
   ball: {
-    position: Translation2d,
-    velocity: Translation2d,
-  },
+    position: Translation2d;
+    velocity: Translation2d;
+  };
   client1: {
-    team: Team,
-  },
-  // client2: {
-  //   team: {
-  //     players: {
-  //       position: Translation2d,
-  //       velocity: Translation2d,
-  //     }[]
-  //   }
-  // }
+    team: Team;
+  };
+  client2: {
+    team: Team;
+  };
 }
 
 function App() {
@@ -41,24 +37,19 @@ function App() {
   useEffect(() => {
     const socket = new WebSocket("ws://localhost:8080/game");
 
-    socket.onmessage = (event) => {
-      console.log(event.data);
-      setData(JSON.parse(event.data));
-    };
+    socket.onmessage = (event) => setData(JSON.parse(event.data));
 
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent) =>
       pressedKeys.current.add(e.key.toLowerCase());
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
+    const handleKeyUp = (e: KeyboardEvent) =>
       pressedKeys.current.delete(e.key.toLowerCase());
-    };
 
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
 
     const sendInterval = setInterval(() => {
       if (socket.readyState === WebSocket.OPEN) {
+        
         socket.send(
           JSON.stringify({
             type: "input",
@@ -82,64 +73,254 @@ function App() {
     const ctx = canvas.getContext("2d")!;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw field
-    ctx.fillStyle = "#006400";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // --- Pitch dimensions ---
+    const pitchWidthUnits = 100;
+    const pitchHeightUnits = 64;
+    const pitchWidth = canvas.width;
+    const pitchHeight = canvas.height;
 
-    // Draw center line
+    // Goal depth in units
+    const goalDepthUnits = 3;
+    const goalDepth = (goalDepthUnits / pitchWidthUnits) * pitchWidth;
+
+    const pitchLeft = goalDepth;
+    const pitchRight = pitchWidth - goalDepth;
+
+    ctx.lineWidth = 2;
     ctx.strokeStyle = "white";
+
+    // --- Pitch background ---
+    ctx.fillStyle = "#006400";
+    ctx.fillRect(pitchLeft, 0, pitchRight - pitchLeft, pitchHeight);
+
+    // --- Outer boundary ---
+    ctx.strokeRect(pitchLeft, 0, pitchRight - pitchLeft, pitchHeight);
+
+    // --- Center line ---
     ctx.beginPath();
-    ctx.moveTo(canvas.width / 2, 0);
-    ctx.lineTo(canvas.width / 2, canvas.height);
+    ctx.moveTo(pitchWidth / 2, 0);
+    ctx.lineTo(pitchWidth / 2, pitchHeight);
     ctx.stroke();
 
-    // Convert field coordinates to canvas coordinates
-    if (data) {
-      let ball = convert(canvas, data.ball.position);
+    // --- Center circle ---
+    const centerCircleRadius = (10 / pitchHeightUnits) * pitchHeight;
+    ctx.beginPath();
+    ctx.arc(pitchWidth / 2, pitchHeight / 2, centerCircleRadius, 0, Math.PI * 2);
+    ctx.stroke();
 
-      // Draw ball
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.arc(pitchWidth / 2, pitchHeight / 2, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // --- Penalty areas ---
+    const penaltyWidth = (16.5 / pitchWidthUnits) * pitchWidth;
+    const penaltyHeight = (40.3 / pitchHeightUnits) * pitchHeight;
+    const penaltyYOffset = (pitchHeight - penaltyHeight) / 2;
+
+    ctx.strokeRect(pitchLeft, penaltyYOffset, penaltyWidth, penaltyHeight);
+    ctx.strokeRect(pitchRight - penaltyWidth, penaltyYOffset, penaltyWidth, penaltyHeight);
+
+    // --- 6-yard boxes ---
+    const sixYardWidth = (5.5 / pitchWidthUnits) * pitchWidth;
+    const sixYardHeight = (18.3 / pitchHeightUnits) * pitchHeight;
+    const sixYardYOffset = (pitchHeight - sixYardHeight) / 2;
+
+    ctx.strokeRect(pitchLeft, sixYardYOffset, sixYardWidth, sixYardHeight);
+    ctx.strokeRect(pitchRight - sixYardWidth, sixYardYOffset, sixYardWidth, sixYardHeight);
+
+    // --- Penalty spots ---
+    const penaltySpotOffset = (11 / pitchWidthUnits) * pitchWidth;
+    ctx.fillStyle = "white";
+
+    ctx.beginPath();
+    ctx.arc(pitchLeft + penaltySpotOffset, pitchHeight / 2, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(pitchRight - penaltySpotOffset, pitchHeight / 2, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // --- Penalty arcs ---
+    const penaltyArcRadius = (9.15 / pitchHeightUnits) * pitchHeight;
+
+    ctx.beginPath();
+    ctx.arc(
+      pitchLeft + penaltySpotOffset,
+      pitchHeight / 2,
+      penaltyArcRadius,
+      1.7 * Math.PI,
+      0.3 * Math.PI
+    );
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(
+      pitchRight - penaltySpotOffset,
+      pitchHeight / 2,
+      penaltyArcRadius,
+      1.3 * Math.PI,
+      0.7 * Math.PI,
+      true
+    );
+    ctx.stroke();
+
+    // --- Corner arcs ---
+    const cornerRadius = (1.2 / pitchHeightUnits) * pitchHeight;
+
+    ctx.beginPath();
+    ctx.arc(pitchLeft, 0, cornerRadius, 0, Math.PI / 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(pitchLeft, pitchHeight, cornerRadius, 3 * Math.PI / 2, 2 * Math.PI);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(pitchRight, 0, cornerRadius, Math.PI / 2, Math.PI);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(pitchRight, pitchHeight, cornerRadius, Math.PI, 3 * Math.PI / 2);
+    ctx.stroke();
+
+    // --- Goals as posts with crossbar + net effect ---
+    const goalHeight = (7.3 / pitchHeightUnits) * pitchHeight; // 2.44 units
+    const goalTop = (pitchHeight - goalHeight) / 2;
+    const netLines = 6; // Number of vertical/horizontal lines to simulate net
+
+    // LEFT GOAL
+    ctx.strokeStyle = "blue";
+    ctx.lineWidth = 4;
+
+    // Goal rectangle (posts + crossbar)
+    ctx.beginPath();
+    ctx.moveTo(pitchLeft - goalDepth, goalTop); // back top-left
+    ctx.lineTo(pitchLeft - goalDepth, goalTop + goalHeight); // back bottom-left
+    ctx.lineTo(pitchLeft, goalTop + goalHeight); // front bottom-left
+    ctx.lineTo(pitchLeft, goalTop); // front top-left
+    ctx.lineTo(pitchLeft - goalDepth, goalTop); // back top-left
+    ctx.stroke();
+
+    // Net effect (vertical lines)
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 1; i < netLines; i++) {
+      const x = pitchLeft - (goalDepth * i) / netLines;
+      ctx.moveTo(x, goalTop);
+      ctx.lineTo(x, goalTop + goalHeight);
+    }
+    ctx.stroke();
+
+    // Net effect (horizontal lines)
+    ctx.beginPath();
+    for (let i = 1; i < netLines; i++) {
+      const y = goalTop + (goalHeight * i) / netLines;
+      ctx.moveTo(pitchLeft - goalDepth, y);
+      ctx.lineTo(pitchLeft, y);
+    }
+    ctx.stroke();
+
+    // RIGHT GOAL
+    ctx.strokeStyle = "red";
+    ctx.lineWidth = 4;
+
+    // Goal rectangle
+    ctx.beginPath();
+    ctx.moveTo(pitchRight + goalDepth, goalTop); // back top-right
+    ctx.lineTo(pitchRight + goalDepth, goalTop + goalHeight); // back bottom-right
+    ctx.lineTo(pitchRight, goalTop + goalHeight); // front bottom-right
+    ctx.lineTo(pitchRight, goalTop); // front top-right
+    ctx.lineTo(pitchRight + goalDepth, goalTop); // back top-right
+    ctx.stroke();
+
+    // Net effect (vertical lines)
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 1; i < netLines; i++) {
+      const x = pitchRight + (goalDepth * i) / netLines;
+      ctx.moveTo(x, goalTop);
+      ctx.lineTo(x, goalTop + goalHeight);
+    }
+    ctx.stroke();
+
+    // Net effect (horizontal lines)
+    ctx.beginPath();
+    for (let i = 1; i < netLines; i++) {
+      const y = goalTop + (goalHeight * i) / netLines;
+      ctx.moveTo(pitchRight + goalDepth, y);
+      ctx.lineTo(pitchRight, y);
+    }
+    ctx.stroke();
+
+    // --- Ball ---
+    if (data) {
+      const ball = convert(canvas, data.ball.position, goalDepth);
       ctx.fillStyle = "white";
       ctx.beginPath();
-      ctx.arc(ball.x, ball.y, 8, 0, Math.PI * 2);
+      ctx.arc(ball.x, ball.y, 5, 0, Math.PI * 2);
       ctx.fill();
 
-      console.log(data.client1);
-      
+      // --- Players ---
       if (data.client1) {
         data.client1.team.players.forEach((p, i) => {
-          const pose = convert(canvas, p.position);
-
+          const pose = convert(canvas, p.position, goalDepth);
           ctx.fillStyle = "red";
           ctx.beginPath();
-          ctx.arc(pose.x, pose.y, 12, 0, Math.PI * 2);
+          ctx.arc(pose.x, pose.y, 8, 0, Math.PI * 2);
           ctx.fill();
 
           if (i === data.client1.team.chosenPlayerIndex) {
             ctx.strokeStyle = "yellow";
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.arc(pose.x, pose.y, 12, 0, Math.PI * 2);
+            ctx.arc(pose.x, pose.y, 8, 0, Math.PI * 2);
             ctx.stroke();
           }
         });
+      }
 
+      if (data.client2) {
+        data.client2.team.players.forEach((p, i) => {
+          const pose = convert(canvas, p.position, goalDepth);
+          ctx.fillStyle = "blue";
+          ctx.beginPath();
+          ctx.arc(pose.x, pose.y, 8, 0, Math.PI * 2);
+          ctx.fill();
+
+          if (i === data.client2.team.chosenPlayerIndex) {
+            ctx.strokeStyle = "yellow";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(pose.x, pose.y, 8, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        });
       }
     }
   }, [data]);
 
   return (
     <div style={{ textAlign: "center" }}>
-      <h1>⚽ Football 2D Simulation</h1>
-      <canvas ref={canvasRef} width={800} height={500} />
+      <h1>⚽ Football 2D</h1>
+      <canvas ref={canvasRef} width={1080} height={700} />
     </div>
   );
 }
 
-const convert = (canvas: HTMLCanvasElement, position: {x: number, y: number}): {x: number, y: number} => {
+// Converts game units to canvas coordinates
+const convert = (
+  canvas: HTMLCanvasElement,
+  position: { x: number; y: number },
+  goalDepth: number
+) => {
+  const pitchWidthUnits = 100;
+  const pitchHeightUnits = 64;
+
+  const pitchLeft = goalDepth;
+  const pitchRight = canvas.width - goalDepth;
+
   return {
-    x: (position.x + 50) * (canvas.width / 100),
-    y: (25 - position.y) * (canvas.height / 50)
-  }
-}
+    x: pitchLeft + ((position.x + 50) / pitchWidthUnits) * (pitchRight - pitchLeft),
+    y: ((32 - position.y) / pitchHeightUnits) * canvas.height,
+  };
+};
 
 export default App;

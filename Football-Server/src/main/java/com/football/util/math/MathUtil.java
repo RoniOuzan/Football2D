@@ -238,4 +238,8 @@ public final class MathUtil {
     }
     return next;
   }
+
+  public static double random(double min, double max) {
+    return Math.random() * (max - min) + min;
+  }
 }

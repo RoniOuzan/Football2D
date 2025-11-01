@@ -27,6 +27,10 @@ public class Client implements Element {
         return this.input;
     }
 
+    public Team getTeam() {
+        return team;
+    }
+
     public Session getSession() {
         return session;
     }
@@ -42,7 +46,10 @@ public class Client implements Element {
 
     @Override
     public void update() {
-        this.team.update();
+//        System.out.println(this.input.getInput());
+        if (this.team != null) {
+            this.team.update();
+        }
 
         this.input.updateInput();
     }
