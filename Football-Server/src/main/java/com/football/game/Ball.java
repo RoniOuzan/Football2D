@@ -92,7 +92,7 @@ public class Ball implements Element {
 
             this.velocity = (newSpeed == 0)
                     ? new Translation2d()
-                    : this.velocity.normalize().times(newSpeed);
+                    : this.velocity.normalized().times(newSpeed);
         }
     }
 

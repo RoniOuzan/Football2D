@@ -26,7 +26,9 @@ public abstract class Player implements Element {
     protected Rotation2d direction;
 
     protected Translation2d velocity;
-    protected Translation2d targetVelocity;
+    protected transient Translation2d targetVelocity;
+
+    private transient PlayerState state = PlayerState.IDLE;
 
     protected Player(Team team, Ball ball, Translation2d position) {
         this.team = team;
@@ -42,6 +44,14 @@ public abstract class Player implements Element {
 
     public Translation2d getPosition() {
         return this.position;
+    }
+
+    public void setPosition(Translation2d position) {
+        this.position = position;
+    }
+
+    public Translation2d getOriginalPosition() {
+        return originalPosition;
     }
 
     public Translation2d getVelocity() {
@@ -91,26 +101,12 @@ public abstract class Player implements Element {
         }
     }
 
-    public abstract BotResult attacking();
-    public abstract BotResult defending();
-    public abstract BotResult counterAttack();
-    public abstract BotResult possession();
-
-    public BotResult chaseBall() {
-        if (this.equals(this.team.getClosestPlayerToBall())) {
-            return new BotResult(this.ball.getPosition(), 100);
+    public void moveTowards(Translation2d target, double speedPercent) {
+        Translation2d delta = target.minus(this.position);
+        if (delta.getNorm() < 5) {
+            speedPercent = Math.min(speedPercent, delta.getNorm() / 5);
         }
-
-        return new BotResult(this.originalPosition, 2);
-    }
-
-    public void moveTo(BotResult botResult) {
-        Translation2d direction = botResult.getTargetPosition().minus(getPosition());
-        if (direction.getNorm() > 0.5) {
-            setVelocity(direction.normalize().times(botResult.getSpeed()));
-        } else {
-            setVelocity(new Translation2d(0, 0)); // stop when close enough
-        }
+        setVelocity(delta.normalized().times(SPRINT_VELOCITY * speedPercent));
     }
 
     public void handleControlledMovement(ClientInput input) {

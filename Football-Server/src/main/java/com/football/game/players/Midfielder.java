@@ -10,25 +10,5 @@ public class Midfielder extends Player {
     public Midfielder(Team team, Ball ball, Translation2d position) {
         super(team, ball, position);
     }
-
-    @Override
-    public BotResult attacking() {
-        return null;
-    }
-
-    @Override
-    public BotResult defending() {
-        return null;
-    }
-
-    @Override
-    public BotResult counterAttack() {
-        return null;
-    }
-
-    @Override
-    public BotResult possession() {
-        return null;
-    }
 }
 

@@ -11,25 +11,5 @@ public class Goalkeeper extends Player {
         super(team, ball, position);
     }
 
-    @Override
-    public BotResult attacking() {
-        return null;
-    }
-
-    @Override
-    public BotResult defending() {
-        return null;
-    }
-
-    @Override
-    public BotResult counterAttack() {
-        return null;
-    }
-
-    @Override
-    public BotResult possession() {
-        return null;
-    }
-
 }
 

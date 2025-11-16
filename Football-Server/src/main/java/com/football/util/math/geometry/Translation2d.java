@@ -187,7 +187,11 @@ public class Translation2d implements Interpolatable<Translation2d> {
         return new Translation2d(x * scalar, y * scalar);
     }
 
-    public Translation2d normalize() {
+    public Translation2d times(double xScalar, double yScalar) {
+        return new Translation2d(x * xScalar, y * yScalar);
+    }
+
+    public Translation2d normalized() {
         if (this.getNorm() < 1e-9) {
             return new Translation2d();
         }

@@ -34,7 +34,7 @@ public class ClientInput {
         if (this.input.keys.contains("a"))
             x -= 1;
 
-        return new Translation2d(x, y).normalize();
+        return new Translation2d(x, y).normalized();
     }
 
     public boolean isPressed(String key) {

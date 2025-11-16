@@ -15,7 +15,8 @@ public class Team implements Element {
     private transient final Game game;
 
     private final List<Player> players;
-    private transient final StrategyChooser strategyChooser;
+    private transient final Formation formation;
+    private final TeamStrategy teamStrategy;
 
     private transient final int sideMultiplier;
 
@@ -27,7 +28,8 @@ public class Team implements Element {
         this.game = game;
 
         this.players = new ArrayList<>();
-        this.strategyChooser =new StrategyChooser(this, this.game.getBall());
+        this.formation = Formation.FOUR_THREE_THREE;
+        this.teamStrategy = new TeamStrategy(game, this);
 
         this.sideMultiplier = this.client.equals(this.game.getClient2()) ? 1 : -1;
 
@@ -35,18 +37,16 @@ public class Team implements Element {
     }
 
     private void initialize() {
-        this.players.add(new Goalkeeper(this, this.game.getBall(), new Translation2d(Game.MAX_X * 0.9, 0).times(sideMultiplier)));
+        this.players.add(new Goalkeeper(this, this.game.getBall(), this.formation.getGoalkeeper().times(sideMultiplier)));
 
-        for (int i = 1; i <= 4; i++) {
-            this.players.add(new Defender(this, this.game.getBall(), getPosition(Game.MAX_X * 2 / 3, i, 4).times(sideMultiplier)));
+        for (Translation2d position : this.formation.getDefenders()) {
+            this.players.add(new Defender(this, this.game.getBall(),position.times(sideMultiplier)));
         }
-
-        for (int i = 1; i <= 3; i++) {
-            this.players.add(new Midfielder(this, this.game.getBall(), getPosition(Game.MAX_X * 2.1 / 5, i, 3).times(sideMultiplier)));
+        for (Translation2d position : this.formation.getMidfielders()) {
+            this.players.add(new Midfielder(this, this.game.getBall(),position.times(sideMultiplier)));
         }
-
-        for (int i = 1; i <= 3; i++) {
-            this.players.add(new Attacker(this, this.game.getBall(), getPosition(Game.MAX_X * 1 / 5, i, 3).times(sideMultiplier)));
+        for (Translation2d position : this.formation.getAttackers()) {
+            this.players.add(new Attacker(this, this.game.getBall(),position.times(sideMultiplier)));
         }
     }
 
@@ -60,6 +60,10 @@ public class Team implements Element {
 
     public Player getChosenPlayer() {
         return chosenPlayer;
+    }
+
+    public Formation getFormation() {
+        return formation;
     }
 
     private Player choosePlayer() {
@@ -99,20 +103,31 @@ public class Team implements Element {
     public void update() {
         this.chosenPlayer = choosePlayer();
 
-        this.chosenPlayer.handleControlledMovement(this.client.getInput());
-        this.strategyChooser.update();
+        this.teamStrategy.update();
 
-        if (!this.isBallInThisTeam()) {
-            Player closest = getClosestPlayerToBall();
-
-            if (this.game.getBall().shouldBePickedUpBy(closest)) {
-                this.game.getBall().setCarrier(closest);
+        if (this.client.getInput().isHolding("r")) {
+            this.players.forEach(p -> p.moveTowards(p.getOriginalPosition(), 1));
+        } else {
+            this.chosenPlayer.handleControlledMovement(this.client.getInput());
+            for (Player player : this.players) {
+                if (!player.equals(this.chosenPlayer)) {
+                    player.moveTowards(this.teamStrategy.getTargetPosition(player), 1);
+                }
             }
         }
+
+//        if (!this.isBallInThisTeam()) {
+//            Player closest = getClosestPlayerToBall();
+//
+//            if (this.game.getBall().shouldBePickedUpBy(closest)) {
+//                this.game.getBall().setCarrier(closest);
+//            }
+//        }
 
         for (Player player : this.players) {
             player.update();
         }
+
     }
 
     private static Translation2d getPosition(double x, int index, int rowLength) {

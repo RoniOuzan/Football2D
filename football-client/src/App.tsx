@@ -8,25 +8,46 @@ export interface Translation2d {
   y: number;
 }
 
-interface Team {
-  players: {
-    position: Translation2d;
-    velocity: Translation2d;
-  }[];
+export interface JsonData {
+  ball: Ball;
+  client1: Client;
+  client2: Client;
+}
+
+export interface Ball {
+  position: Translation2d;
+  velocity: Translation2d;
+}
+
+export interface Client {
+  team: Team;
+}
+
+export interface Team {
+  players: Player[];
+  teamStrategy: TeamStrategy;
   chosenPlayerIndex: number;
 }
 
-interface JsonData {
-  ball: {
-    position: Translation2d;
-    velocity: Translation2d;
-  };
-  client1: {
-    team: Team;
-  };
-  client2: {
-    team: Team;
-  };
+export interface Player {
+  position: Translation2d;
+  originalPosition: Translation2d;
+  direction: Direction;
+  velocity: Translation2d;
+  targetVelocity: Translation2d;
+}
+
+export interface Direction {
+  value: number;
+  cos: number;
+  sin: number;
+}
+
+export interface TeamStrategy {
+  scores: {
+    key: Translation2d;
+    value: number;
+  }[];
 }
 
 function App() {
@@ -37,7 +58,11 @@ function App() {
   useEffect(() => {
     const socket = new WebSocket("ws://localhost:8080/game");
 
-    socket.onmessage = (event) => setData(JSON.parse(event.data));
+    socket.onmessage = (event) => {
+      // console.log(event.data);
+      
+      setData(JSON.parse(event.data));
+    };
 
     const handleKeyDown = (e: KeyboardEvent) =>
       pressedKeys.current.add(e.key.toLowerCase());
@@ -49,7 +74,6 @@ function App() {
 
     const sendInterval = setInterval(() => {
       if (socket.readyState === WebSocket.OPEN) {
-        
         socket.send(
           JSON.stringify({
             type: "input",
@@ -72,6 +96,8 @@ function App() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // console.log(data);
 
     // --- Pitch dimensions ---
     const pitchWidthUnits = 100;
@@ -289,11 +315,45 @@ function App() {
             ctx.strokeStyle = "yellow";
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.arc(pose.x, pose.y, 8, 0, Math.PI * 2);
+            ctx.arc(pose.x, pose.y, 5, 0, Math.PI * 2);
             ctx.stroke();
           }
         });
       }
+
+      const drawScores = (team: Team | undefined) => {
+        if (!team) return;
+        const scores = team.teamStrategy.scores;
+        if (!scores || scores.length === 0) return;
+
+        const values = scores.map(s => s.value);
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+
+        scores.forEach((entry) => {
+          const pos = convert(canvas, entry.key, goalDepth);
+          const color = scoreToColor(entry.value, -320, Math.min(max, 50));
+
+          // Draw transparent rectangle
+          ctx.fillStyle = color;
+          ctx.globalAlpha = 0.3;
+          const sizeX = (canvas.width - 2 * goalDepth) / 25;
+          const sizeY = canvas.height / 25;
+          ctx.fillRect(pos.x - sizeX / 2, pos.y - sizeY / 2, sizeX, sizeY);
+          ctx.globalAlpha = 1.0;
+
+          // Draw the score text
+          ctx.fillStyle = "black"; // or white if better contrast
+          ctx.font = "12px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(entry.value.toFixed(1), pos.x, pos.y);
+        });
+      };
+
+
+      drawScores(data.client1?.team);
+      drawScores(data.client2?.team);
     }
   }, [data]);
 
@@ -322,5 +382,19 @@ const convert = (
     y: ((32 - position.y) / pitchHeightUnits) * canvas.height,
   };
 };
+
+function scoreToColor(value: number, min: number, max: number): string {
+  // Avoid divide-by-zero
+  if (max === min) return "white";
+
+  const t = (value - min) / (max - min); // normalized 0..1
+
+  // Interpolate from blue → green → yellow → red
+  const r = Math.floor(255 * t);
+  const g = Math.floor(255 * (1 - Math.abs(t - 0.5) * 2));
+  const b = Math.floor(255 * (1 - t));
+
+  return `rgb(${r}, ${g}, ${b})`;
+}
 
 export default App;
