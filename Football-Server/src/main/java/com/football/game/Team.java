@@ -116,13 +116,13 @@ public class Team implements Element {
             }
         }
 
-//        if (!this.isBallInThisTeam()) {
-//            Player closest = getClosestPlayerToBall();
-//
-//            if (this.game.getBall().shouldBePickedUpBy(closest)) {
-//                this.game.getBall().setCarrier(closest);
-//            }
-//        }
+        if (!this.isBallInThisTeam()) {
+            Player closest = getClosestPlayerToBall();
+
+            if (this.game.getBall().shouldBePickedUpBy(closest)) {
+                this.game.getBall().setCarrier(closest);
+            }
+        }
 
         for (Player player : this.players) {
             player.update();

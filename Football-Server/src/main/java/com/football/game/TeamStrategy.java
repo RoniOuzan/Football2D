@@ -12,7 +12,7 @@ public class TeamStrategy {
     private static final double STEPS_X = Game.LENGTH / AMOUNT_OF_STEPS;
     private static final double STEPS_Y = Game.WIDTH / AMOUNT_OF_STEPS;
 
-    private static final double WALL_DISTANCE_THRESHOLD = 8;
+    private static final double WALL_DISTANCE_THRESHOLD = 16;
     private static final double WALL_WEIGHT = 200;
 
     private static final double PLAYER_DISTANCE_WEIGHT = 50;      // penalty for being close to teammates
@@ -37,6 +37,7 @@ public class TeamStrategy {
         // Avoid clustering with other teammates
         for (Player player : this.players) {
             double distance = pose.getDistance(player.getPosition());
+            distance = Math.max(distance, 1);
             score -= PLAYER_DISTANCE_WEIGHT / distance;
         }
 
@@ -44,11 +45,14 @@ public class TeamStrategy {
         double distToWallX = Game.MAX_X - Math.abs(pose.getX());
         double distToWallY = Game.MAX_Y - Math.abs(pose.getY());
         if (distToWallX < WALL_DISTANCE_THRESHOLD) {
-            score -= WALL_WEIGHT * (1 - distToWallX / WALL_DISTANCE_THRESHOLD);
+            double factor = (1 - distToWallX / WALL_DISTANCE_THRESHOLD);
+            score -= WALL_WEIGHT * Math.pow(factor, 4);
         }
         if (distToWallY < WALL_DISTANCE_THRESHOLD) {
-            score -= WALL_WEIGHT * (1 - distToWallY / WALL_DISTANCE_THRESHOLD);
+            double factor = (1 - distToWallY / WALL_DISTANCE_THRESHOLD);
+            score -= WALL_WEIGHT * Math.pow(factor, 4);
         }
+
 
         // Ball attraction (all players move slightly towards the ball)
         score -= BALL_WEIGHT * pose.getDistance(ball.getPosition());
@@ -59,6 +63,7 @@ public class TeamStrategy {
     private double addPlayerScore(Player player, Translation2d target, double baseScore) {
         double distanceFromSelf = target.getDistance(player.getPosition());
         double distanceFromFormation = target.getDistance(player.getOriginalPosition());
+
         return baseScore
                 - SELF_WEIGHT * distanceFromSelf
                 - FORMATION_WEIGHT * distanceFromFormation;
