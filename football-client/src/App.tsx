@@ -332,7 +332,7 @@ function App() {
 
         scores.forEach((entry) => {
           const pos = convert(canvas, entry.key, goalDepth);
-          const color = scoreToColor(entry.value, -150, Math.min(max, 50));
+          const color = scoreToColor(entry.value, -120, Math.min(max, 50));
 
           // Draw transparent rectangle
           ctx.fillStyle = color;

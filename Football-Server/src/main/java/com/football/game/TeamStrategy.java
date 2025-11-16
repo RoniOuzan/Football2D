@@ -1,7 +1,6 @@
 package com.football.game;
 
-import com.football.game.players.Goalkeeper;
-import com.football.game.players.Player;
+import com.football.game.players.*;
 import com.football.util.math.geometry.Translation2d;
 
 import java.util.*;
@@ -32,14 +31,11 @@ public class TeamStrategy {
     }
 
     private double calculateScore(Translation2d pose) {
-        Translation2d teamShift = getTeamShift();
-        Translation2d shiftedPose = pose.plus(teamShift);
-
         double score = 0;
 
         // Everything now uses shiftedPose instead of pose:
         for (Player player : this.players) {
-            double distance = shiftedPose.getDistance(player.getPosition());
+            double distance = pose.getDistance(player.getPosition());
             distance = Math.max(distance, 1);
             score -= PLAYER_DISTANCE_WEIGHT / distance;
         }
@@ -63,12 +59,17 @@ public class TeamStrategy {
 
     private double addPlayerScore(Player player, Translation2d target, double baseScore) {
         double distanceFromSelf = target.getDistance(player.getPosition());
-        double distanceFromFormation = target.getDistance(player.getOriginalPosition());
+
+        // Add role shift (moves original position vertically)
+        double getTeamShiftY = getRoleShift(player);
+        Translation2d shiftedFormation = player.getOriginalPosition()
+                .plus(new Translation2d(getTeamShiftX(), getTeamShiftY));
 
         return baseScore
                 - SELF_WEIGHT * distanceFromSelf
-                - FORMATION_WEIGHT * distanceFromFormation;
+                - FORMATION_WEIGHT * target.getDistance(shiftedFormation);
     }
+
 
     public Translation2d getTargetPosition(Player player) {
         if (player instanceof Goalkeeper) {
@@ -81,17 +82,27 @@ public class TeamStrategy {
         return bestEntry.map(Map.Entry::getKey).orElse(player.getPosition());
     }
 
-    private Translation2d getTeamShift() {
-        Translation2d ballPos = this.ball.getPosition();
-
-        // Normalize field coordinates into [-1, +1]
-        double shiftX = ballPos.getX() / Game.MAX_X;
-        double shiftY = ballPos.getY() / Game.MAX_Y;
-
+    private double getTeamShiftX() {
         // Control how strong the shift is
-        double SHIFT_AMOUNT = 10;
+        return (this.ball.getPosition().getX() / Game.MAX_X) * 10;
+    }
 
-        return new Translation2d(shiftX * SHIFT_AMOUNT, shiftY * SHIFT_AMOUNT);
+    private double getRoleShift(Player player) {
+        double ballDepth = this.ball.getPosition().getY() / Game.MAX_Y;
+
+        // How much each role reacts to ball depth
+        double ATT_SHIFT = 8;
+        double MID_SHIFT = 30;
+        double DEF_SHIFT = 30;
+
+        if (player instanceof Attacker) {
+            return ballDepth * ATT_SHIFT;
+        } else if (player instanceof Midfielder) {
+            return ballDepth * MID_SHIFT;
+        } else if (player instanceof Defender) {
+            return ballDepth * DEF_SHIFT;
+        }
+        return 0;
     }
 
 
