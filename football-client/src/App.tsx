@@ -315,7 +315,7 @@ function App() {
             ctx.strokeStyle = "yellow";
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.arc(pose.x, pose.y, 5, 0, Math.PI * 2);
+            ctx.arc(pose.x, pose.y, 8, 0, Math.PI * 2);
             ctx.stroke();
           }
         });
@@ -332,7 +332,7 @@ function App() {
 
         scores.forEach((entry) => {
           const pos = convert(canvas, entry.key, goalDepth);
-          const color = scoreToColor(entry.value, -320, Math.min(max, 50));
+          const color = scoreToColor(entry.value, -150, Math.min(max, 50));
 
           // Draw transparent rectangle
           ctx.fillStyle = color;

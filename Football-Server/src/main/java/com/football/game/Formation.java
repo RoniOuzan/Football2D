@@ -42,7 +42,7 @@ public class Formation {
         this.defenders = Arrays.stream(defenders).map(Formation::convertToField).toList().toArray(new Translation2d[0]);
         this.midfielders = Arrays.stream(midfielders).map(Formation::convertToField).toList().toArray(new Translation2d[0]);
         this.attackers = Arrays.stream(attackers).map(Formation::convertToField).toList().toArray(new Translation2d[0]);
-        this.goalkeeper = convertToField(new Translation2d(0.05, 0));
+        this.goalkeeper = convertToField(new Translation2d(0.02, 0));
 
         this.positions = new Translation2d[11];
         positions[0] = this.goalkeeper;

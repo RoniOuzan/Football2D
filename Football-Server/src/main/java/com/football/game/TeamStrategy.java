@@ -12,13 +12,13 @@ public class TeamStrategy {
     private static final double STEPS_X = Game.LENGTH / AMOUNT_OF_STEPS;
     private static final double STEPS_Y = Game.WIDTH / AMOUNT_OF_STEPS;
 
-    private static final double WALL_DISTANCE_THRESHOLD = 16;
-    private static final double WALL_WEIGHT = 200;
+    private static final double WALL_DISTANCE_THRESHOLD = 12;
+    private static final double WALL_WEIGHT = 50;
 
-    private static final double PLAYER_DISTANCE_WEIGHT = 50;      // penalty for being close to teammates
-    private static final double FORMATION_WEIGHT = 0.2;           // penalty for being far from formation
+    private static final double PLAYER_DISTANCE_WEIGHT = 100;      // penalty for being close to teammates
+    private static final double FORMATION_WEIGHT = 0.5;           // penalty for being far from formation
     private static final double SELF_WEIGHT = 1.0;                // penalty for moving too far from current pos
-    private static final double BALL_WEIGHT = 0.3;                // attraction/repulsion to ball
+    private static final double BALL_WEIGHT = 0.1;                // attraction/repulsion to ball
 
     private transient final List<Player> players;
     private transient final Ball ball;
@@ -32,16 +32,18 @@ public class TeamStrategy {
     }
 
     private double calculateScore(Translation2d pose) {
+        Translation2d teamShift = getTeamShift();
+        Translation2d shiftedPose = pose.plus(teamShift);
+
         double score = 0;
 
-        // Avoid clustering with other teammates
+        // Everything now uses shiftedPose instead of pose:
         for (Player player : this.players) {
-            double distance = pose.getDistance(player.getPosition());
+            double distance = shiftedPose.getDistance(player.getPosition());
             distance = Math.max(distance, 1);
             score -= PLAYER_DISTANCE_WEIGHT / distance;
         }
 
-        // Avoid walls
         double distToWallX = Game.MAX_X - Math.abs(pose.getX());
         double distToWallY = Game.MAX_Y - Math.abs(pose.getY());
         if (distToWallX < WALL_DISTANCE_THRESHOLD) {
@@ -53,12 +55,11 @@ public class TeamStrategy {
             score -= WALL_WEIGHT * Math.pow(factor, 4);
         }
 
-
-        // Ball attraction (all players move slightly towards the ball)
         score -= BALL_WEIGHT * pose.getDistance(ball.getPosition());
 
         return score;
     }
+
 
     private double addPlayerScore(Player player, Translation2d target, double baseScore) {
         double distanceFromSelf = target.getDistance(player.getPosition());
@@ -80,16 +81,19 @@ public class TeamStrategy {
         return bestEntry.map(Map.Entry::getKey).orElse(player.getPosition());
     }
 
-    private Translation2d getNormalizedPosition(Translation2d pose) {
-        double x = Math.round(pose.getX() / STEPS_X) * STEPS_X;
-        double y = Math.round(pose.getY() / STEPS_Y) * STEPS_Y;
+    private Translation2d getTeamShift() {
+        Translation2d ballPos = this.ball.getPosition();
 
-        // Clamp to game boundaries
-        x = Math.max(-Game.MAX_X + STEPS_X / 2, Math.min(Game.MAX_X - STEPS_X / 2, x));
-        y = Math.max(-Game.MAX_Y + STEPS_Y / 2, Math.min(Game.MAX_Y - STEPS_Y / 2, y));
+        // Normalize field coordinates into [-1, +1]
+        double shiftX = ballPos.getX() / Game.MAX_X;
+        double shiftY = ballPos.getY() / Game.MAX_Y;
 
-        return new Translation2d(x, y);
+        // Control how strong the shift is
+        double SHIFT_AMOUNT = 10;
+
+        return new Translation2d(shiftX * SHIFT_AMOUNT, shiftY * SHIFT_AMOUNT);
     }
+
 
     public void update() {
         scores.clear();
