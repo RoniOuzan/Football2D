@@ -28,8 +28,6 @@ public abstract class Player implements Element {
     protected Translation2d velocity;
     protected transient Translation2d targetVelocity;
 
-    private transient PlayerState state = PlayerState.IDLE;
-
     protected Player(Team team, Ball ball, Translation2d position) {
         this.team = team;
         this.ball = ball;
@@ -46,10 +44,6 @@ public abstract class Player implements Element {
         return this.position;
     }
 
-    public void setPosition(Translation2d position) {
-        this.position = position;
-    }
-
     public Translation2d getOriginalPosition() {
         return originalPosition;
     }
@@ -62,7 +56,7 @@ public abstract class Player implements Element {
         return direction;
     }
 
-    public boolean isCarryingTheBall() {
+    public boolean hasBall() {
         return this.equals(this.ball.getCarrier());
     }
 
@@ -111,13 +105,13 @@ public abstract class Player implements Element {
 
     public void handleControlledMovement(ClientInput input) {
         double velocity = input.isHolding("shift") ? SPRINT_VELOCITY : WALK_VELOCITY;
-        if (this.isCarryingTheBall()) {
+        if (this.hasBall()) {
             velocity *= CARRYING_BALL_VELOCITY_MULTIPLIER;
         }
 
         this.setVelocity(input.getRequestedVelocity().times(velocity));
 
-        if (this.isCarryingTheBall()) {
+        if (this.hasBall()) {
             if (input.isHolding("e")) {
                 Player playerToPass = getPlayerToPass();
                 pass(playerToPass);

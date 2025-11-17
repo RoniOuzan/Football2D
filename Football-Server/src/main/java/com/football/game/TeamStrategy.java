@@ -1,6 +1,7 @@
 package com.football.game;
 
 import com.football.game.players.*;
+import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Translation2d;
 
 import java.util.*;
@@ -17,12 +18,12 @@ public class TeamStrategy {
     private static final double PLAYER_DISTANCE_WEIGHT = 100;      // penalty for being close to teammates
     private static final double OPPONENT_DISTANCE_WEIGHT = 30;     // penalty for being close to opponents
     private static final double FORMATION_WEIGHT = 0.5;           // penalty for being far from formation
-    private static final double SELF_WEIGHT = 1.0;                // penalty for moving too far from current pos
+    private static final double SELF_WEIGHT = 0.3;                // penalty for moving too far from current pos
     private static final double BALL_WEIGHT = 0.1;                // attraction/repulsion to ball
 
     // Marking constants
-    private static final double MARKING_IDEAL_DISTANCE = 8.0;     // ideal distance to the marked opponent
-    private static final double MARKING_WEIGHT = 3.0;            // penalty per unit away from ideal
+    private static final double MARKING_IDEAL_DISTANCE = 5.0;     // ideal distance to the marked opponent
+    private static final double MARKING_WEIGHT = 1.0;            // penalty per unit away from ideal
 
     // Space exploit bonus (attackers)
     private static final double SPACE_MIN = 5.0;
@@ -35,6 +36,7 @@ public class TeamStrategy {
     private transient final double sideMultiplier;
 
     private final Map<Translation2d, Double> scores;
+    private double defenseLine;
 
     public TeamStrategy(Game game, Team team) {
         this.team = team;
@@ -80,13 +82,19 @@ public class TeamStrategy {
         // Offside
         double offsideLine = getOffsideLine();
         if (!Double.isNaN(offsideLine)) {
-            if ((this.sideMultiplier == 1 && pose.getX() > offsideLine - 1) ||
-                    (this.sideMultiplier == -1 && pose.getX() < offsideLine + 1)) {
+            if (MathUtil.isBetween(pose.getX() * this.sideMultiplier, Math.abs(offsideLine) - 1, Game.MAX_X)) {
                 score -= 500; // huge penalty; avoid this target
             }
         }
 
-        score += getSpaceExploitScore(pose);
+        if (this.team.hasBall()) {
+            score += getSpaceExploitScore(pose);
+        }
+
+        if (!this.team.hasBall()) {
+            score += getGoalThreatScore(pose);
+            score += getBlockGoalScore(pose);
+        }
 
         // Mild attraction to ball for overall heatmap
         score -= BALL_WEIGHT * pose.getDistance(this.ball.getPosition());
@@ -105,18 +113,17 @@ public class TeamStrategy {
         double distanceFromSelf = target.getDistance(player.getPosition());
 
         // Compute role-based formation anchor shift
-        double teamShiftX = getTeamShiftX();
-        double roleShiftY = getRoleShift(player);
-        Translation2d shiftedFormation = player.getOriginalPosition()
-                .plus(new Translation2d(teamShiftX, roleShiftY));
+        Translation2d teamShift = getTeamShift();
+        Translation2d shiftedFormation = player.getOriginalPosition().plus(teamShift);
 
         double score = baseScore
                 - SELF_WEIGHT * distanceFromSelf
                 - FORMATION_WEIGHT * target.getDistance(shiftedFormation);
 
-        // Marking / guarding: defenders and midfielders try to be near a dangerous opponent
-        if (player instanceof Defender || player instanceof Midfielder) {
+        // Marking / guarding: defenders try to be near a dangerous opponent
+        if (player instanceof Defender) {
             score += getMarkingScore(player, target);
+            score += getDefensiveLineScore(target);
         }
 
         return score;
@@ -142,23 +149,91 @@ public class TeamStrategy {
      * Negative absolute diff penalizes being far from ideal (we return negative value when diff large).
      */
     private double getMarkingScore(Player player, Translation2d target) {
-        // Find the closest opponent to this player (by current player position)
-        Player closest = null;
-        double bestDist = Double.MAX_VALUE;
-        for (Player opp : this.team.getOpponent().getPlayers()) {
-            double d = opp.getPosition().getDistance(player.getPosition());
-            if (d < bestDist) {
-                bestDist = d;
-                closest = opp;
+        Player closest = this.team.getOpponent().getPlayers().stream()
+                .min(Comparator.comparingDouble(p -> p.getPosition().getDistance(player.getPosition())))
+                .orElse(null);
+
+        if (closest == null) return 0;
+
+        double targetDist = target.getDistance(closest.getPosition());
+
+        // How far the target position is from the ideal marking distance
+        double idealDiff = Math.abs(targetDist - MARKING_IDEAL_DISTANCE);
+
+        // ---- New continuous weight: stronger when opponent is closer ----
+        double baseDistance = player.getPosition().getDistance(closest.getPosition());
+
+        // Close opponent → weight ~1.2
+        // Medium (8-12m) → weight ~0.8
+        // Far (20m) → weight ~0.2
+        double distanceFactor = 1.0 / (1.0 + baseDistance * 0.2);
+
+        // ---- Ball possession factor ----
+        // When opponent has the ball, we mark tighter (×2)
+        // When we have the ball, there's still marking, but lighter (×0.5)
+        double possessionFactor = this.team.getOpponent().hasBall() ? 1.0 : 0.2;
+
+        double weight = MARKING_WEIGHT * distanceFactor * possessionFactor;
+
+        return -idealDiff * weight;
+    }
+
+    private double getGoalThreatScore(Translation2d target) {
+        double goalX = -Game.MAX_X * this.sideMultiplier; // your defensive goal side
+        double ballToGoal = Math.abs(ball.getPosition().getX() - goalX);
+
+        if (ballToGoal >= 35)
+            return 0;
+
+        double x = 1.0 - (ballToGoal / 35); // 0 → 1
+        double urgency = x * x;
+
+        double distance = target.getDistance(new Translation2d(goalX * 0.7, 0));
+        distance = MathUtil.clamp(distance, 10, 30);
+        return -distance * urgency * 10;
+    }
+
+    private double getBlockGoalScore(Translation2d target) {
+        // Encourage defenders to block the ball when it's near our goal
+        double ballX = ball.getPosition().getX();
+        double goalX = -Game.MAX_X * this.sideMultiplier;
+        double ballDistToGoal = Math.abs(ballX - goalX);
+
+        double score = 0;
+        if (ballDistToGoal < 50) {
+            if (target.getX() * sideMultiplier < goalX) {
+                score += 20;
+            }
+
+            Translation2d delta = new Translation2d(goalX, 0).minus(this.ball.getPosition());
+            Translation2d blockPosition = this.ball.getPosition().plus(delta.times(0.5));
+
+            double distance = target.getDistance(blockPosition);
+            if (distance > 20) {
+                score -= 10;
+            } else if (distance < 10) {
+                score += 20;
+            } else {
+                score += (20 - distance) * 2;
             }
         }
+        return score;
+    }
 
-        // Ideal: stay around MARKING_IDEAL_DISTANCE from that opponent
-        double diff = Math.abs(target.getDistance(closest.getPosition()) - MARKING_IDEAL_DISTANCE);
+    private double computeDefensiveLineX() {
+        // Base line — depends on ball depth on the pitch
+        double line = MathUtil.clamp(this.ball.getPosition().getX() * this.sideMultiplier - 25, -Game.MAX_X + 10, 0);
 
-        // The smaller diff is, the better (i.e., small diff yields small penalty)
-        // We want to reward being close to ideal -> subtracting a small penalty means higher score
-        return -diff * MARKING_WEIGHT;
+        // If opponent controls the ball → drop deeper
+        if (this.team.getOpponent().hasBall()) {
+            line -= 8;
+        }
+
+        return line * this.sideMultiplier;
+    }
+
+    private double getDefensiveLineScore(Translation2d target) {
+        return -Math.abs(target.getX() - this.defenseLine) * 0.2;  // penalty for leaving the line
     }
 
     /**
@@ -168,23 +243,13 @@ public class TeamStrategy {
     private double getOffsideLine() {
         // Collect opponent Y positions excluding their goalkeeper if possible
         List<Double> xs = this.team.getOpponent().getPlayers().stream()
-                .map(p -> p.getPosition().getX())
+                .map(p -> p.getPosition().getX() * this.sideMultiplier)
                 .sorted()
                 .toList();
 
-        double line;
-        if (this.sideMultiplier == 1) {
-            line = xs.get(xs.size() - 2);
-            if (line > 0) {
-                return line;
-            }
-        } else {
-            line = xs.get(1);
-            if (line < 0) {
-                return line;
-            }
-        }
-        return Double.NaN;
+        double ballX = this.ball.getPosition().getX() * this.sideMultiplier;
+        double line = xs.get(xs.size() - 2);
+        return MathUtil.clamp(line, Math.max(ballX, 0), Game.MAX_X) * this.sideMultiplier;
     }
 
     /**
@@ -204,30 +269,10 @@ public class TeamStrategy {
     /**
      * Team lateral shift based on ball X position.
      */
-    private double getTeamShiftX() {
+    private Translation2d getTeamShift() {
         // Control how strong the shift is (tune as needed)
-        return (this.ball.getPosition().getX() / Game.MAX_X) * 6.0;
-    }
-
-    /**
-     * How much each role reacts to ball depth (Y axis).
-     */
-    private double getRoleShift(Player player) {
-        double ballDepth = this.ball.getPosition().getY() / Game.MAX_Y;
-
-        // How much each role reacts to ball depth (tune these)
-        double ATT_SHIFT = 8.0;
-        double MID_SHIFT = 28.0;
-        double DEF_SHIFT = 24.0;
-
-        if (player instanceof Attacker) {
-            return ballDepth * ATT_SHIFT;
-        } else if (player instanceof Midfielder) {
-            return ballDepth * MID_SHIFT;
-        } else if (player instanceof Defender) {
-            return ballDepth * DEF_SHIFT;
-        }
-        return 0.0;
+        return new Translation2d((this.ball.getPosition().getX() / Game.MAX_X) * 30,
+                (this.ball.getPosition().getY() / Game.MAX_Y) * 20);
     }
 
     /**
@@ -237,6 +282,7 @@ public class TeamStrategy {
         if (this.team.getOpponent() == null) {
             return;
         }
+        this.defenseLine = computeDefensiveLineX();
 
         scores.clear();
         for (double i = -Game.MAX_X + (STEPS_X / 2); i < Game.MAX_X; i += STEPS_X) {

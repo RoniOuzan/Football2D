@@ -48,6 +48,7 @@ export interface TeamStrategy {
     key: Translation2d;
     value: number;
   }[];
+  defenseLine: number;
 }
 
 function App() {
@@ -354,6 +355,23 @@ function App() {
 
       drawScores(data.client1?.team);
       // drawScores(data.client2?.team);
+
+      const defenseX_units = data.client1.team.teamStrategy.defenseLine;
+
+      // Convert X (in field units) to canvas pixels
+      const pitchWidthUnits = 100;
+      const pitchLeft = goalDepth;
+      const pitchRight = canvas.width - goalDepth;
+
+      const defenseX = pitchLeft + ((defenseX_units + 50) / pitchWidthUnits) * (pitchRight - pitchLeft);
+
+      ctx.strokeStyle = "yellow";
+      ctx.lineWidth = 2;
+
+      ctx.beginPath();
+      ctx.moveTo(defenseX, 0);
+      ctx.lineTo(defenseX, canvas.height);
+      ctx.stroke();
     }
   }, [data]);
 

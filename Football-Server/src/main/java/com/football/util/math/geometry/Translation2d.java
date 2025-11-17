@@ -254,5 +254,9 @@ public class Translation2d implements Interpolatable<Translation2d> {
                 MathUtil.interpolate(this.getX(), endValue.getX(), t),
                 MathUtil.interpolate(this.getY(), endValue.getY(), t));
     }
+
+    public double dot(Translation2d other) {
+        return this.x * other.x + this.y * other.y;
+    }
 }
 

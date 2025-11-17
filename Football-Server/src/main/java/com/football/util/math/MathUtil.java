@@ -242,4 +242,8 @@ public final class MathUtil {
   public static double random(double min, double max) {
     return Math.random() * (max - min) + min;
   }
+
+  public static boolean isBetween(double value, double min, double max) {
+    return value >= min && value <= max;
+  }
 }

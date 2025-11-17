@@ -2,6 +2,7 @@ package com.football.game;
 
 import com.football.client.Client;
 import com.football.game.players.*;
+import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Translation2d;
 
 import java.util.ArrayList;
@@ -62,13 +63,9 @@ public class Team implements Element {
         return chosenPlayer;
     }
 
-    public Formation getFormation() {
-        return formation;
-    }
-
     private Player choosePlayer() {
         Ball ball = this.game.getBall();
-        if (this.isBallInThisTeam()) {
+        if (this.hasBall()) {
             this.chosenPlayerIndex = this.players.indexOf(ball.getCarrier());
             return ball.getCarrier();
         }
@@ -95,7 +92,7 @@ public class Team implements Element {
         return this.getClosestPlayerToBall(p -> true);
     }
 
-    public boolean isBallInThisTeam() {
+    public boolean hasBall() {
         return this.players.contains(this.game.getBall().getCarrier());
     }
 
@@ -116,7 +113,7 @@ public class Team implements Element {
             }
         }
 
-        if (!this.isBallInThisTeam()) {
+        if (!this.hasBall()) {
             Player closest = getClosestPlayerToBall();
 
             if (this.game.getBall().shouldBePickedUpBy(closest)) {
@@ -127,11 +124,12 @@ public class Team implements Element {
         for (Player player : this.players) {
             player.update();
         }
-
     }
 
-    private static Translation2d getPosition(double x, int index, int rowLength) {
-        return new Translation2d(x, (index * (Game.WIDTH / (rowLength + 1))) - Game.MAX_Y);
+    public boolean isXBetween(double x, double from, double to) {
+        x *= this.sideMultiplier;
+
+        return x > Math.min(from, to) && x < Math.max(from, to);
     }
 
     public Translation2d getOwnGoalPosition() {
