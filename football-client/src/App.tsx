@@ -56,7 +56,7 @@ function App() {
   const pressedKeys = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    const socket = new WebSocket("ws://localhost:8080/game");
+    const socket = new WebSocket("ws://localhost:9090/game");
 
     socket.onmessage = (event) => {
       // console.log(event.data);

@@ -25,9 +25,9 @@ public class TeamStrategy {
     private static final double MARKING_WEIGHT = 3.0;            // penalty per unit away from ideal
 
     // Space exploit bonus (attackers)
-    private static final double SPACE_MIN = 10.0;
-    private static final double SPACE_MAX = 30.0;
-    private static final double SPACE_BONUS = 10.0;
+    private static final double SPACE_MIN = 5.0;
+    private static final double SPACE_MAX = 20.0;
+    private static final double SPACE_OPPONENT_BONUS = 5;
 
     private transient final Team team;
     private transient final List<Player> players;
@@ -80,12 +80,13 @@ public class TeamStrategy {
         // Offside
         double offsideLine = getOffsideLine();
         if (!Double.isNaN(offsideLine)) {
-            if (this.sideMultiplier == 1)
-                System.out.println(pose.getX() + " | " + offsideLine);
-            if ((this.sideMultiplier == 1 && pose.getX() > offsideLine - 1) ) { // (this.sideMultiplier == -1 && pose.getX() < offsideLine + 1)
+            if ((this.sideMultiplier == 1 && pose.getX() > offsideLine - 1) ||
+                    (this.sideMultiplier == -1 && pose.getX() < offsideLine + 1)) {
                 score -= 500; // huge penalty; avoid this target
             }
         }
+
+        score += getSpaceExploitScore(pose);
 
         // Mild attraction to ball for overall heatmap
         score -= BALL_WEIGHT * pose.getDistance(this.ball.getPosition());
@@ -118,13 +119,22 @@ public class TeamStrategy {
             score += getMarkingScore(player, target);
         }
 
-        // If attacker: apply offside prevention and opportunistic space exploitation
-        if (player instanceof Attacker) {
-            // Space exploitation bonus if target is in open space relative to opponents
-            score += getSpaceExploitScore(target);
-        }
-
         return score;
+    }
+
+    /**
+     * Attackers get a small bonus for occupying space that's relatively far from opponents
+     * but not ridiculously far (SPACE_MIN..SPACE_MAX).
+     */
+    private double getSpaceExploitScore(Translation2d target) {
+        double bonus = 0;
+        for (Player opp : this.team.getOpponent().getPlayers()) {
+            double d = target.getDistance(opp.getPosition());
+            if (d > SPACE_MIN && d < SPACE_MAX) {
+                bonus += SPACE_OPPONENT_BONUS;
+            }
+        }
+        return bonus;
     }
 
     /**
@@ -142,30 +152,13 @@ public class TeamStrategy {
                 closest = opp;
             }
         }
-        if (closest == null) return 0;
 
         // Ideal: stay around MARKING_IDEAL_DISTANCE from that opponent
-        double actualDist = target.getDistance(closest.getPosition());
-        double diff = Math.abs(actualDist - MARKING_IDEAL_DISTANCE);
+        double diff = Math.abs(target.getDistance(closest.getPosition()) - MARKING_IDEAL_DISTANCE);
 
         // The smaller diff is, the better (i.e., small diff yields small penalty)
         // We want to reward being close to ideal -> subtracting a small penalty means higher score
         return -diff * MARKING_WEIGHT;
-    }
-
-    /**
-     * Attackers get a small bonus for occupying space that's relatively far from opponents
-     * but not ridiculously far (SPACE_MIN..SPACE_MAX).
-     */
-    private double getSpaceExploitScore(Translation2d target) {
-        double bonus = 0;
-        for (Player opp : this.team.getOpponent().getPlayers()) {
-            double d = target.getDistance(opp.getPosition());
-            if (d > SPACE_MIN && d < SPACE_MAX) {
-                bonus += SPACE_BONUS;
-            }
-        }
-        return bonus;
     }
 
     /**
@@ -241,6 +234,10 @@ public class TeamStrategy {
      * Precompute the baseline (player-agnostic) heatmap.
      */
     public void update() {
+        if (this.team.getOpponent() == null) {
+            return;
+        }
+
         scores.clear();
         for (double i = -Game.MAX_X + (STEPS_X / 2); i < Game.MAX_X; i += STEPS_X) {
             for (double j = -Game.MAX_Y + (STEPS_Y / 2); j < Game.MAX_Y; j += STEPS_Y) {

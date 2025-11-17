@@ -72,6 +72,6 @@ public class Formation {
     }
 
     private static Translation2d convertToField(Translation2d position) {
-        return new Translation2d(1 - position.getX(), position.getY()).times(Game.MAX_X, Game.MAX_Y);
+        return new Translation2d(1 - position.getX(), position.getY()).times(Game.MAX_X, Game.MAX_Y).unaryMinus();
     }
 }

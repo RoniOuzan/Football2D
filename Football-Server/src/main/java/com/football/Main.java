@@ -6,8 +6,7 @@ import org.eclipse.jetty.websocket.server.config.JettyWebSocketServletContainerI
 
 public class Main {
     public static void main(String[] args) throws Exception {
-        // Create a Jetty server on port 8080
-        Server server = new Server(8080);
+        Server server = new Server(9090);
 
         // Use ServletContextHandler
         ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);

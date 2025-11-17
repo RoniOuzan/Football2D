@@ -35,7 +35,7 @@ public abstract class Player implements Element {
         this.ball = ball;
 
         this.position = position;
-        this.originalPosition = new Translation2d(position.getX() * 2 - Game.MAX_X * this.team.getSideMultiplier(), position.getY());
+        this.originalPosition = new Translation2d(position.getX() * 2 + Game.MAX_X * this.team.getSideMultiplier(), position.getY());
         this.direction = new Rotation2d();
 
         this.velocity = new Translation2d();
