@@ -115,9 +115,11 @@ public abstract class Player implements Element {
             if (input.isHolding("e")) {
                 Player playerToPass = getPlayerToPass();
                 pass(playerToPass);
+                this.team.setChosenPlayer(playerToPass);
             } else if (input.isHolding("f")) {
                 Player playerToPass = getPlayerToPass();
                 through(playerToPass);
+                this.team.setChosenPlayer(playerToPass);
             } else if (input.isHolding("r")) {
                 shoot();
             }

@@ -338,8 +338,8 @@ function App() {
           // Draw transparent rectangle
           ctx.fillStyle = color;
           ctx.globalAlpha = 0.3;
-          const sizeX = (canvas.width - 2 * goalDepth) / 25;
-          const sizeY = canvas.height / 25;
+          const sizeX = (canvas.width - 2 * goalDepth) / 40;
+          const sizeY = canvas.height / 40;
           ctx.fillRect(pos.x - sizeX / 2, pos.y - sizeY / 2, sizeX, sizeY);
           ctx.globalAlpha = 1.0;
 

@@ -8,7 +8,7 @@ import java.util.*;
 
 public class TeamStrategy {
 
-    private static final int AMOUNT_OF_STEPS = 25;
+    private static final int AMOUNT_OF_STEPS = 40;
     private static final double STEPS_X = Game.LENGTH / AMOUNT_OF_STEPS;
     private static final double STEPS_Y = Game.WIDTH / AMOUNT_OF_STEPS;
 
@@ -34,6 +34,8 @@ public class TeamStrategy {
     private transient final List<Player> players;
     private transient final Ball ball;
     private transient final double sideMultiplier;
+
+    private transient Player ballChaser = null;
 
     private final Map<Translation2d, Double> scores;
     private double defenseLine;
@@ -89,9 +91,7 @@ public class TeamStrategy {
 
         if (this.team.hasBall()) {
             score += getSpaceExploitScore(pose);
-        }
-
-        if (!this.team.hasBall()) {
+        } else {
             score += getGoalThreatScore(pose);
             score += getBlockGoalScore(pose);
         }
@@ -260,6 +260,10 @@ public class TeamStrategy {
             return player.getOriginalPosition();
         }
 
+        if (player.equals(this.ballChaser)) {
+            return this.ball.getPosition();
+        }
+
         Optional<Map.Entry<Translation2d, Double>> bestEntry = scores.entrySet().stream()
                 .max(Comparator.comparingDouble(e -> addPlayerScore(player, e.getKey(), e.getValue())));
 
@@ -273,6 +277,12 @@ public class TeamStrategy {
         // Control how strong the shift is (tune as needed)
         return new Translation2d((this.ball.getPosition().getX() / Game.MAX_X) * 30,
                 (this.ball.getPosition().getY() / Game.MAX_Y) * 20);
+    }
+
+    private Player chooseBallChaser() {
+        return this.players.stream()
+                .min(Comparator.comparingDouble(p -> p.getPosition().getDistance(this.ball.getPosition())))
+                .orElse(null);
     }
 
     /**
@@ -291,5 +301,7 @@ public class TeamStrategy {
                 scores.put(pose, calculateScore(pose));
             }
         }
+
+        this.ballChaser = chooseBallChaser();
     }
 }

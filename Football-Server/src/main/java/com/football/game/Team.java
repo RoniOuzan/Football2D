@@ -66,18 +66,13 @@ public class Team implements Element {
     private Player choosePlayer() {
         Ball ball = this.game.getBall();
         if (this.hasBall()) {
-            this.chosenPlayerIndex = this.players.indexOf(ball.getCarrier());
             return ball.getCarrier();
         }
 
         if (this.chosenPlayer == null || this.client.getInput().isPressed("q")) {
-            Player closest = getClosestPlayerToBall(p -> !p.equals(this.chosenPlayer));
-
-            this.chosenPlayerIndex = this.players.indexOf(closest);
-            return closest;
+            return getClosestPlayerToBall(p -> !p.equals(this.chosenPlayer));
         }
 
-        this.chosenPlayerIndex = this.players.indexOf(this.chosenPlayer);
         return this.chosenPlayer;
     }
 
@@ -92,24 +87,25 @@ public class Team implements Element {
         return this.getClosestPlayerToBall(p -> true);
     }
 
+    public void setChosenPlayer(Player chosenPlayer) {
+        this.chosenPlayer = chosenPlayer;
+        this.chosenPlayerIndex = this.players.indexOf(chosenPlayer);
+    }
+
     public boolean hasBall() {
         return this.players.contains(this.game.getBall().getCarrier());
     }
 
     @Override
     public void update() {
-        this.chosenPlayer = choosePlayer();
+        this.setChosenPlayer(choosePlayer());
 
         this.teamStrategy.update();
 
-        if (this.client.getInput().isHolding("r")) {
-            this.players.forEach(p -> p.moveTowards(p.getOriginalPosition(), 1));
-        } else {
-            this.chosenPlayer.handleControlledMovement(this.client.getInput());
-            for (Player player : this.players) {
-                if (!player.equals(this.chosenPlayer)) {
-                    player.moveTowards(this.teamStrategy.getTargetPosition(player), 1);
-                }
+        this.chosenPlayer.handleControlledMovement(this.client.getInput());
+        for (Player player : this.players) {
+            if (!player.equals(this.chosenPlayer)) {
+                player.moveTowards(this.teamStrategy.getTargetPosition(player), 1);
             }
         }
 
@@ -133,7 +129,7 @@ public class Team implements Element {
     }
 
     public Translation2d getOwnGoalPosition() {
-        return new Translation2d(Game.MAX_X, 0).times(this.sideMultiplier);
+        return new Translation2d(-Game.MAX_X, 0).times(this.sideMultiplier);
     }
 
     public Team getOpponent() {
