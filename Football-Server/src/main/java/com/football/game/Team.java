@@ -27,11 +27,11 @@ public class Team implements Element {
         this.client = client;
         this.game = game;
 
+        this.sideMultiplier = this.client.equals(this.game.getClient2()) ? 1 : -1;
+
         this.players = new ArrayList<>();
         this.formation = Formation.FOUR_THREE_THREE;
         this.teamStrategy = new TeamStrategy(game, this);
-
-        this.sideMultiplier = this.client.equals(this.game.getClient2()) ? 1 : -1;
 
         initialize();
     }

@@ -353,7 +353,7 @@ function App() {
 
 
       drawScores(data.client1?.team);
-      drawScores(data.client2?.team);
+      // drawScores(data.client2?.team);
     }
   }, [data]);
 
