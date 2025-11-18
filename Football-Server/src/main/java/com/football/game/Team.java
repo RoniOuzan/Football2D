@@ -10,7 +10,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.Predicate;
 
-public class Team implements Element {
+public class Team {
 
     private transient final Client client;
     private transient final Game game;
@@ -96,7 +96,6 @@ public class Team implements Element {
         return this.players.contains(this.game.getBall().getCarrier());
     }
 
-    @Override
     public void update() {
         this.setChosenPlayer(choosePlayer());
 

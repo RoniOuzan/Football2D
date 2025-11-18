@@ -11,21 +11,24 @@ public class Game {
     public static final double WIDTH = 64;
     public static final double MAX_Y = WIDTH / 2;
 
-    public static final Translation2d OWN_GOAL = new Translation2d(-Game.MAX_X, 0);
-    public static final Translation2d OPPONENT_GOAL = new Translation2d(Game.MAX_X, 0);
-
     public static final double GOAL_WIDTH = 7.3;
 
     private final Ball ball;
     private Client client1 = null;
     private Client client2 = null;
 
+    private long startTime = 0;
+
     public Game() {
-        this.ball = new Ball();
+        this.ball = new Ball(this);
     }
 
     public Ball getBall() {
         return this.ball;
+    }
+
+    public void start() {
+        this.startTime = System.currentTimeMillis();
     }
 
     public void setClient1(Client client1) {
@@ -44,6 +47,10 @@ public class Game {
         } else if (this.client2 == null) {
             setClient2(client);
         }
+
+        if (this.client1 != null && this.client2 != null && this.startTime == 0) {
+            this.start();
+        }
     }
 
     public void removeClient(Client client) {
@@ -60,6 +67,10 @@ public class Game {
 
     public Client getClient2() {
         return client2;
+    }
+
+    public double getMatchTime() {
+        return (System.currentTimeMillis() - this.startTime) / 1000.0;
     }
 
     public void update() {

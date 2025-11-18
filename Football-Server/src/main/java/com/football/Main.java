@@ -19,7 +19,7 @@ public class Main {
         });
 
         server.start();
-        System.out.println("⚽ Server running on ws://localhost:8080/game");
+        System.out.println("⚽ Server running on ws://localhost:9090/game");
         server.join();
     }
 }

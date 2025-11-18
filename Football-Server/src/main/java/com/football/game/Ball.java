@@ -3,8 +3,9 @@ package com.football.game;
 import com.football.Constants;
 import com.football.game.players.Player;
 import com.football.util.math.geometry.Translation2d;
+import com.football.util.math.interpolation.TimeInterpolatableBuffer;
 
-public class Ball implements Element {
+public class Ball {
 
     private static final Translation2d OFFSET_FROM_PLAYER = new Translation2d(1, 0);
 
@@ -16,22 +17,31 @@ public class Ball implements Element {
     private static final double PICK_UP_BALL_THRESHOLD = 1;
     private static final long CARRY_COOLDOWN_MS = 300;
 
+    private transient final Game game;
+
     private Translation2d position;
     private Translation2d velocity;
     private transient Player carrier = null;
 
     private transient long timeReleased;
 
-    public Ball() {
+    private transient final TimeInterpolatableBuffer<Translation2d> positions = TimeInterpolatableBuffer.createBuffer(1);
+
+    public Ball(Game game) {
+        this.game = game;
+
         this.position = new Translation2d();
         this.velocity = new Translation2d();
 
         this.timeReleased = System.currentTimeMillis();
     }
 
-    // --- Getters / Setters ---
     public Translation2d getPosition() {
         return position;
+    }
+
+    public Translation2d getPosition(double lookBackTime) {
+        return this.positions.getSample(this.game.getMatchTime() - lookBackTime).orElse(null);
     }
 
     public Player getCarrier() {
@@ -48,20 +58,23 @@ public class Ball implements Element {
         }
     }
 
-    // --- Core physics update ---
-    @Override
     public void update() {
+        this.position = this.position.plus(this.velocity.times(Constants.PERIOD));
+
         if (this.carrier != null) {
             // Ball follows player slightly in front of their facing direction
             this.velocity = this.carrier.getVelocity();
             this.position = this.carrier.getPosition()
                     .plus(OFFSET_FROM_PLAYER.rotateBy(this.carrier.getDirection()));
-            return;
+        } else {
+            wallCollision();
+            rollingDeceleration();
         }
 
-        // Update position
-        this.position = this.position.plus(this.velocity.times(Constants.PERIOD));
+        this.positions.addSample(this.game.getMatchTime(), this.position);
+    }
 
+    private void wallCollision() {
         // Handle wall collisions (simple bounce)
         double x = this.position.getX();
         double y = this.position.getY();
@@ -83,8 +96,9 @@ public class Ball implements Element {
         }
 
         this.position = new Translation2d(x, y);
+    }
 
-        // Apply rolling deceleration
+    private void rollingDeceleration() {
         double speed = this.velocity.getNorm();
         if (speed > 0) {
             double newSpeed = Math.max(speed - (FRICTION * Constants.PERIOD), 0);

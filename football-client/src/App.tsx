@@ -60,7 +60,7 @@ function App() {
     const socket = new WebSocket("ws://localhost:9090/game");
 
     socket.onmessage = (event) => {
-      // console.log(event.data);
+      console.log(event.data);
       
       setData(JSON.parse(event.data));
     };
@@ -97,6 +97,8 @@ function App() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const playerRadius = 0.75 * (canvas.height / 64);
 
     // console.log(data);
 
@@ -291,14 +293,14 @@ function App() {
           const pose = convert(canvas, p.position, goalDepth);
           ctx.fillStyle = "red";
           ctx.beginPath();
-          ctx.arc(pose.x, pose.y, 8, 0, Math.PI * 2);
+          ctx.arc(pose.x, pose.y, playerRadius, 0, Math.PI * 2);
           ctx.fill();
 
           if (i === data.client1.team.chosenPlayerIndex) {
             ctx.strokeStyle = "yellow";
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.arc(pose.x, pose.y, 8, 0, Math.PI * 2);
+            ctx.arc(pose.x, pose.y, playerRadius, 0, Math.PI * 2);
             ctx.stroke();
           }
         });
@@ -309,14 +311,14 @@ function App() {
           const pose = convert(canvas, p.position, goalDepth);
           ctx.fillStyle = "blue";
           ctx.beginPath();
-          ctx.arc(pose.x, pose.y, 8, 0, Math.PI * 2);
+          ctx.arc(pose.x, pose.y, playerRadius, 0, Math.PI * 2);
           ctx.fill();
 
           if (i === data.client2.team.chosenPlayerIndex) {
             ctx.strokeStyle = "yellow";
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.arc(pose.x, pose.y, 8, 0, Math.PI * 2);
+            ctx.arc(pose.x, pose.y, playerRadius, 0, Math.PI * 2);
             ctx.stroke();
           }
         });

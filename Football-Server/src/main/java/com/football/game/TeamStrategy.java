@@ -30,6 +30,8 @@ public class TeamStrategy {
     private static final double SPACE_MAX = 20.0;
     private static final double SPACE_OPPONENT_BONUS = 5;
 
+    private static final double BALL_CHASE_LATENCY = 0.5;
+
     private transient final Team team;
     private transient final List<Player> players;
     private transient final Ball ball;
@@ -39,6 +41,7 @@ public class TeamStrategy {
 
     private final Map<Translation2d, Double> scores;
     private double defenseLine;
+    private double offsideLine;
 
     public TeamStrategy(Game game, Team team) {
         this.team = team;
@@ -82,9 +85,8 @@ public class TeamStrategy {
         }
 
         // Offside
-        double offsideLine = getOffsideLine();
-        if (!Double.isNaN(offsideLine)) {
-            if (MathUtil.isBetween(pose.getX() * this.sideMultiplier, Math.abs(offsideLine) - 1, Game.MAX_X)) {
+        if (!Double.isNaN(this.offsideLine)) {
+            if (MathUtil.isBetween(pose.getX() * this.sideMultiplier, Math.abs(this.offsideLine) - 1, Game.MAX_X)) {
                 score -= 500; // huge penalty; avoid this target
             }
         }
@@ -179,18 +181,47 @@ public class TeamStrategy {
     }
 
     private double getGoalThreatScore(Translation2d target) {
-        double goalX = -Game.MAX_X * this.sideMultiplier; // your defensive goal side
-        double ballToGoal = Math.abs(ball.getPosition().getX() - goalX);
+        Translation2d goal = new Translation2d(-Game.MAX_X * this.sideMultiplier, 0);
+        Translation2d ballPos = ball.getPosition();
 
-        if (ballToGoal >= 35)
+        // If ball far from goal → no need to defend deeply
+        double ballDistance = ballPos.getDistance(goal);
+        if (ballDistance > 35)
             return 0;
 
-        double x = 1.0 - (ballToGoal / 35); // 0 → 1
-        double urgency = x * x;
+        // Defender line direction: ball → goal center
+        Translation2d lineDir = goal.minus(ballPos);
+        double lineLength = lineDir.getNorm();
 
-        double distance = target.getDistance(new Translation2d(goalX * 0.7, 0));
-        distance = MathUtil.clamp(distance, 10, 30);
-        return -distance * urgency * 10;
+        // If somehow degenerate
+        if (lineLength < 1e-5)
+            return 0;
+
+        // Unit direction along the line
+        Translation2d unitDir = lineDir.div(lineLength);
+
+        // Vector from ball → target
+        Translation2d ballToTarget = target.minus(ballPos);
+
+        // Projection length of (ball→target) onto line
+        double projection = ballToTarget.dot(unitDir);
+
+        // Closest point ON the line (ball → goal)
+        projection = MathUtil.clamp(projection, 0, lineLength);
+        Translation2d closestPoint = ballPos.plus(unitDir.times(projection));
+
+        // Perpendicular distance from target to the line
+        double perpendicularDistance = target.getDistance(closestPoint);
+
+        // Avoid division by 0
+        double d = Math.max(perpendicularDistance, 0.5);
+
+        // Smooth urgency: closer ball is to goal → stronger effect
+        double urgency = MathUtil.clamp(1.0 - (ballDistance / 40.0), 0, 1);
+        urgency = urgency * urgency;
+
+        // Score is positive: being close to the defensive line is good
+        return (30 / d) * urgency;
     }
 
     private double getBlockGoalScore(Translation2d target) {
@@ -221,19 +252,18 @@ public class TeamStrategy {
     }
 
     private double computeDefensiveLineX() {
-        // Base line — depends on ball depth on the pitch
-        double line = MathUtil.clamp(this.ball.getPosition().getX() * this.sideMultiplier - 25, -Game.MAX_X + 10, 0);
+        double line = MathUtil.clamp(this.ball.getPosition().getX() * this.sideMultiplier - 20, -Game.MAX_X + 10, 0);
 
         // If opponent controls the ball → drop deeper
         if (this.team.getOpponent().hasBall()) {
-            line -= 8;
+            line -= 4;
         }
 
         return line * this.sideMultiplier;
     }
 
     private double getDefensiveLineScore(Translation2d target) {
-        return -Math.abs(target.getX() - this.defenseLine) * 0.2;  // penalty for leaving the line
+        return -Math.abs(target.getX() - this.defenseLine) * 0.5;  // penalty for leaving the line
     }
 
     /**
@@ -261,7 +291,7 @@ public class TeamStrategy {
         }
 
         if (player.equals(this.ballChaser)) {
-            return this.ball.getPosition();
+            return this.ball.getPosition(); // chase the ball position before 0.5 seconds so it will have a bit of delay
         }
 
         Optional<Map.Entry<Translation2d, Double>> bestEntry = scores.entrySet().stream()
@@ -281,7 +311,7 @@ public class TeamStrategy {
 
     private Player chooseBallChaser() {
         return this.players.stream()
-                .min(Comparator.comparingDouble(p -> p.getPosition().getDistance(this.ball.getPosition())))
+                .min(Comparator.comparingDouble(p -> p.getPosition().getDistance(this.ball.getPosition(BALL_CHASE_LATENCY))))
                 .orElse(null);
     }
 
@@ -293,6 +323,7 @@ public class TeamStrategy {
             return;
         }
         this.defenseLine = computeDefensiveLineX();
+        this.offsideLine = getOffsideLine();
 
         scores.clear();
         for (double i = -Game.MAX_X + (STEPS_X / 2); i < Game.MAX_X; i += STEPS_X) {

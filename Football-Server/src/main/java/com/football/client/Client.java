@@ -1,13 +1,12 @@
 package com.football.client;
 
-import com.football.game.Element;
 import com.football.game.Team;
 import org.eclipse.jetty.websocket.api.Session;
 
 import java.util.HashSet;
 import java.util.Set;
 
-public class Client implements Element {
+public class Client {
     private transient final Session session;
 
     private final transient ClientInput input = new ClientInput();
@@ -44,7 +43,6 @@ public class Client implements Element {
         this.keys = input.keys;
     }
 
-    @Override
     public void update() {
         if (this.team != null) {
             this.team.update();

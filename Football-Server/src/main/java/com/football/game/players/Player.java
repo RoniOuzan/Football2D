@@ -9,8 +9,9 @@ import com.football.util.math.geometry.Translation2d;
 
 import java.util.Comparator;
 
-public abstract class Player implements Element {
+public abstract class Player {
 
+    private static final double PLAYER_RADIUS = 0.75;
     private static final double MAX_ACCELERATION = 8;
     private static final double MAX_DECELERATION = 10;
     private static final double SPRINT_VELOCITY = 10;
@@ -164,8 +165,66 @@ public abstract class Player implements Element {
                 .orElse(null);
     }
 
-    @Override
     public void update() {
         this.position = this.position.plus(this.velocity.times(Constants.PERIOD));
+
+        if (this.team.getOpponent() == null) return;
+
+        // Collision check with all players
+        for (Player p : this.team.getPlayers()) {
+            if (p == this) continue;
+            resolveCollision(p);
+        }
+        for (Player p : this.team.getOpponent().getPlayers()) {
+            resolveCollision(p);
+        }
+
+        keepInsideField();
+    }
+
+    private void resolveCollision(Player other) {
+        double minDist = PLAYER_RADIUS * 2;
+        double distance = this.position.getDistance(other.position);
+
+        // No collision
+        if (distance >= minDist || distance == 0) return;
+
+        // How much they overlap
+        double overlap = minDist - distance;
+
+        Translation2d pushDir = this.position.minus(other.position).normalized();
+        Translation2d push = pushDir.times(overlap * 0.5);
+
+        this.position = this.position.plus(push);
+        other.position = other.position.minus(push);
+
+        // Reduce velocity along the collision axis (players slide around)
+        Translation2d relativeVel = this.velocity.minus(other.velocity);
+        double impact = relativeVel.dot(pushDir);
+
+        if (impact > 0) {
+            // Remove only the component causing players to push into each other
+            Translation2d correction = pushDir.times(impact * 0.5);
+
+            this.velocity = this.velocity.minus(correction);
+            other.velocity = other.velocity.plus(correction);
+        }
+    }
+
+    private void keepInsideField() {
+        double x = this.position.getX();
+        double y = this.position.getY();
+
+        double newX = MathUtil.clamp(x, -Game.MAX_X + PLAYER_RADIUS, Game.MAX_X - PLAYER_RADIUS);
+        double newY = MathUtil.clamp(y, -Game.MAX_Y + PLAYER_RADIUS, Game.MAX_Y - PLAYER_RADIUS);
+
+        // If clamped, reduce velocity in direction of impact
+        if (newX != x) {
+            this.velocity = new Translation2d(0, this.velocity.getY());
+        }
+        if (newY != y) {
+            this.velocity = new Translation2d(this.velocity.getX(), 0);
+        }
+        this.position = new Translation2d(newX, newY);
     }
 }
