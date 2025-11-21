@@ -291,7 +291,7 @@ function App() {
       if (data.client1) {
         data.client1.team.players.forEach((p, i) => {
           const pose = convert(canvas, p.position, goalDepth);
-          ctx.fillStyle = "red";
+          ctx.fillStyle = i == 0 ? "#990000" : "#FF0000";
           ctx.beginPath();
           ctx.arc(pose.x, pose.y, playerRadius, 0, Math.PI * 2);
           ctx.fill();
@@ -309,7 +309,7 @@ function App() {
       if (data.client2) {
         data.client2.team.players.forEach((p, i) => {
           const pose = convert(canvas, p.position, goalDepth);
-          ctx.fillStyle = "blue";
+          ctx.fillStyle = i == 0 ? "#000099" : "#0000FF";
           ctx.beginPath();
           ctx.arc(pose.x, pose.y, playerRadius, 0, Math.PI * 2);
           ctx.fill();

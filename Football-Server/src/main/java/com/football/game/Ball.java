@@ -48,6 +48,10 @@ public class Ball {
         return this.position.plus(this.velocity.times(seconds));
     }
 
+    public Translation2d getVelocity() {
+        return velocity;
+    }
+
     public Player getCarrier() {
         return carrier;
     }

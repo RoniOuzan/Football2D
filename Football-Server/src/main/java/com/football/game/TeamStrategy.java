@@ -286,19 +286,51 @@ public class TeamStrategy {
         return MathUtil.clamp(line, Math.max(ballX, 0), Game.MAX_X) * this.sideMultiplier;
     }
 
+    private Translation2d getGoalkeeperTarget(Goalkeeper gk) {
+        Translation2d goalCenter = this.team.getOwnGoalPosition();
+        Translation2d predictedBall = ball.getPredictedPosition(0.3);
+
+        double ballDistanceToGoal = this.ball.getPosition().getDistance(goalCenter);
+
+        // If the opponents with the ball are close -> go to the ball
+        if (ballDistanceToGoal < 20 && team.getOpponent().hasBall() &&
+                this.players.stream().noneMatch(p -> p.getPosition().getDistance(this.ball.getPosition()) < ballDistanceToGoal)) {
+            return predictedBall; // charge the ball
+        }
+
+        // If ball is close and none is near -> go to the ball
+        if (!this.team.getOpponent().hasBall() && this.ballChaser.equals(gk) &&
+                this.team.getOpponent().getClosestPlayerToBall().getPosition().getDistance(predictedBall) < ballDistanceToGoal) {
+            return predictedBall;
+        }
+
+        // Predict ball future position for better shot blocking
+        Translation2d aimPoint = predictedBall.minus(goalCenter);
+        aimPoint = aimPoint.normalized();
+
+        // closer the ball → deeper the keeper
+        double keeperDepth = MathUtil.clamp(ballDistanceToGoal - 10, 3, this.team.hasBall() ? 20 : 10);
+
+        return goalCenter.plus(new Translation2d(
+                aimPoint.getX() * keeperDepth,
+                MathUtil.clamp(aimPoint.getY() * 12, -8, 8)
+        ));
+    }
+
+
     /**
      * Public getter for player target
      */
     public Translation2d getTargetPosition(Player player) {
-        if (player instanceof Goalkeeper) {
-            return player.getOriginalPosition();
+        if (player instanceof Goalkeeper gk) {
+            return getGoalkeeperTarget(gk);
         }
 
         if (player.equals(this.ballChaser)) {
-            return this.ball.getPosition(); // chase the ball position before 0.5 seconds so it will have a bit of delay
+            return this.ball.getPosition(); // chase the ball position before 0.5 seconds, so it will have a bit of delay
         }
 
-        Optional<Map.Entry<Translation2d, Double>> bestEntry = scores.entrySet().stream()
+        Optional<Map.Entry<Translation2d, Double>> bestEntry = this.scores.entrySet().stream()
                 .max(Comparator.comparingDouble(e -> addPlayerScore(player, e.getKey(), e.getValue())));
 
         return bestEntry.map(Map.Entry::getKey).orElse(player.getPosition());
@@ -399,7 +431,7 @@ public class TeamStrategy {
         }
 
         if (this.chosenPlayer == null || this.team.getClient().getInput().isPressed("q")) {
-            return this.team.getClosestPlayerToBall(p -> !p.equals(this.chosenPlayer));
+            return this.team.getClosestPlayerToBall(p -> !p.equals(this.chosenPlayer) && !(p instanceof Goalkeeper));
         }
 
         return this.chosenPlayer;
