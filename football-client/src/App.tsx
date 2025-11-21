@@ -26,7 +26,6 @@ export interface Client {
 export interface Team {
   players: Player[];
   teamStrategy: TeamStrategy;
-  chosenPlayerIndex: number;
 }
 
 export interface Player {
@@ -49,6 +48,7 @@ export interface TeamStrategy {
     value: number;
   }[];
   defenseLine: number;
+  chosenPlayerIndex: number;
 }
 
 function App() {
@@ -296,7 +296,7 @@ function App() {
           ctx.arc(pose.x, pose.y, playerRadius, 0, Math.PI * 2);
           ctx.fill();
 
-          if (i === data.client1.team.chosenPlayerIndex) {
+          if (i === data.client1.team.teamStrategy.chosenPlayerIndex) {
             ctx.strokeStyle = "yellow";
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -314,7 +314,7 @@ function App() {
           ctx.arc(pose.x, pose.y, playerRadius, 0, Math.PI * 2);
           ctx.fill();
 
-          if (i === data.client2.team.chosenPlayerIndex) {
+          if (i === data.client2.team.teamStrategy.chosenPlayerIndex) {
             ctx.strokeStyle = "yellow";
             ctx.lineWidth = 2;
             ctx.beginPath();

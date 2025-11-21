@@ -199,7 +199,7 @@ public class Translation2d implements Interpolatable<Translation2d> {
         return this.div(this.getNorm());
     }
 
-    public Translation2d limitVelocity(double maximum) {
+    public Translation2d limitNorm(double maximum) {
         return new Translation2d(Math.min(this.getNorm(), maximum), this.getAngle());
     }
 

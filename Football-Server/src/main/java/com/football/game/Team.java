@@ -21,9 +21,6 @@ public class Team {
 
     private transient final int sideMultiplier;
 
-    private transient Player chosenPlayer = null;
-    private int chosenPlayerIndex = -1; // for json
-
     public Team(Client client, Game game) {
         this.client = client;
         this.game = game;
@@ -59,23 +56,6 @@ public class Team {
         return sideMultiplier;
     }
 
-    public Player getChosenPlayer() {
-        return chosenPlayer;
-    }
-
-    private Player choosePlayer() {
-        Ball ball = this.game.getBall();
-        if (this.hasBall()) {
-            return ball.getCarrier();
-        }
-
-        if (this.chosenPlayer == null || this.client.getInput().isPressed("q")) {
-            return getClosestPlayerToBall(p -> !p.equals(this.chosenPlayer));
-        }
-
-        return this.chosenPlayer;
-    }
-
     public Player getClosestPlayerToBall(Predicate<Player> filter) {
         return this.players.stream()
                 .filter(filter)
@@ -87,26 +67,16 @@ public class Team {
         return this.getClosestPlayerToBall(p -> true);
     }
 
-    public void setChosenPlayer(Player chosenPlayer) {
-        this.chosenPlayer = chosenPlayer;
-        this.chosenPlayerIndex = this.players.indexOf(chosenPlayer);
-    }
-
     public boolean hasBall() {
         return this.players.contains(this.game.getBall().getCarrier());
     }
 
+    public Client getClient() {
+        return client;
+    }
+
     public void update() {
-        this.setChosenPlayer(choosePlayer());
-
         this.teamStrategy.update();
-
-        this.chosenPlayer.handleControlledMovement(this.client.getInput());
-        for (Player player : this.players) {
-            if (!player.equals(this.chosenPlayer)) {
-                player.moveTowards(this.teamStrategy.getTargetPosition(player), 1);
-            }
-        }
 
         if (!this.hasBall()) {
             Player closest = getClosestPlayerToBall();
@@ -119,12 +89,6 @@ public class Team {
         for (Player player : this.players) {
             player.update();
         }
-    }
-
-    public boolean isXBetween(double x, double from, double to) {
-        x *= this.sideMultiplier;
-
-        return x > Math.min(from, to) && x < Math.max(from, to);
     }
 
     public Translation2d getOwnGoalPosition() {

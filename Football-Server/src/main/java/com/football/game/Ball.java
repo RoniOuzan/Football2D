@@ -44,6 +44,10 @@ public class Ball {
         return this.positions.getSample(this.game.getMatchTime() - lookBackTime).orElse(null);
     }
 
+    public Translation2d getPredictedPosition(double seconds) {
+        return this.position.plus(this.velocity.times(seconds));
+    }
+
     public Player getCarrier() {
         return carrier;
     }

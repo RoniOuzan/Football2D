@@ -1,23 +1,22 @@
 package com.football.game.players;
 
 import com.football.Constants;
-import com.football.client.ClientInput;
-import com.football.game.*;
+import com.football.game.Ball;
+import com.football.game.Game;
+import com.football.game.Team;
 import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Rotation2d;
 import com.football.util.math.geometry.Translation2d;
 
-import java.util.Comparator;
-
 public abstract class Player {
 
-    private static final double PLAYER_RADIUS = 0.75;
-    private static final double MAX_ACCELERATION = 8;
-    private static final double MAX_DECELERATION = 10;
-    private static final double SPRINT_VELOCITY = 10;
-    private static final double WALK_VELOCITY = 4;
-    private static final double MAX_SKID_ACCELERATION = 10;
-    private static final double CARRYING_BALL_VELOCITY_MULTIPLIER = 0.8;
+    public static final double PLAYER_RADIUS = 0.75;
+    public static final double MAX_ACCELERATION = 8;
+    public static final double MAX_DECELERATION = 10;
+    public static final double SPRINT_VELOCITY = 10;
+    public static final double WALK_VELOCITY = 4;
+    public static final double MAX_SKID_ACCELERATION = 10;
+    public static final double CARRYING_BALL_MAX_VELOCITY = 7;
 
     protected transient final Team team;
     protected transient final Ball ball;
@@ -62,6 +61,10 @@ public abstract class Player {
     }
 
     public void setVelocity(Translation2d targetVelocity) {
+        if (this.hasBall()) {
+            targetVelocity = targetVelocity.limitNorm(CARRYING_BALL_MAX_VELOCITY);
+        }
+
         this.targetVelocity = targetVelocity;
 
         double currentSpeed = this.velocity.getNorm();
@@ -87,7 +90,7 @@ public abstract class Player {
         Translation2d newVelocity = new Translation2d(newSpeed, direction);
 
         Translation2d deltaSpeed = newVelocity.minus(this.velocity);
-        deltaSpeed = deltaSpeed.limitVelocity(MAX_SKID_ACCELERATION * Constants.PERIOD);
+        deltaSpeed = deltaSpeed.limitNorm(MAX_SKID_ACCELERATION * Constants.PERIOD);
 
         this.velocity = this.velocity.plus(deltaSpeed);
 
@@ -96,73 +99,46 @@ public abstract class Player {
         }
     }
 
-    public void moveTowards(Translation2d target, double speedPercent) {
-        Translation2d delta = target.minus(this.position);
+    public Rotation2d getWantedDirection() {
+        return this.targetVelocity.getAngle();
+    }
+
+    public Translation2d getVelocityToPosition(Translation2d targetPosition, double speedPercent) {
+        Translation2d delta = targetPosition.minus(this.position);
         if (delta.getNorm() < 5) {
             speedPercent = Math.min(speedPercent, delta.getNorm() / 5);
         }
-        setVelocity(delta.normalized().times(SPRINT_VELOCITY * speedPercent));
+        return delta.normalized().times(SPRINT_VELOCITY * speedPercent);
     }
 
-    public void handleControlledMovement(ClientInput input) {
-        double velocity = input.isHolding("shift") ? SPRINT_VELOCITY : WALK_VELOCITY;
-        if (this.hasBall()) {
-            velocity *= CARRYING_BALL_VELOCITY_MULTIPLIER;
-        }
-
-        this.setVelocity(input.getRequestedVelocity().times(velocity));
-
-        if (this.hasBall()) {
-            if (input.isHolding("e")) {
-                Player playerToPass = getPlayerToPass();
-                pass(playerToPass);
-                this.team.setChosenPlayer(playerToPass);
-            } else if (input.isHolding("f")) {
-                Player playerToPass = getPlayerToPass();
-                through(playerToPass);
-                this.team.setChosenPlayer(playerToPass);
-            } else if (input.isHolding("r")) {
-                shoot();
-            }
-        }
+    public void moveTowards(Translation2d targetPosition, double speedPercent) {
+        setVelocity(getVelocityToPosition(targetPosition, speedPercent));
     }
 
-    private void pass(Player player) {
+    public void pass(Player player) {
         Translation2d delta = player.getPosition().minus(this.position);
         this.ball.kick(delta.times(1.2));
     }
 
-    private void through(Player player) {
+    public void through(Player player) {
         Translation2d delta = player.getPosition().minus(this.position);
         this.ball.kick(delta.times(1.2).plus(player.getVelocity()));
     }
 
-    private void shoot() {
+    public void shoot() {
         if (this.position.getX() * this.team.getSideMultiplier() < 10) {
-            this.ball.kick(new Translation2d(40, this.direction));
+            this.ball.kick(new Translation2d(40, this.getWantedDirection()));
         }
 
         Translation2d opponentGoal = this.team.getOpponent().getOwnGoalPosition();
 
         Translation2d nearPost = new Translation2d(0,Game.GOAL_WIDTH / 2 - 0.5);
-        if (Math.abs(opponentGoal.plus(nearPost).minus(this.position).getAngle().minus(this.direction).getRadians()) <
-                Math.abs(opponentGoal.minus(nearPost).minus(this.position).getAngle().minus(this.direction).getRadians())) {
+        if (Math.abs(opponentGoal.plus(nearPost).minus(this.position).getAngle().minus(this.getWantedDirection()).getRadians()) <
+                Math.abs(opponentGoal.minus(nearPost).minus(this.position).getAngle().minus(this.getWantedDirection()).getRadians())) {
             this.ball.kick(opponentGoal.plus(nearPost).minus(this.position).times(2));
         } else {
             this.ball.kick(opponentGoal.minus(nearPost).minus(this.position).times(2));
         }
-    }
-
-    private Player getPlayerToPass() {
-        return this.team.getPlayers().stream()
-                .filter(p -> !p.equals(this))
-                .min(Comparator.comparingDouble(p -> {
-                    Translation2d delta = p.getPosition().minus(this.position);
-                    double angleDiff = Math.abs(delta.getAngle().minus(this.direction).getRadians());
-
-                    return 1 * angleDiff + 0.05 * delta.getNorm();
-                }))
-                .orElse(null);
     }
 
     public void update() {

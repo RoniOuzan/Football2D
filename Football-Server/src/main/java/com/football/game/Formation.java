@@ -32,8 +32,6 @@ public class Formation {
     private final Translation2d[] defenders;
     private final Translation2d goalkeeper;
 
-    private final Translation2d[] positions;
-
     public Formation(Translation2d[] defenders, Translation2d[] midfielders, Translation2d[] attackers) {
         if (attackers.length + midfielders.length + defenders.length != 10) {
             throw new IllegalArgumentException("Got more / less then 10 positions");
@@ -43,16 +41,6 @@ public class Formation {
         this.midfielders = Arrays.stream(midfielders).map(Formation::convertToField).toList().toArray(new Translation2d[0]);
         this.attackers = Arrays.stream(attackers).map(Formation::convertToField).toList().toArray(new Translation2d[0]);
         this.goalkeeper = convertToField(new Translation2d(0.02, 0));
-
-        this.positions = new Translation2d[11];
-        positions[0] = this.goalkeeper;
-        System.arraycopy(this.defenders, 0, positions, 1, this.defenders.length);
-        System.arraycopy(this.midfielders, 0, positions, 1 + this.defenders.length, this.midfielders.length);
-        System.arraycopy(this.attackers, 0, positions, 1 + this.defenders.length + this.midfielders.length, this.attackers.length);
-    }
-
-    public Translation2d[] getPositions() {
-        return positions;
     }
 
     public Translation2d[] getAttackers() {

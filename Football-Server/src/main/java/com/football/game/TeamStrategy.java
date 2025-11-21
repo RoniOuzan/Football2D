@@ -1,5 +1,6 @@
 package com.football.game;
 
+import com.football.client.ClientInput;
 import com.football.game.players.*;
 import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Translation2d;
@@ -38,6 +39,9 @@ public class TeamStrategy {
     private transient final double sideMultiplier;
 
     private transient Player ballChaser = null;
+
+    private transient Player chosenPlayer = null;
+    private int chosenPlayerIndex = -1; // for json
 
     private final Map<Translation2d, Double> scores;
     private double defenseLine;
@@ -322,6 +326,8 @@ public class TeamStrategy {
         if (this.team.getOpponent() == null) {
             return;
         }
+        this.setChosenPlayer(choosePlayer());
+
         this.defenseLine = computeDefensiveLineX();
         this.offsideLine = getOffsideLine();
 
@@ -334,5 +340,68 @@ public class TeamStrategy {
         }
 
         this.ballChaser = chooseBallChaser();
+
+        this.handleControlledMovement(this.chosenPlayer, this.team.getClient().getInput());
+        for (Player player : this.players) {
+            if (!player.equals(this.chosenPlayer)) {
+                player.moveTowards(this.getTargetPosition(player), 1);
+            }
+        }
+    }
+
+    public void handleControlledMovement(Player player,ClientInput input) {
+        double velocity = input.isHolding("shift") ? Player.SPRINT_VELOCITY : Player.WALK_VELOCITY;
+
+        Translation2d targetVelocity = input.getRequestedVelocity().times(velocity);
+
+        if (player.equals(this.ballChaser) && this.ball.getCarrier() == null) {
+            Translation2d chaseVelocity = player.getVelocityToPosition(this.ball.getPredictedPosition(0.5), 1);
+            targetVelocity = targetVelocity.times(0.4).plus(chaseVelocity);
+        }
+
+        player.setVelocity(targetVelocity);
+
+        if (player.hasBall()) {
+            if (input.isHolding("e")) {
+                Player playerToPass = getPlayerToPass(player);
+                player.pass(playerToPass);
+                this.setChosenPlayer(playerToPass);
+            } else if (input.isHolding("f")) {
+                Player playerToPass = getPlayerToPass(player);
+                player.through(playerToPass);
+                this.setChosenPlayer(playerToPass);
+            } else if (input.isHolding("r")) {
+                player.shoot();
+            }
+        }
+    }
+
+    private Player getPlayerToPass(Player player) {
+        return this.team.getPlayers().stream()
+                .filter(p -> !p.equals(player))
+                .min(Comparator.comparingDouble(p -> {
+                    Translation2d delta = p.getPosition().minus(player.getPosition());
+                    double angleDiff = Math.abs(delta.getAngle().minus(player.getDirection()).getRadians());
+
+                    return 1 * angleDiff + 0.05 * delta.getNorm();
+                }))
+                .orElse(null);
+    }
+
+    public void setChosenPlayer(Player chosenPlayer) {
+        this.chosenPlayer = chosenPlayer;
+        this.chosenPlayerIndex = this.players.indexOf(chosenPlayer);
+    }
+
+    private Player choosePlayer() {
+        if (this.team.hasBall()) {
+            return this.ball.getCarrier();
+        }
+
+        if (this.chosenPlayer == null || this.team.getClient().getInput().isPressed("q")) {
+            return this.team.getClosestPlayerToBall(p -> !p.equals(this.chosenPlayer));
+        }
+
+        return this.chosenPlayer;
     }
 }
