@@ -154,8 +154,6 @@ public abstract class Player {
     public void update() {
         this.position = this.position.plus(this.velocity.times(Constants.PERIOD));
 
-        if (this.team.getOpponent() == null) return;
-
         // Collision check with all players
         for (Player p : this.team.getPlayers()) {
             if (p == this) continue;

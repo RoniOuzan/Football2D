@@ -21,11 +21,11 @@ public class Team {
 
     private transient final int sideMultiplier;
 
-    public Team(Client client, Game game) {
+    public Team(Game game, Client client, boolean isTeam1) {
         this.client = client;
         this.game = game;
 
-        this.sideMultiplier = this.client.equals(this.game.getClient1()) ? 1 : -1;
+        this.sideMultiplier = isTeam1 ? 1 : -1;
 
         this.players = new ArrayList<>();
         this.formation = Formation.FOUR_THREE_THREE;
@@ -78,14 +78,6 @@ public class Team {
     public void update() {
         this.teamStrategy.update();
 
-        if (!this.hasBall()) {
-            Player closest = getClosestPlayerToBall();
-
-            if (this.game.getBall().shouldBePickedUpBy(closest)) {
-                this.game.getBall().setCarrier(closest);
-            }
-        }
-
         for (Player player : this.players) {
             player.update();
         }
@@ -96,17 +88,6 @@ public class Team {
     }
 
     public Team getOpponent() {
-        if (this.client.equals(this.game.getClient1())) {
-            if (this.game.getClient2() == null) {
-                return null;
-            }
-            return this.game.getClient2().getTeam();
-        } else if (this.client.equals(this.game.getClient2())) {
-            if (this.game.getClient1() == null) {
-                return null;
-            }
-            return this.game.getClient1().getTeam();
-        }
-        return null;
+        return this.sideMultiplier == 1 ? this.game.getTeam2() : this.game.getTeam1();
     }
 }

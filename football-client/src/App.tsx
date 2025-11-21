@@ -10,8 +10,8 @@ export interface Translation2d {
 
 export interface JsonData {
   ball: Ball;
-  client1: Client;
-  client2: Client;
+  team1: Team;
+  team2: Team;
 }
 
 export interface Ball {
@@ -19,9 +19,9 @@ export interface Ball {
   velocity: Translation2d;
 }
 
-export interface Client {
-  team: Team;
-}
+// export interface Client {
+//   team: Team;
+// }
 
 export interface Team {
   players: Player[];
@@ -60,6 +60,8 @@ function App() {
     const socket = new WebSocket("ws://localhost:9090/game");
 
     socket.onmessage = (event) => {
+      if (!event.data) return;
+
       console.log(event.data);
       
       setData(JSON.parse(event.data));
@@ -278,7 +280,7 @@ function App() {
       ctx.lineTo(pitchRight, y);
     }
     ctx.stroke();
-
+    
     // --- Ball ---
     if (data) {
       const ball = convert(canvas, data.ball.position, goalDepth);
@@ -288,15 +290,15 @@ function App() {
       ctx.fill();
 
       // --- Players ---
-      if (data.client1) {
-        data.client1.team.players.forEach((p, i) => {
+      if (data.team1) {
+        data.team1.players.forEach((p, i) => {
           const pose = convert(canvas, p.position, goalDepth);
           ctx.fillStyle = i == 0 ? "#FF5555" : "#FF0000";
           ctx.beginPath();
           ctx.arc(pose.x, pose.y, playerRadius, 0, Math.PI * 2);
           ctx.fill();
 
-          if (i === data.client1.team.teamStrategy.chosenPlayerIndex) {
+          if (i === data.team1.teamStrategy.chosenPlayerIndex) {
             ctx.strokeStyle = "yellow";
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -306,15 +308,15 @@ function App() {
         });
       }
 
-      if (data.client2) {
-        data.client2.team.players.forEach((p, i) => {
+      if (data.team2) {
+        data.team2.players.forEach((p, i) => {
           const pose = convert(canvas, p.position, goalDepth);
           ctx.fillStyle = i == 0 ? "#5555FF" : "#0000FF";
           ctx.beginPath();
           ctx.arc(pose.x, pose.y, playerRadius, 0, Math.PI * 2);
           ctx.fill();
 
-          if (i === data.client2.team.teamStrategy.chosenPlayerIndex) {
+          if (i === data.team2.teamStrategy.chosenPlayerIndex) {
             ctx.strokeStyle = "yellow";
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -355,10 +357,10 @@ function App() {
       };
 
 
-      drawScores(data.client1?.team);
+      drawScores(data.team1);
       // drawScores(data.client2?.team);
 
-      const defenseX_units = data.client1.team.teamStrategy.defenseLine;
+      const defenseX_units = data.team1.teamStrategy.defenseLine;
 
       // Convert X (in field units) to canvas pixels
       const pitchWidthUnits = 100;

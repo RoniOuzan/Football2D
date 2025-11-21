@@ -12,22 +12,12 @@ public class Client {
     private final transient ClientInput input = new ClientInput();
     private transient Set<String> keys = new HashSet<>();
 
-    private Team team = null;
-
     public Client(Session session) {
         this.session = session;
     }
 
-    public void setTeam(Team team) {
-        this.team = team;
-    }
-
     public ClientInput getInput() {
         return this.input;
-    }
-
-    public Team getTeam() {
-        return team;
     }
 
     public Session getSession() {
@@ -44,10 +34,6 @@ public class Client {
     }
 
     public void update() {
-        if (this.team != null) {
-            this.team.update();
-        }
-
         this.input.updateInput();
     }
 }

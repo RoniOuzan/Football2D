@@ -66,7 +66,20 @@ public class Ball {
         }
     }
 
-    public void update() {
+    private void updateCarrier(Team team) {
+        if (!team.hasBall()) {
+            Player closest = team.getClosestPlayerToBall();
+
+            if (this.shouldBePickedUpBy(closest)) {
+                this.setCarrier(closest);
+            }
+        }
+    }
+
+    public void update(Team team1, Team team2) {
+        this.updateCarrier(team1);
+        this.updateCarrier(team2);
+
         this.position = this.position.plus(this.velocity.times(Constants.PERIOD));
 
         if (this.carrier != null) {
@@ -107,26 +120,21 @@ public class Ball {
     }
 
     private void rollingDeceleration() {
-        double speed = this.velocity.getNorm();
-        if (speed > 0) {
-            double newSpeed = Math.max(speed - (FRICTION * Constants.PERIOD), 0);
-            if (newSpeed < MIN_SPEED) newSpeed = 0;
+        if (this.velocity.getNorm() > 0) {
+            double newSpeed = Math.max(this.velocity.getNorm() - (FRICTION * Constants.PERIOD), 0);
+            if (newSpeed < MIN_SPEED)
+                newSpeed = 0;
 
-            this.velocity = (newSpeed == 0)
-                    ? new Translation2d()
-                    : this.velocity.normalized().times(newSpeed);
+            this.velocity = this.velocity.normalized().times(newSpeed);
         }
     }
 
     public boolean shouldBePickedUpBy(Player player) {
-        if (System.currentTimeMillis() - this.timeReleased < CARRY_COOLDOWN_MS) {
+        if (System.currentTimeMillis() - this.timeReleased < CARRY_COOLDOWN_MS)
             return false;
-        }
-
         return this.position.getDistance(player.getPosition()) < PICK_UP_BALL_THRESHOLD;
     }
 
-    // --- Kick mechanic ---
     public void kick(Translation2d power) {
         this.setCarrier(null);
         this.velocity = power;

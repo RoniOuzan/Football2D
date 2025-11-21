@@ -4,8 +4,8 @@ import com.football.util.math.geometry.Translation2d;
 
 import java.util.Arrays;
 
-public class Formation {
-    public static Formation FOUR_THREE_THREE = new Formation(
+public enum Formation {
+    FOUR_THREE_THREE(
             // DEFENDERS
             new Translation2d[]{
                     new Translation2d(0.25, 0.75),
@@ -25,14 +25,15 @@ public class Formation {
                     new Translation2d(0.9, 0),
                     new Translation2d(0.82, -0.6)
             }
-    );
+    ),
+    ;
 
     private final Translation2d[] attackers;
     private final Translation2d[] midfielders;
     private final Translation2d[] defenders;
     private final Translation2d goalkeeper;
 
-    public Formation(Translation2d[] defenders, Translation2d[] midfielders, Translation2d[] attackers) {
+    Formation(Translation2d[] defenders, Translation2d[] midfielders, Translation2d[] attackers) {
         if (attackers.length + midfielders.length + defenders.length != 10) {
             throw new IllegalArgumentException("Got more / less then 10 positions");
         }

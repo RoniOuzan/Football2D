@@ -2,7 +2,6 @@ package com.football;
 
 import com.football.client.Client;
 import com.football.client.InputValues;
-import com.football.game.Game;
 import com.football.util.json.JsonUtil;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
@@ -19,22 +18,20 @@ import java.util.concurrent.TimeUnit;
 
 @WebSocket
 public class GameServer {
-    public static final Map<Session, Client> clients = new ConcurrentHashMap<>();
-    private static final Game game = new Game();
+    private static final Map<Session, Client> clients = new ConcurrentHashMap<>();
 
     private static final ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
 
     static {
         executor.scheduleAtFixedRate(() -> {
             try {
-                game.update();
-                broadcast(game.toJson());
+                GameManager.getInstance().update();
+                broadcast(GameManager.getInstance().getJson());
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }, 0, (long) (Constants.PERIOD * 1000), TimeUnit.MILLISECONDS);
     }
-
 
     @OnWebSocketConnect
     public void onConnect(Session session) {
@@ -42,12 +39,12 @@ public class GameServer {
         clients.put(session, client);
         System.out.println("Client connected " + session.hashCode());
 
-        game.addClient(client);
+        GameManager.getInstance().addClient(client);
     }
 
     @OnWebSocketClose
     public void onClose(Session session, int status, String reason) {
-        game.removeClient(getClient(session));
+        GameManager.getInstance().removeClient(getClient(session));
 
         clients.remove(session);
         System.out.println("Client disconnected: " + session.hashCode()

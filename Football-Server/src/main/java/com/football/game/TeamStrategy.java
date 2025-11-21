@@ -27,7 +27,7 @@ public class TeamStrategy {
     private static final double SPACE_MAX = 20.0;
     private static final double SPACE_OPPONENT_BONUS = 5;
 
-    private static final double BALL_CHASE_LATENCY = 0.5;
+    private static final double BALL_CHASE_LATENCY = 0.3;
 
     private transient final Team team;
     private transient final List<Player> players;
@@ -37,6 +37,7 @@ public class TeamStrategy {
     private transient Player ballChaser = null;
 
     private transient Player chosenPlayer = null;
+    @SuppressWarnings(value = {"unused"})
     private int chosenPlayerIndex = -1; // for json
 
     private final Map<Translation2d, Double> scores;
@@ -283,10 +284,8 @@ public class TeamStrategy {
      * Precompute the baseline (player-agnostic) heatmap.
      */
     public void update() {
-        if (this.team.getOpponent() == null) {
-            return;
-        }
         this.setChosenPlayer(choosePlayer());
+        this.ballChaser = chooseBallChaser();
 
         this.defenseLine = computeDefensiveLineX();
         this.offsideLine = getOffsideLine();
@@ -299,7 +298,6 @@ public class TeamStrategy {
             }
         }
 
-        this.ballChaser = chooseBallChaser();
 
         this.handleControlledMovement(this.chosenPlayer, this.team.getClient().getInput());
         for (Player player : this.players) {
@@ -346,7 +344,7 @@ public class TeamStrategy {
                 .filter(p -> !p.equals(player))
                 .min(Comparator.comparingDouble(p -> {
                     Translation2d delta = p.getPosition().minus(player.getPosition());
-                    double angleDiff = Math.abs(delta.getAngle().minus(player.getDirection()).getRadians());
+                    double angleDiff = Math.abs(delta.getAngle().minus(player.getWantedDirection()).getRadians());
 
                     return 1 * angleDiff + 0.05 * delta.getNorm();
                 }))

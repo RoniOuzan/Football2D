@@ -1,7 +1,7 @@
 package com.football.game;
 
 import com.football.client.Client;
-import com.football.util.json.JsonUtil;
+    import com.football.util.json.JsonUtil;
 
 public class Game {
 
@@ -12,60 +12,34 @@ public class Game {
 
     public static final double GOAL_WIDTH = 7.3;
 
+    private final Team team1;
+    private final Team team2;
+
     private final Ball ball;
-    private Client client1 = null;
-    private Client client2 = null;
 
     private long startTime = 0;
 
-    public Game() {
+    public Game(Client client1, Client client2) {
         this.ball = new Ball(this);
-    }
 
-    public Ball getBall() {
-        return this.ball;
+        this.team1 = new Team(this, client1, true);
+        this.team2 = new Team(this, client2, false);
     }
 
     public void start() {
         this.startTime = System.currentTimeMillis();
     }
 
-    public void setClient1(Client client1) {
-        this.client1 = client1;
-        this.client1.setTeam(new Team(client1, this));
+    public Ball getBall() {
+        return this.ball;
     }
 
-    public void setClient2(Client client2) {
-        this.client2 = client2;
-        this.client2.setTeam(new Team(client2, this));
+    public Team getTeam1() {
+        return team1;
     }
 
-    public void addClient(Client client) {
-        if (this.client1 == null) {
-            setClient1(client);
-        } else if (this.client2 == null) {
-            setClient2(client);
-        }
-
-        if (this.client1 != null && this.client2 != null && this.startTime == 0) {
-            this.start();
-        }
-    }
-
-    public void removeClient(Client client) {
-        if (client.equals(this.client1)) {
-            this.client1 = null;
-        } else if (client.equals(this.client2)) {
-            this.client2 = null;
-        }
-    }
-
-    public Client getClient1() {
-        return client1;
-    }
-
-    public Client getClient2() {
-        return client2;
+    public Team getTeam2() {
+        return team2;
     }
 
     public double getMatchTime() {
@@ -73,10 +47,10 @@ public class Game {
     }
 
     public void update() {
-        if (this.client1 != null) this.client1.update();
-        if (this.client2 != null) this.client2.update();
+        this.ball.update(this.team1, this.team2);
 
-        this.ball.update();
+        this.team1.update();
+        this.team2.update();
     }
 
     public String toJson() {
