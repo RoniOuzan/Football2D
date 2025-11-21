@@ -72,7 +72,7 @@ public class Team {
     }
 
     public Client getClient() {
-        return client;
+        return this.client;
     }
 
     public void update() {

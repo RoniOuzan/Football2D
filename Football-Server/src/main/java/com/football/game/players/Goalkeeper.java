@@ -1,7 +1,10 @@
 package com.football.game.players;
 
 import com.football.game.Ball;
+import com.football.game.Game;
 import com.football.game.Team;
+import com.football.game.TeamStrategy;
+import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Translation2d;
 
 public class Goalkeeper extends Player {
@@ -10,9 +13,57 @@ public class Goalkeeper extends Player {
         super(team, ball, position);
     }
 
-    @Override
-    public Translation2d getVelocityToPosition(Translation2d targetPosition, double speedPercent) {
-        return super.getVelocityToPosition(targetPosition, speedPercent).times(2);
+    public void jumpTo(Translation2d position) {
+        setVelocity(getVelocityToPosition(position, 2), 30, 30, 30);
+    }
+
+    public void handleTarget(TeamStrategy strategy) {
+        Translation2d goalCenter = this.team.getOwnGoalPosition();
+        Translation2d predictedBall = this.ball.getPredictedPosition(0.3);
+
+        double ballDistanceToGoal = this.ball.getPosition().getDistance(goalCenter);
+
+        if (this.ball.getCarrier() == null && this.ball.getVelocity().getNorm() > 4.0) {
+            Translation2d ballVel = this.ball.getVelocity().normalized();
+            Translation2d dirToGoal = goalCenter.minus(this.ball.getPosition()).normalized();
+
+            // dot > 0.8 → angle < ~36 degrees → toward goal
+            if (ballVel.dot(dirToGoal) > 0.8) {
+                // Compute intersection with goal line (simple version)
+                double t = (this.position.getX() - this.ball.getPosition().getX()) / ballVel.getX(); // time to reach goal line
+
+                if (t > 0) { // valid
+                    double impactY = this.ball.getPosition().getY() + ballVel.getY() * t;
+
+                    // clamp to goal posts height
+                    impactY = MathUtil.clamp(impactY,
+                            goalCenter.getY() - Game.GOAL_WIDTH / 2,
+                            goalCenter.getY() + Game.GOAL_WIDTH / 2);
+
+                    this.jumpTo(new Translation2d(this.position.getX(), impactY));
+                    return;
+                }
+            }
+        }
+
+        if (ballDistanceToGoal < 20 && team.getOpponent().hasBall() &&
+                this.team.getPlayers().stream().noneMatch(p -> p.getPosition().getDistance(this.ball.getPosition()) < ballDistanceToGoal)) {
+            this.moveTowards(predictedBall, 1); // charge the ball
+            return;
+        }
+
+        if (!this.team.getOpponent().hasBall() && strategy.getBallChaser().equals(this) &&
+                this.team.getOpponent().getClosestPlayerToBall().getPosition().getDistance(predictedBall) < ballDistanceToGoal) {
+            this.moveTowards(predictedBall, 1);
+            return;
+        }
+
+        // further ball → further GK
+        double keeperDepth = MathUtil.clamp(ballDistanceToGoal * 0.2,
+                3,
+                this.team.hasBall() ? 20 : 10);
+        Translation2d aimPoint = predictedBall.minus(goalCenter).normalized();
+        this.moveTowards(goalCenter.plus(aimPoint.times(keeperDepth)), 0.7);
     }
 }
 

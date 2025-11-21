@@ -4,6 +4,7 @@ import com.football.Constants;
 import com.football.game.Ball;
 import com.football.game.Game;
 import com.football.game.Team;
+import com.football.game.TeamStrategy;
 import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Rotation2d;
 import com.football.util.math.geometry.Translation2d;
@@ -61,6 +62,10 @@ public abstract class Player {
     }
 
     public void setVelocity(Translation2d targetVelocity) {
+        setVelocity(targetVelocity, MAX_ACCELERATION, MAX_DECELERATION, MAX_SKID_ACCELERATION);
+    }
+
+    public void setVelocity(Translation2d targetVelocity, double maxAcceleration, double maxDeceleration, double maxSkidAcceleration) {
         if (this.hasBall()) {
             targetVelocity = targetVelocity.limitNorm(CARRYING_BALL_MAX_VELOCITY);
         }
@@ -71,10 +76,10 @@ public abstract class Player {
         double targetSpeed = this.targetVelocity.getNorm();
 
         double acceleration = (targetSpeed - currentSpeed) / Constants.PERIOD;
-        double maxAccel = MAX_ACCELERATION * (1 - (this.velocity.getNorm() / SPRINT_VELOCITY));
+        double maxAccel = maxAcceleration * (1 - (this.velocity.getNorm() / SPRINT_VELOCITY));
 
         // Clamp the rate of change
-        double accel = MathUtil.clamp(acceleration, -MAX_DECELERATION, maxAccel);
+        double accel = MathUtil.clamp(acceleration, -maxDeceleration, maxAccel);
 
         double newSpeed = currentSpeed + (accel * Constants.PERIOD);
         newSpeed = Math.max(newSpeed, 0);
@@ -90,7 +95,7 @@ public abstract class Player {
         Translation2d newVelocity = new Translation2d(newSpeed, direction);
 
         Translation2d deltaSpeed = newVelocity.minus(this.velocity);
-        deltaSpeed = deltaSpeed.limitNorm(MAX_SKID_ACCELERATION * Constants.PERIOD);
+        deltaSpeed = deltaSpeed.limitNorm(maxSkidAcceleration * Constants.PERIOD);
 
         this.velocity = this.velocity.plus(deltaSpeed);
 
@@ -133,7 +138,7 @@ public abstract class Player {
 
         Translation2d opponentGoal = this.team.getOpponent().getOwnGoalPosition();
 
-        Translation2d nearPost = new Translation2d(0,Game.GOAL_WIDTH / 2 - 0.5);
+        Translation2d nearPost = new Translation2d(0,Game.GOAL_WIDTH / 2 - 1);
         if (Math.abs(opponentGoal.plus(nearPost).minus(this.position).getAngle().minus(this.getWantedDirection()).getRadians()) <
                 Math.abs(opponentGoal.minus(nearPost).minus(this.position).getAngle().minus(this.getWantedDirection()).getRadians())) {
             this.ball.kick(opponentGoal.plus(nearPost).minus(this.position).times(1.5));
@@ -141,6 +146,10 @@ public abstract class Player {
             this.ball.kick(opponentGoal.minus(nearPost).minus(this.position).times(1.5));
         }
     }
+
+    public double getTargetScore(Player player, Translation2d target, TeamStrategy strategy) {
+        return 0;
+    };
 
     public void update() {
         this.position = this.position.plus(this.velocity.times(Constants.PERIOD));

@@ -131,9 +131,4 @@ public class Ball {
         this.setCarrier(null);
         this.velocity = power;
     }
-
-    // --- Utility: check if moving ---
-    public boolean isMoving() {
-        return this.velocity.getNorm() > MIN_SPEED;
-    }
 }

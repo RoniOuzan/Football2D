@@ -22,10 +22,6 @@ public class TeamStrategy {
     private static final double SELF_WEIGHT = 0.3;                // penalty for moving too far from current pos
     private static final double BALL_WEIGHT = 0.1;                // attraction/repulsion to ball
 
-    // Marking constants
-    private static final double MARKING_IDEAL_DISTANCE = 5.0;     // ideal distance to the marked opponent
-    private static final double MARKING_WEIGHT = 1.0;            // penalty per unit away from ideal
-
     // Space exploit bonus (attackers)
     private static final double SPACE_MIN = 5.0;
     private static final double SPACE_MAX = 20.0;
@@ -54,6 +50,10 @@ public class TeamStrategy {
         this.sideMultiplier = team.getSideMultiplier();
 
         this.scores = new HashMap<>();
+    }
+
+    public double getDefenseLine() {
+        return defenseLine;
     }
 
     /**
@@ -122,17 +122,10 @@ public class TeamStrategy {
         Translation2d teamShift = getTeamShift();
         Translation2d shiftedFormation = player.getOriginalPosition().plus(teamShift);
 
-        double score = baseScore
+        return baseScore
                 - SELF_WEIGHT * distanceFromSelf
-                - FORMATION_WEIGHT * target.getDistance(shiftedFormation);
-
-        // Marking / guarding: defenders try to be near a dangerous opponent
-        if (player instanceof Defender) {
-            score += getMarkingScore(player, target);
-            score += getDefensiveLineScore(target);
-        }
-
-        return score;
+                - FORMATION_WEIGHT * target.getDistance(shiftedFormation)
+                + player.getTargetScore(player, target, this);
     }
 
     /**
@@ -154,35 +147,6 @@ public class TeamStrategy {
      * Small positive/negative value encouraging player to be near an opponent at an "ideal" marking distance.
      * Negative absolute diff penalizes being far from ideal (we return negative value when diff large).
      */
-    private double getMarkingScore(Player player, Translation2d target) {
-        Player closest = this.team.getOpponent().getPlayers().stream()
-                .min(Comparator.comparingDouble(p -> p.getPosition().getDistance(player.getPosition())))
-                .orElse(null);
-
-        if (closest == null) return 0;
-
-        double targetDist = target.getDistance(closest.getPosition());
-
-        // How far the target position is from the ideal marking distance
-        double idealDiff = Math.abs(targetDist - MARKING_IDEAL_DISTANCE);
-
-        // ---- New continuous weight: stronger when opponent is closer ----
-        double baseDistance = player.getPosition().getDistance(closest.getPosition());
-
-        // Close opponent → weight ~1.2
-        // Medium (8-12m) → weight ~0.8
-        // Far (20m) → weight ~0.2
-        double distanceFactor = 1.0 / (1.0 + baseDistance * 0.2);
-
-        // ---- Ball possession factor ----
-        // When opponent has the ball, we mark tighter (×2)
-        // When we have the ball, there's still marking, but lighter (×0.5)
-        double possessionFactor = this.team.getOpponent().hasBall() ? 1.0 : 0.2;
-
-        double weight = MARKING_WEIGHT * distanceFactor * possessionFactor;
-
-        return -idealDiff * weight;
-    }
 
     private double getGoalThreatScore(Translation2d target) {
         Translation2d goal = new Translation2d(-Game.MAX_X * this.sideMultiplier, 0);
@@ -266,10 +230,6 @@ public class TeamStrategy {
         return line * this.sideMultiplier;
     }
 
-    private double getDefensiveLineScore(Translation2d target) {
-        return -Math.abs(target.getX() - this.defenseLine) * 0.5;  // penalty for leaving the line
-    }
-
     /**
      * Compute the offside line = second-last opponent Y coordinate (assuming higher Y is further up the pitch).
      * Returns NaN if not enough opponents.
@@ -286,60 +246,10 @@ public class TeamStrategy {
         return MathUtil.clamp(line, Math.max(ballX, 0), Game.MAX_X) * this.sideMultiplier;
     }
 
-    private Translation2d getGoalkeeperTarget(Goalkeeper gk) {
-        Translation2d goalCenter = this.team.getOwnGoalPosition();
-        Translation2d predictedBall = ball.getPredictedPosition(0.3);
-
-        double ballDistanceToGoal = this.ball.getPosition().getDistance(goalCenter);
-
-        if (ball.getCarrier() == null && ball.getVelocity().getNorm() > 4.0) {
-            Translation2d ballVel = ball.getVelocity().normalized();
-            Translation2d dirToGoal = goalCenter.minus(ball.getPosition()).normalized();
-
-            // dot > 0.8 → angle < ~36 degrees → toward goal
-            if (ballVel.dot(dirToGoal) > 0.8) {
-                // Compute intersection with goal line (simple version)
-                double t = (goalCenter.getX() - ball.getPosition().getX()) / ballVel.getX(); // time to reach goal line
-
-                if (t > 0) { // valid
-                    double impactY = ball.getPosition().getY() + ballVel.getY() * t;
-
-                    // clamp to goal posts height
-                    impactY = MathUtil.clamp(impactY,
-                            goalCenter.getY() - Game.GOAL_WIDTH / 2,
-                            goalCenter.getY() + Game.GOAL_WIDTH / 2);
-
-                    return new Translation2d(goalCenter.getX(), impactY);
-                }
-            }
-        }
-
-        if (ballDistanceToGoal < 20 && team.getOpponent().hasBall() &&
-                this.players.stream().noneMatch(p -> p.getPosition().getDistance(this.ball.getPosition()) < ballDistanceToGoal)) {
-            return predictedBall; // charge the ball
-        }
-
-        if (!this.team.getOpponent().hasBall() && this.ballChaser.equals(gk) &&
-                this.team.getOpponent().getClosestPlayerToBall().getPosition().getDistance(predictedBall) < ballDistanceToGoal) {
-            return predictedBall;
-        }
-
-        // further ball → further GK
-        double keeperDepth = MathUtil.clamp(ballDistanceToGoal * 0.2,
-                3,
-                this.team.hasBall() ? 20 : 10);
-        Translation2d aimPoint = predictedBall.minus(goalCenter).normalized();
-        return goalCenter.plus(aimPoint.times(keeperDepth));
-    }
-
     /**
      * Public getter for player target
      */
     public Translation2d getTargetPosition(Player player) {
-        if (player instanceof Goalkeeper gk) {
-            return getGoalkeeperTarget(gk);
-        }
-
         if (player.equals(this.ballChaser)) {
             return this.ball.getPosition(); // chase the ball position before 0.5 seconds, so it will have a bit of delay
         }
@@ -365,6 +275,10 @@ public class TeamStrategy {
                 .orElse(null);
     }
 
+    public Player getBallChaser() {
+        return ballChaser;
+    }
+
     /**
      * Precompute the baseline (player-agnostic) heatmap.
      */
@@ -377,11 +291,11 @@ public class TeamStrategy {
         this.defenseLine = computeDefensiveLineX();
         this.offsideLine = getOffsideLine();
 
-        scores.clear();
+        this.scores.clear();
         for (double i = -Game.MAX_X + (STEPS_X / 2); i < Game.MAX_X; i += STEPS_X) {
             for (double j = -Game.MAX_Y + (STEPS_Y / 2); j < Game.MAX_Y; j += STEPS_Y) {
                 Translation2d pose = new Translation2d(i, j);
-                scores.put(pose, calculateScore(pose));
+                this.scores.put(pose, calculateScore(pose));
             }
         }
 
@@ -390,6 +304,11 @@ public class TeamStrategy {
         this.handleControlledMovement(this.chosenPlayer, this.team.getClient().getInput());
         for (Player player : this.players) {
             if (!player.equals(this.chosenPlayer)) {
+                if (player instanceof Goalkeeper gk) {
+                    gk.handleTarget(this);
+                    continue;
+                }
+
                 player.moveTowards(this.getTargetPosition(player), 1);
             }
         }
@@ -444,7 +363,7 @@ public class TeamStrategy {
             return this.ball.getCarrier();
         }
 
-        if (this.chosenPlayer == null || this.team.getClient().getInput().isPressed("q")) {
+        if (this.chosenPlayer == null || this.chosenPlayer instanceof Goalkeeper || this.team.getClient().getInput().isPressed("q")) {
             return this.team.getClosestPlayerToBall(p -> !p.equals(this.chosenPlayer) && !(p instanceof Goalkeeper));
         }
 
