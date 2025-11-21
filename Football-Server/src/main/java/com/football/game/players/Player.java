@@ -127,7 +127,8 @@ public abstract class Player {
 
     public void shoot() {
         if (this.position.getX() * this.team.getSideMultiplier() < 10) {
-            this.ball.kick(new Translation2d(40, this.getWantedDirection()));
+            this.ball.kick(new Translation2d(30, this.direction));
+            return;
         }
 
         Translation2d opponentGoal = this.team.getOpponent().getOwnGoalPosition();
@@ -135,9 +136,9 @@ public abstract class Player {
         Translation2d nearPost = new Translation2d(0,Game.GOAL_WIDTH / 2 - 0.5);
         if (Math.abs(opponentGoal.plus(nearPost).minus(this.position).getAngle().minus(this.getWantedDirection()).getRadians()) <
                 Math.abs(opponentGoal.minus(nearPost).minus(this.position).getAngle().minus(this.getWantedDirection()).getRadians())) {
-            this.ball.kick(opponentGoal.plus(nearPost).minus(this.position).times(2));
+            this.ball.kick(opponentGoal.plus(nearPost).minus(this.position).times(1.5));
         } else {
-            this.ball.kick(opponentGoal.minus(nearPost).minus(this.position).times(2));
+            this.ball.kick(opponentGoal.minus(nearPost).minus(this.position).times(1.5));
         }
     }
 

@@ -292,31 +292,45 @@ public class TeamStrategy {
 
         double ballDistanceToGoal = this.ball.getPosition().getDistance(goalCenter);
 
-        // If the opponents with the ball are close -> go to the ball
+        if (ball.getCarrier() == null && ball.getVelocity().getNorm() > 4.0) {
+            Translation2d ballVel = ball.getVelocity().normalized();
+            Translation2d dirToGoal = goalCenter.minus(ball.getPosition()).normalized();
+
+            // dot > 0.8 → angle < ~36 degrees → toward goal
+            if (ballVel.dot(dirToGoal) > 0.8) {
+                // Compute intersection with goal line (simple version)
+                double t = (goalCenter.getX() - ball.getPosition().getX()) / ballVel.getX(); // time to reach goal line
+
+                if (t > 0) { // valid
+                    double impactY = ball.getPosition().getY() + ballVel.getY() * t;
+
+                    // clamp to goal posts height
+                    impactY = MathUtil.clamp(impactY,
+                            goalCenter.getY() - Game.GOAL_WIDTH / 2,
+                            goalCenter.getY() + Game.GOAL_WIDTH / 2);
+
+                    return new Translation2d(goalCenter.getX(), impactY);
+                }
+            }
+        }
+
         if (ballDistanceToGoal < 20 && team.getOpponent().hasBall() &&
                 this.players.stream().noneMatch(p -> p.getPosition().getDistance(this.ball.getPosition()) < ballDistanceToGoal)) {
             return predictedBall; // charge the ball
         }
 
-        // If ball is close and none is near -> go to the ball
         if (!this.team.getOpponent().hasBall() && this.ballChaser.equals(gk) &&
                 this.team.getOpponent().getClosestPlayerToBall().getPosition().getDistance(predictedBall) < ballDistanceToGoal) {
             return predictedBall;
         }
 
-        // Predict ball future position for better shot blocking
-        Translation2d aimPoint = predictedBall.minus(goalCenter);
-        aimPoint = aimPoint.normalized();
-
-        // closer the ball → deeper the keeper
-        double keeperDepth = MathUtil.clamp(ballDistanceToGoal - 10, 3, this.team.hasBall() ? 20 : 10);
-
-        return goalCenter.plus(new Translation2d(
-                aimPoint.getX() * keeperDepth,
-                MathUtil.clamp(aimPoint.getY() * 12, -8, 8)
-        ));
+        // further ball → further GK
+        double keeperDepth = MathUtil.clamp(ballDistanceToGoal * 0.2,
+                3,
+                this.team.hasBall() ? 20 : 10);
+        Translation2d aimPoint = predictedBall.minus(goalCenter).normalized();
+        return goalCenter.plus(aimPoint.times(keeperDepth));
     }
-
 
     /**
      * Public getter for player target

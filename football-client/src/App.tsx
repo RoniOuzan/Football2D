@@ -291,7 +291,7 @@ function App() {
       if (data.client1) {
         data.client1.team.players.forEach((p, i) => {
           const pose = convert(canvas, p.position, goalDepth);
-          ctx.fillStyle = i == 0 ? "#990000" : "#FF0000";
+          ctx.fillStyle = i == 0 ? "#FF5555" : "#FF0000";
           ctx.beginPath();
           ctx.arc(pose.x, pose.y, playerRadius, 0, Math.PI * 2);
           ctx.fill();
@@ -309,7 +309,7 @@ function App() {
       if (data.client2) {
         data.client2.team.players.forEach((p, i) => {
           const pose = convert(canvas, p.position, goalDepth);
-          ctx.fillStyle = i == 0 ? "#000099" : "#0000FF";
+          ctx.fillStyle = i == 0 ? "#5555FF" : "#0000FF";
           ctx.beginPath();
           ctx.arc(pose.x, pose.y, playerRadius, 0, Math.PI * 2);
           ctx.fill();
@@ -343,7 +343,6 @@ function App() {
           const sizeX = (canvas.width - 2 * goalDepth) / 40;
           const sizeY = canvas.height / 40;
           ctx.fillRect(pos.x - sizeX / 2, pos.y - sizeY / 2, sizeX, sizeY);
-          ctx.globalAlpha = 1.0;
 
           // Draw the score text
           ctx.fillStyle = "black"; // or white if better contrast
@@ -351,6 +350,7 @@ function App() {
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillText(entry.value.toFixed(1), pos.x, pos.y);
+          ctx.globalAlpha = 1.0;
         });
       };
 

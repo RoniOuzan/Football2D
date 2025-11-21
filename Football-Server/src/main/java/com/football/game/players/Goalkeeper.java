@@ -10,5 +10,9 @@ public class Goalkeeper extends Player {
         super(team, ball, position);
     }
 
+    @Override
+    public Translation2d getVelocityToPosition(Translation2d targetPosition, double speedPercent) {
+        return super.getVelocityToPosition(targetPosition, speedPercent).times(2);
+    }
 }
 
