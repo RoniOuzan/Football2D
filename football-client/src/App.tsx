@@ -389,7 +389,20 @@ function App() {
       ctx.lineTo(defenseX, canvas.height);
       ctx.stroke();
     }
-  }, [data]);
+
+    // --- Draw GOAL text on field ---
+    if (goalText) {
+      ctx.fillStyle = goalText.includes("RED") ? "red" : "blue";
+      ctx.font = "60px Arial Black";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.shadowColor = "yellow";
+      ctx.shadowBlur = 20;
+      ctx.fillText(goalText, canvas.width / 2, canvas.height / 2);
+    } else {
+      ctx.shadowBlur = 0;
+    }
+  }, [data, goalText]);
 
   return (
     <div style={{ textAlign: "center" }}>
@@ -397,7 +410,7 @@ function App() {
         {`
           @keyframes fadeOut {
             0% { opacity: 1; transform: scale(1); }
-            100% { opacity: 0; transform: scale(1.3); }
+            100% { opacity: 0; transform: scale(1.1); }
           }
 
           @keyframes shake {
@@ -411,21 +424,6 @@ function App() {
       </style>
 
       <h1>⚽ Football 2D</h1>
-
-      {/* GOAL POPUP */}
-      {goalText && (
-        <div
-          style={{
-            color: "yellow",
-            fontSize: "40px",
-            fontWeight: "bold",
-            marginBottom: "10px",
-            animation: "fadeOut 0.8s forwards",
-          }}
-        >
-          {goalText}
-        </div>
-      )}
 
       {/* SCOREBOARD */}
       <div
