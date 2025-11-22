@@ -23,7 +23,8 @@ public abstract class Player {
     protected transient final Ball ball;
 
     protected Translation2d position;
-    protected Translation2d originalPosition;
+    protected transient Translation2d initialPosition;
+    protected Translation2d formationPosition;
     protected Rotation2d direction;
 
     protected Translation2d velocity;
@@ -34,7 +35,8 @@ public abstract class Player {
         this.ball = ball;
 
         this.position = position;
-        this.originalPosition = new Translation2d(position.getX() * 2 + Game.MAX_X * this.team.getSideMultiplier(), position.getY());
+        this.initialPosition = position;
+        this.formationPosition = new Translation2d(position.getX() * 2 + Game.MAX_X * this.team.getSideMultiplier(), position.getY());
         this.direction = new Rotation2d();
 
         this.velocity = new Translation2d();
@@ -45,8 +47,8 @@ public abstract class Player {
         return this.position;
     }
 
-    public Translation2d getOriginalPosition() {
-        return originalPosition;
+    public Translation2d getFormationPosition() {
+        return formationPosition;
     }
 
     public Translation2d getVelocity() {
@@ -59,6 +61,13 @@ public abstract class Player {
 
     public boolean hasBall() {
         return this.equals(this.ball.getCarrier());
+    }
+
+    public void resetPosition() {
+        this.position = this.initialPosition;
+        this.velocity = new Translation2d();
+        this.targetVelocity = new Translation2d();
+        this.direction = new Rotation2d();
     }
 
     public void setVelocity(Translation2d targetVelocity) {

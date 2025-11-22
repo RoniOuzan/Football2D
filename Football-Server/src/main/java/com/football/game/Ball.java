@@ -17,6 +17,8 @@ public class Ball {
     private static final double PICK_UP_BALL_THRESHOLD = 1;
     private static final long CARRY_COOLDOWN_MS = 300;
 
+    private static final double RADIUS = 0.35;
+
     private transient final Game game;
 
     private Translation2d position;
@@ -76,6 +78,14 @@ public class Ball {
         }
     }
 
+    public void reset() {
+        this.position = new Translation2d();
+        this.velocity = new Translation2d();
+
+        this.carrier = null;
+        this.timeReleased = System.currentTimeMillis();
+    }
+
     public void update(Team team1, Team team2) {
         this.updateCarrier(team1);
         this.updateCarrier(team2);
@@ -96,27 +106,44 @@ public class Ball {
     }
 
     private void wallCollision() {
-        // Handle wall collisions (simple bounce)
         double x = this.position.getX();
         double y = this.position.getY();
 
+        // Skip bounce inside goal area (you already handle this)
+        if (Math.abs(y) < Game.GOAL_WIDTH / 2) {
+            return;
+        }
+
+        // Left wall
         if (x < -Game.MAX_X) {
-            x = -Game.MAX_X;
-            this.velocity = new Translation2d(-this.velocity.getX() * BOUNCE_DAMPING, this.velocity.getY() * BOUNCE_DAMPING);
-        } else if (x > Game.MAX_X) {
-            x = Game.MAX_X;
-            this.velocity = new Translation2d(-this.velocity.getX() * BOUNCE_DAMPING, this.velocity.getY() * BOUNCE_DAMPING);
+            wallBounce(-Game.MAX_X, y, new Translation2d(1, 0)); // normal points right
+            return;
         }
-
+        // Right wall
+        if (x > Game.MAX_X) {
+            wallBounce(Game.MAX_X, y, new Translation2d(-1, 0)); // normal points left
+            return;
+        }
+        // Bottom wall
         if (y < -Game.MAX_Y) {
-            y = -Game.MAX_Y;
-            this.velocity = new Translation2d(this.velocity.getX() * BOUNCE_DAMPING, -this.velocity.getY() * BOUNCE_DAMPING);
-        } else if (y > Game.MAX_Y) {
-            y = Game.MAX_Y;
-            this.velocity = new Translation2d(this.velocity.getX() * BOUNCE_DAMPING, -this.velocity.getY() * BOUNCE_DAMPING);
+            wallBounce(x, -Game.MAX_Y, new Translation2d(0, 1)); // normal points up
+            return;
         }
+        // Top wall
+        if (y > Game.MAX_Y) {
+            wallBounce(x, Game.MAX_Y, new Translation2d(0, -1)); // normal points down
+        }
+    }
 
-        this.position = new Translation2d(x, y);
+    private void wallBounce(double newX, double newY, Translation2d normal) {
+        this.position = new Translation2d(newX, newY);
+        this.velocity = reflect(this.velocity, normal).times(BOUNCE_DAMPING);
+    }
+
+    /** Reflect vector v across a given surface normal (must be normalized). */
+    private Translation2d reflect(Translation2d v, Translation2d normal) {
+        double dot = v.dot(normal);      // projection length
+        return v.minus(normal.times(2 * dot));
     }
 
     private void rollingDeceleration() {

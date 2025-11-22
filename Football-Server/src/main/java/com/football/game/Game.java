@@ -12,12 +12,19 @@ public class Game {
 
     public static final double GOAL_WIDTH = 7.3;
 
+    public static final int TEAM_1 = 1;
+    public static final int TEAM_2 = -1;
+    public static final int NULL_TEAM = 0;
+
     private final Team team1;
     private final Team team2;
 
     private final Ball ball;
 
-    private long startTime = 0;
+    private int score1 = -1;
+    private int score2 = -1;
+
+    private long startTime = -1;
 
     public Game(Client client1, Client client2) {
         this.ball = new Ball(this);
@@ -28,6 +35,8 @@ public class Game {
 
     public void start() {
         this.startTime = System.currentTimeMillis();
+        this.score1 = 0;
+        this.score2 = 0;
     }
 
     public Ball getBall() {
@@ -44,6 +53,12 @@ public class Game {
 
     public double getMatchTime() {
         return (System.currentTimeMillis() - this.startTime) / 1000.0;
+    }
+
+    public void resetField() {
+        this.ball.reset();
+        this.team1.resetPlayers();
+        this.team2.resetPlayers();
     }
 
     public void update() {

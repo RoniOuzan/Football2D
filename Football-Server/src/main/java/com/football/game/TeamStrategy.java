@@ -121,7 +121,7 @@ public class TeamStrategy {
 
         // Compute role-based formation anchor shift
         Translation2d teamShift = getTeamShift();
-        Translation2d shiftedFormation = player.getOriginalPosition().plus(teamShift);
+        Translation2d shiftedFormation = player.getFormationPosition().plus(teamShift);
 
         return baseScore
                 - SELF_WEIGHT * distanceFromSelf

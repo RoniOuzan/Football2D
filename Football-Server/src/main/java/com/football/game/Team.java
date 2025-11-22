@@ -71,6 +71,12 @@ public class Team {
         return this.players.contains(this.game.getBall().getCarrier());
     }
 
+    public void resetPlayers() {
+        for (Player player : this.players) {
+            player.resetPosition();
+        }
+    }
+
     public Client getClient() {
         return this.client;
     }
