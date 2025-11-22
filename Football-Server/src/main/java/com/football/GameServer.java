@@ -63,15 +63,20 @@ public class GameServer {
     }
 
     private static void broadcast(String message) {
-        for (Session s : clients.keySet()) {
+        for (Client client : clients.values()) {
+            Session s = client.getSession();
             try {
                 if (s.isOpen()) {
                     s.getRemote().sendString(message);
+                } else {
+                    clients.remove(s);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
+                clients.remove(s);
             }
         }
+
     }
 
     private static Client getClient(Session session) {

@@ -30,7 +30,7 @@ public class Client {
 
     public void setInput(InputValues input) {
         this.input.updateInput(input);
-        this.keys = input.keys;
+        this.keys = input.keyboard;
     }
 
     public void update() {
