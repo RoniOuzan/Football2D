@@ -298,7 +298,6 @@ public class TeamStrategy {
             }
         }
 
-
         this.handleControlledMovement(this.chosenPlayer, this.team.getClient().getInput());
         for (Player player : this.players) {
             if (!player.equals(this.chosenPlayer)) {

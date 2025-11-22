@@ -2,6 +2,8 @@ import { log } from "console";
 import React, { useEffect, useRef, useState } from "react";
 
 export const FPS = 30.0;
+export const pitchWidthUnits = 100;
+export const pitchHeightUnits = 64;
 
 export interface Translation2d {
   x: number;
@@ -12,16 +14,14 @@ export interface JsonData {
   ball: Ball;
   team1: Team;
   team2: Team;
+  score1: number;
+  score2: number;
 }
 
 export interface Ball {
   position: Translation2d;
   velocity: Translation2d;
 }
-
-// export interface Client {
-//   team: Team;
-// }
 
 export interface Team {
   players: Player[];
@@ -53,17 +53,20 @@ export interface TeamStrategy {
 
 function App() {
   const [data, setData] = useState<JsonData>();
+  const [score1, setScore1] = useState(0);
+  const [score2, setScore2] = useState(0);
+  const [flash, setFlash] = useState(false);
+  const [goalText, setGoalText] = useState("");
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pressedKeys = useRef<Set<string>>(new Set());
 
+  // WebSocket connection
   useEffect(() => {
     const socket = new WebSocket("ws://localhost:9090/game");
 
     socket.onmessage = (event) => {
       if (!event.data) return;
-
-      console.log(event.data);
-      
       setData(JSON.parse(event.data));
     };
 
@@ -94,6 +97,28 @@ function App() {
     };
   }, []);
 
+  // Detect goals and trigger flash
+  useEffect(() => {
+    if (!data) return;
+
+    if (data.score1 !== score1) {
+      setFlash(true);
+      setGoalText("GOAL RED!");
+      setTimeout(() => setFlash(false), 500);
+      setTimeout(() => setGoalText(""), 800);
+      setScore1(data.score1);
+    }
+
+    if (data.score2 !== score2) {
+      setFlash(true);
+      setGoalText("GOAL BLUE!");
+      setTimeout(() => setFlash(false), 500);
+      setTimeout(() => setGoalText(""), 800);
+      setScore2(data.score2);
+    }
+  }, [data]);
+
+  // Draw pitch, players, ball, scores
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -102,18 +127,10 @@ function App() {
 
     const playerRadius = 0.75 * (canvas.height / 64);
 
-    // console.log(data);
-
     // --- Pitch dimensions ---
-    const pitchWidthUnits = 100;
-    const pitchHeightUnits = 64;
     const pitchWidth = canvas.width;
     const pitchHeight = canvas.height;
-
-    // Goal depth in units
-    const goalDepthUnits = 3;
-    const goalDepth = (goalDepthUnits / pitchWidthUnits) * pitchWidth;
-
+    const goalDepth = (3 / pitchWidthUnits) * pitchWidth;
     const pitchLeft = goalDepth;
     const pitchRight = pitchWidth - goalDepth;
 
@@ -213,37 +230,35 @@ function App() {
     ctx.stroke();
 
     // --- Goals as posts with crossbar + net effect ---
-    const goalHeight = (7.3 / pitchHeightUnits) * pitchHeight; // 2.44 units
-    const goalTop = (pitchHeight - goalHeight) / 2;
-    const netLines = 6; // Number of vertical/horizontal lines to simulate net
+    const goalWidth = (7.3 / pitchHeightUnits) * pitchHeight;
+    const goalPostRadius = (0.35 / pitchHeightUnits) * pitchHeight;
+    const goalTop = (pitchHeight - goalWidth) / 2;
+    const netLines = 6;
 
     // LEFT GOAL
     ctx.strokeStyle = "red";
     ctx.lineWidth = 4;
 
-    // Goal rectangle (posts + crossbar)
     ctx.beginPath();
-    ctx.moveTo(pitchLeft - goalDepth, goalTop); // back top-left
-    ctx.lineTo(pitchLeft - goalDepth, goalTop + goalHeight); // back bottom-left
-    ctx.lineTo(pitchLeft, goalTop + goalHeight); // front bottom-left
-    ctx.lineTo(pitchLeft, goalTop); // front top-left
-    ctx.lineTo(pitchLeft - goalDepth, goalTop); // back top-left
+    ctx.moveTo(pitchLeft - goalDepth, goalTop);
+    ctx.lineTo(pitchLeft - goalDepth, goalTop + goalWidth);
+    ctx.lineTo(pitchLeft, goalTop + goalWidth);
+    ctx.lineTo(pitchLeft, goalTop);
+    ctx.lineTo(pitchLeft - goalDepth, goalTop);
     ctx.stroke();
 
-    // Net effect (vertical lines)
     ctx.lineWidth = 1;
     ctx.beginPath();
     for (let i = 1; i < netLines; i++) {
       const x = pitchLeft - (goalDepth * i) / netLines;
       ctx.moveTo(x, goalTop);
-      ctx.lineTo(x, goalTop + goalHeight);
+      ctx.lineTo(x, goalTop + goalWidth);
     }
     ctx.stroke();
 
-    // Net effect (horizontal lines)
     ctx.beginPath();
     for (let i = 1; i < netLines; i++) {
-      const y = goalTop + (goalHeight * i) / netLines;
+      const y = goalTop + (goalWidth * i) / netLines;
       ctx.moveTo(pitchLeft - goalDepth, y);
       ctx.lineTo(pitchLeft, y);
     }
@@ -253,34 +268,31 @@ function App() {
     ctx.strokeStyle = "blue";
     ctx.lineWidth = 4;
 
-    // Goal rectangle
     ctx.beginPath();
-    ctx.moveTo(pitchRight + goalDepth, goalTop); // back top-right
-    ctx.lineTo(pitchRight + goalDepth, goalTop + goalHeight); // back bottom-right
-    ctx.lineTo(pitchRight, goalTop + goalHeight); // front bottom-right
-    ctx.lineTo(pitchRight, goalTop); // front top-right
-    ctx.lineTo(pitchRight + goalDepth, goalTop); // back top-right
+    ctx.moveTo(pitchRight + goalDepth, goalTop);
+    ctx.lineTo(pitchRight + goalDepth, goalTop + goalWidth);
+    ctx.lineTo(pitchRight, goalTop + goalWidth);
+    ctx.lineTo(pitchRight, goalTop);
+    ctx.lineTo(pitchRight + goalDepth, goalTop);
     ctx.stroke();
 
-    // Net effect (vertical lines)
     ctx.lineWidth = 1;
     ctx.beginPath();
     for (let i = 1; i < netLines; i++) {
       const x = pitchRight + (goalDepth * i) / netLines;
       ctx.moveTo(x, goalTop);
-      ctx.lineTo(x, goalTop + goalHeight);
+      ctx.lineTo(x, goalTop + goalWidth);
     }
     ctx.stroke();
 
-    // Net effect (horizontal lines)
     ctx.beginPath();
     for (let i = 1; i < netLines; i++) {
-      const y = goalTop + (goalHeight * i) / netLines;
+      const y = goalTop + (goalWidth * i) / netLines;
       ctx.moveTo(pitchRight + goalDepth, y);
       ctx.lineTo(pitchRight, y);
     }
     ctx.stroke();
-    
+
     // --- Ball ---
     if (data) {
       const ball = convert(canvas, data.ball.position, goalDepth);
@@ -293,7 +305,7 @@ function App() {
       if (data.team1) {
         data.team1.players.forEach((p, i) => {
           const pose = convert(canvas, p.position, goalDepth);
-          ctx.fillStyle = i == 0 ? "#FF5555" : "#FF0000";
+          ctx.fillStyle = i === 0 ? "#FF5555" : "#FF0000";
           ctx.beginPath();
           ctx.arc(pose.x, pose.y, playerRadius, 0, Math.PI * 2);
           ctx.fill();
@@ -311,7 +323,7 @@ function App() {
       if (data.team2) {
         data.team2.players.forEach((p, i) => {
           const pose = convert(canvas, p.position, goalDepth);
-          ctx.fillStyle = i == 0 ? "#5555FF" : "#0000FF";
+          ctx.fillStyle = i === 0 ? "#5555FF" : "#0000FF";
           ctx.beginPath();
           ctx.arc(pose.x, pose.y, playerRadius, 0, Math.PI * 2);
           ctx.fill();
@@ -347,11 +359,11 @@ function App() {
           ctx.fillRect(pos.x - sizeX / 2, pos.y - sizeY / 2, sizeX, sizeY);
 
           // Draw the score text
-          ctx.fillStyle = "black"; // or white if better contrast
-          ctx.font = "12px Arial";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(entry.value.toFixed(1), pos.x, pos.y);
+          // ctx.fillStyle = "black"; // or white if better contrast
+          // ctx.font = "12px Arial";
+          // ctx.textAlign = "center";
+          // ctx.textBaseline = "middle";
+          // ctx.fillText(entry.value.toFixed(1), pos.x, pos.y);
           ctx.globalAlpha = 1.0;
         });
       };
@@ -381,7 +393,72 @@ function App() {
 
   return (
     <div style={{ textAlign: "center" }}>
+      <style>
+        {`
+          @keyframes fadeOut {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(1.3); }
+          }
+
+          @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-5px); }
+            40% { transform: translateX(5px); }
+            60% { transform: translateX(-5px); }
+            80% { transform: translateX(5px); }
+          }
+        `}
+      </style>
+
       <h1>⚽ Football 2D</h1>
+
+      {/* GOAL POPUP */}
+      {goalText && (
+        <div
+          style={{
+            color: "yellow",
+            fontSize: "40px",
+            fontWeight: "bold",
+            marginBottom: "10px",
+            animation: "fadeOut 0.8s forwards",
+          }}
+        >
+          {goalText}
+        </div>
+      )}
+
+      {/* SCOREBOARD */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: "30px",
+          padding: "10px 30px",
+          marginBottom: "15px",
+          borderRadius: "12px",
+          background: flash ? "#ffd700" : "#222",
+          border: "3px solid #444",
+          color: "white",
+          fontSize: "32px",
+          fontWeight: "bold",
+          width: "fit-content",
+          marginLeft: "auto",
+          marginRight: "auto",
+          boxShadow: flash ? "0 0 25px #ffd700" : "0 0 20px rgba(0,0,0,0.3)",
+          transition: "background 0.2s, box-shadow 0.2s",
+          animation: flash ? "shake 0.3s" : "",
+        }}
+      >
+        <span style={{ color: "red", fontSize: flash ? "42px" : "32px", transition: "0.2s" }}>
+          {score1}
+        </span>
+        <span style={{ color: "white" }}> : </span>
+        <span style={{ color: "blue", fontSize: flash ? "42px" : "32px", transition: "0.2s" }}>
+          {score2}
+        </span>
+      </div>
+
       <canvas ref={canvasRef} width={1080} height={700} />
     </div>
   );
@@ -393,9 +470,6 @@ const convert = (
   position: { x: number; y: number },
   goalDepth: number
 ) => {
-  const pitchWidthUnits = 100;
-  const pitchHeightUnits = 64;
-
   const pitchLeft = goalDepth;
   const pitchRight = canvas.width - goalDepth;
 

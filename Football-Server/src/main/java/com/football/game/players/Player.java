@@ -147,7 +147,7 @@ public abstract class Player {
 
         Translation2d opponentGoal = this.team.getOpponent().getOwnGoalPosition();
 
-        Translation2d nearPost = new Translation2d(0,Game.GOAL_WIDTH / 2 - 1);
+        Translation2d nearPost = new Translation2d(0,Game.GOAL_WIDTH / 2 - 0.8);
         if (Math.abs(opponentGoal.plus(nearPost).minus(this.position).getAngle().minus(this.getWantedDirection()).getRadians()) <
                 Math.abs(opponentGoal.minus(nearPost).minus(this.position).getAngle().minus(this.getWantedDirection()).getRadians())) {
             this.ball.kick(opponentGoal.plus(nearPost).minus(this.position).times(1.5));

@@ -2,6 +2,7 @@ package com.football.game;
 
 import com.football.Constants;
 import com.football.game.players.Player;
+import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Translation2d;
 import com.football.util.math.interpolation.TimeInterpolatableBuffer;
 
@@ -36,6 +37,8 @@ public class Ball {
         this.velocity = new Translation2d();
 
         this.timeReleased = System.currentTimeMillis();
+
+        this.positions.addSample(0, this.position);
     }
 
     public Translation2d getPosition() {
@@ -78,6 +81,17 @@ public class Ball {
         }
     }
 
+    public int isAtGoal() {
+        if (Math.abs(this.position.getY()) > Game.GOAL_WIDTH / 2 - RADIUS) return 0;
+
+        if (this.position.getX() >= Game.MAX_X + RADIUS) {
+            return 1;
+        } else if (this.position.getX() <= -(Game.MAX_X + RADIUS)) {
+            return -1;
+        }
+        return 0;
+    }
+
     public void reset() {
         this.position = new Translation2d();
         this.velocity = new Translation2d();
@@ -98,7 +112,9 @@ public class Ball {
             this.position = this.carrier.getPosition()
                     .plus(OFFSET_FROM_PLAYER.rotateBy(this.carrier.getDirection()));
         } else {
-            wallCollision();
+            if (!goalPostCollision()) {
+                wallCollision();
+            }
             rollingDeceleration();
         }
 
@@ -110,28 +126,28 @@ public class Ball {
         double y = this.position.getY();
 
         // Skip bounce inside goal area (you already handle this)
-        if (Math.abs(y) < Game.GOAL_WIDTH / 2) {
+        if (Math.abs(y) <= Game.GOAL_WIDTH / 2 - RADIUS && Math.abs(x) > Game.MAX_X - RADIUS) {
+            if (Math.abs(y) > Game.GOAL_WIDTH / 2 - RADIUS) {
+                y = MathUtil.clamp(y, -(Game.GOAL_WIDTH / 2 - RADIUS), Game.GOAL_WIDTH / 2 - RADIUS);
+                this.velocity = new Translation2d(this.velocity.getX(), 0);
+            }
+            if (Math.abs(x) > Game.MAX_X + Game.GOAL_DEPTH - RADIUS) {
+                x = MathUtil.clamp(x, -(Game.MAX_X + Game.GOAL_DEPTH - RADIUS), Game.MAX_X + Game.GOAL_DEPTH - RADIUS);
+                this.velocity = new Translation2d();
+            }
+
+            this.position = new Translation2d(x, y);
             return;
         }
 
-        // Left wall
-        if (x < -Game.MAX_X) {
-            wallBounce(-Game.MAX_X, y, new Translation2d(1, 0)); // normal points right
-            return;
-        }
-        // Right wall
-        if (x > Game.MAX_X) {
-            wallBounce(Game.MAX_X, y, new Translation2d(-1, 0)); // normal points left
-            return;
-        }
-        // Bottom wall
-        if (y < -Game.MAX_Y) {
-            wallBounce(x, -Game.MAX_Y, new Translation2d(0, 1)); // normal points up
-            return;
-        }
-        // Top wall
-        if (y > Game.MAX_Y) {
-            wallBounce(x, Game.MAX_Y, new Translation2d(0, -1)); // normal points down
+        if (x - RADIUS < -Game.MAX_X) { // Left wall
+            wallBounce(-Game.MAX_X + RADIUS, y, new Translation2d(1, 0)); // normal points right
+        } else if (x + RADIUS > Game.MAX_X) { // Right wall
+            wallBounce(Game.MAX_X - RADIUS, y, new Translation2d(-1, 0)); // normal points left
+        } else if (y - RADIUS < -Game.MAX_Y) { // Bottom wall
+            wallBounce(x, -Game.MAX_Y + RADIUS, new Translation2d(0, 1)); // normal points up
+        } else if (y + RADIUS > Game.MAX_Y) { // Top wall
+            wallBounce(x, Game.MAX_Y - RADIUS, new Translation2d(0, -1)); // normal points down
         }
     }
 
@@ -142,8 +158,31 @@ public class Ball {
 
     /** Reflect vector v across a given surface normal (must be normalized). */
     private Translation2d reflect(Translation2d v, Translation2d normal) {
-        double dot = v.dot(normal);      // projection length
+        double dot = v.dot(normal); // projection length
         return v.minus(normal.times(2 * dot));
+    }
+
+    private boolean goalPostCollision() {
+        return Game.POSTS.stream().anyMatch(this::handlePost);
+    }
+
+    private boolean handlePost(Translation2d post) {
+        Translation2d diff = this.position.minus(post);
+        double dist = diff.getNorm();
+        double minDist = Game.POST_RADIUS + RADIUS;
+
+        if (dist >= minDist) return false; // no collision
+
+        // --- Step 1: correct position so the ball is no longer penetrating ---
+        double penetration = minDist - dist;
+        Translation2d normal = diff.normalized();
+
+        // push ball out of the post
+        this.position = this.position.plus(normal.times(penetration));
+
+        // --- Step 2: reflect velocity using circle normal ---
+        this.velocity = reflect(this.velocity, normal).times(BOUNCE_DAMPING);
+        return true;
     }
 
     private void rollingDeceleration() {

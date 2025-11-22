@@ -82,7 +82,9 @@ public class Team {
     }
 
     public void update() {
-        this.teamStrategy.update();
+        if (this.game.getState() == Game.State.PLAYING) {
+            this.teamStrategy.update();
+        }
 
         for (Player player : this.players) {
             player.update();
