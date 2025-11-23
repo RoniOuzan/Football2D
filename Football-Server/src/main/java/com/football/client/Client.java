@@ -1,16 +1,10 @@
 package com.football.client;
 
-import com.football.game.Team;
 import org.eclipse.jetty.websocket.api.Session;
-
-import java.util.HashSet;
-import java.util.Set;
 
 public class Client {
     private transient final Session session;
-
-    private final transient ClientInput input = new ClientInput();
-    private transient Set<String> keys = new HashSet<>();
+    private transient final ClientInput input = new ClientInput();
 
     public Client(Session session) {
         this.session = session;
@@ -24,13 +18,8 @@ public class Client {
         return session;
     }
 
-    public Set<String> getKeys() {
-        return keys;
-    }
-
     public void setInput(InputValues input) {
         this.input.updateInput(input);
-        this.keys = input.keyboard;
     }
 
     public void update() {

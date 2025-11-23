@@ -25,28 +25,28 @@ public class ClientInput {
         double x = 0;
         double y = 0;
 
-        if (this.input.keyboard.contains("w"))
+        if (this.input.isHoldingKey("w"))
             y += 1;
-        if (this.input.keyboard.contains("s"))
+        if (this.input.isHoldingKey("s"))
             y -= 1;
-        if (this.input.keyboard.contains("d"))
+        if (this.input.isHoldingKey("d"))
             x += 1;
-        if (this.input.keyboard.contains("a"))
+        if (this.input.isHoldingKey("a"))
             x -= 1;
 
         return new Translation2d(x, y).normalized();
     }
 
     public boolean isPressed(String key) {
-        return this.input.isHoldingKeyboard(key) && !this.lastInput.isHoldingKeyboard(key);
+        return this.input.isHoldingKey(key) && !this.lastInput.isHoldingKey(key);
     }
 
     public boolean isHolding(String key) {
-        return this.input.isHoldingKeyboard(key);
+        return this.input.isHoldingKey(key);
     }
 
     public boolean isReleased(String key) {
-        return !this.input.isHoldingKeyboard(key) && this.lastInput.isHoldingController(key);
+        return !this.input.isHoldingKey(key) && this.lastInput.isHoldingButton(key);
     }
 
     public void updateInput() {

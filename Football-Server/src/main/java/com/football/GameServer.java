@@ -55,6 +55,7 @@ public class GameServer {
     @OnWebSocketMessage
     public void onMessage(Session session, String message) {
         try {
+            System.out.println(message);
             InputValues input = JsonUtil.gson.fromJson(message, InputValues.class);
             getClient(session).setInput(input);
         } catch (Exception e) {

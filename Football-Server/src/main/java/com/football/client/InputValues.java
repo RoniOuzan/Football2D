@@ -4,34 +4,39 @@ import lombok.ToString;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.Arrays;
 
 @ToString
 public class InputValues implements Cloneable {
-    public Set<String> keyboard;
-    public Set<String> controller;
-    public float[] axes;
+    // Keyboard keys pressed
+    public Set<String> keys = new HashSet<>();
+    // Controller buttons pressed (normalized to Xbox style)
+    public Set<String> buttons = new HashSet<>();
 
-    public InputValues() {
-        this.keyboard = new HashSet<>();
-        this.controller = new HashSet<>();
-        this.axes = new float[0];
+    public double leftX = 0;
+    public double leftY = 0;
+    public double rightX = 0;
+    public double rightY = 0;
+    public double LT = 0;
+    public double RT = 0;
+
+    public boolean isHoldingKey(String key) {
+        return this.keys.contains(key);
     }
 
-    public boolean isHoldingKeyboard(String key) {
-        return this.keyboard.contains(key);
+    public boolean isHoldingButton(String button) {
+        return this.buttons.contains(button);
     }
 
-    public boolean isHoldingController(String button) {
-        return this.controller.contains(button);
-    }
-
+    /** Deep clone of the object */
     @Override
-    public InputValues clone() throws CloneNotSupportedException {
-        InputValues input = (InputValues) super.clone();
-        input.keyboard = new HashSet<>(this.keyboard);
-        input.controller = new HashSet<>(this.controller);
-        input.axes = Arrays.copyOf(this.axes, this.axes.length);
-        return input;
+    public InputValues clone() {
+        try {
+            InputValues copy = (InputValues) super.clone();
+            copy.keys = new HashSet<>(this.keys);
+            copy.buttons = new HashSet<>(this.buttons);
+            return copy;
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError(e);
+        }
     }
 }
