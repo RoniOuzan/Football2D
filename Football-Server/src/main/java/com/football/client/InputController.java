@@ -28,7 +28,8 @@ public class InputController extends ClientInput {
 
     @Override
     public Translation2d getRequestedVelocity() {
-        Translation2d joy = new Translation2d(this.leftX, this.leftY);
+        System.out.println(leftX);
+        Translation2d joy = new Translation2d(this.leftX, -this.leftY);
         return joy.getNorm() < 0.05 ? new Translation2d() : joy.normalized();
     }
 
@@ -36,11 +37,11 @@ public class InputController extends ClientInput {
     public void updateInput(InputPacket.DevicePacket devicePacket) {
         super.updateInput(devicePacket);
 
-        this.leftX = devicePacket.leftX;
-        this.leftY = devicePacket.leftY;
-        this.rightX = devicePacket.rightX;
-        this.rightY = devicePacket.rightY;
-        this.LT = devicePacket.LT;
-        this.RT = devicePacket.RT;
+        this.leftX = devicePacket.axes.leftX;
+        this.leftY = devicePacket.axes.leftY;
+        this.rightX = devicePacket.axes.rightX;
+        this.rightY = devicePacket.axes.rightY;
+        this.LT = devicePacket.axes.LT;
+        this.RT = devicePacket.axes.RT;
     }
 }

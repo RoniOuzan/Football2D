@@ -39,6 +39,7 @@ export default class InputController {
     // controllers
     for (const gp of navigator.getGamepads()) {
       if (!gp) continue;
+      if (!gp.id.includes("Controller") && !gp.id.includes("Gamepad") && !gp.id.includes("Wireless")) continue;
       devices.push(this.mapController(gp));
     }
 

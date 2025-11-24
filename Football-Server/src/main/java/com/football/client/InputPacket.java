@@ -1,5 +1,6 @@
 package com.football.client;
 
+import lombok.AllArgsConstructor;
 import lombok.ToString;
 
 import java.util.List;
@@ -15,9 +16,14 @@ public class InputPacket {
     public static class DevicePacket {
         public String type; // "keyboard" or "controller"
         public Set<String> buttons;
+        public Axes axes;
 
-        public double leftX, leftY;
-        public double rightX, rightY;
-        public double LT, RT;
+        @AllArgsConstructor
+        @ToString
+        public static class Axes {
+            public double leftX, leftY;
+            public double rightX, rightY;
+            public double LT, RT;
+        }
     }
 }
