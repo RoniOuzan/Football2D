@@ -31,7 +31,6 @@ public class Game {
 
     public static final int TEAM_1 = 1;
     public static final int TEAM_2 = -1;
-    public static final int NULL_TEAM = 0;
 
     private final Team team1;
     private final Team team2;
@@ -91,10 +90,10 @@ public class Game {
         switch (this.state) {
             case PLAYING -> {
                 int isGoal = this.ball.isAtGoal();
-                if (isGoal == 1) {
+                if (isGoal == TEAM_1) {
                     this.score1++;
                     setState(State.GOAL);
-                } else if (isGoal == -1) {
+                } else if (isGoal == TEAM_2) {
                     this.score2++;
                     setState(State.GOAL);
                 }

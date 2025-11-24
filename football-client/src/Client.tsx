@@ -1,3 +1,4 @@
+import { DeviceInput } from "./InputController";
 import { JsonData } from "./types";
 
 export default class Client {
@@ -17,7 +18,7 @@ export default class Client {
     };
   }
 
-  sendDevices(devices: any) {
+  sendDevices(devices: DeviceInput[]) {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return;
     this.socket.send(JSON.stringify({ type: "input", devices }));
   }

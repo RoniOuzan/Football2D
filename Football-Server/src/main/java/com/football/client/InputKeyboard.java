@@ -8,11 +8,11 @@ import java.util.Map;
 @ToString
 public class InputKeyboard extends ClientInput {
     private static final Map<Keybind, String> keybinds = Map.of(
-            Keybind.SWITCH_PLAYER, "Q",
+            Keybind.SWITCH_PLAYER, "q",
             Keybind.SPRINT, "shift",
-            Keybind.PASS, "E",
-            Keybind.THROUGH, "F",
-            Keybind.SHOOT, "R"
+            Keybind.PASS, "e",
+            Keybind.THROUGH, "f",
+            Keybind.SHOOT, "r"
     );
 
     public InputKeyboard(InputPacket.DevicePacket devicePacket) {
