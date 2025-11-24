@@ -31,7 +31,6 @@ public class Game {
 
     public static final int TEAM_1 = 1;
     public static final int TEAM_2 = -1;
-    public static final int NULL_TEAM = 0;
 
     private final Team team1;
     private final Team team2;
@@ -45,11 +44,11 @@ public class Game {
     private long stateChanged;
     private long startTime = -1;
 
-    public Game(Client client1, Client client2) {
+    public Game(Client client1, int inputSlot1, Client client2, int inputSlot2) {
         this.ball = new Ball(this);
 
-        this.team1 = new Team(this, client1, true);
-        this.team2 = new Team(this, client2, false);
+        this.team1 = new Team(this, client1, true, inputSlot1);
+        this.team2 = new Team(this, client2, false, inputSlot2);
     }
 
     public void start() {
@@ -91,10 +90,10 @@ public class Game {
         switch (this.state) {
             case PLAYING -> {
                 int isGoal = this.ball.isAtGoal();
-                if (isGoal == 1) {
+                if (isGoal == TEAM_1) {
                     this.score1++;
                     setState(State.GOAL);
-                } else if (isGoal == -1) {
+                } else if (isGoal == TEAM_2) {
                     this.score2++;
                     setState(State.GOAL);
                 }

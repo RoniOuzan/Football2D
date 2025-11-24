@@ -31,11 +31,6 @@ public class GameManager {
         } else if (this.client2 == null) {
             this.client2 = client;
         }
-
-        if (this.client1 != null && this.client2 != null && this.game == null) {
-            this.game = new Game(this.client1, this.client2);
-            this.game.start();
-        }
     }
 
     public void removeClient(Client client) {
@@ -49,7 +44,18 @@ public class GameManager {
     }
 
     public void update() {
-        if (this.game == null) return;
+        if (this.client1 != null && this.game == null) {
+            if (this.client1.getInputs().size() >= 2) {
+                this.client2 = this.client1;
+                this.game = new Game(this.client1, 0, this.client2, 1);
+                this.game.start();
+            } else if (this.client2 != null) {
+                this.game = new Game(this.client1, 0, this.client2, 0);
+                this.game.start();
+            }
+        }
+
+        if (this.game == null || this.client1 == null || this.client2 == null) return;
 
         this.client1.update();
         this.client2.update();

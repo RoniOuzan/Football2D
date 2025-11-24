@@ -3,53 +3,56 @@ package com.football.client;
 import com.football.util.math.geometry.Translation2d;
 import lombok.ToString;
 
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
 @ToString
-public class ClientInput {
-    private InputValues input;
-    private InputValues lastInput;
+public abstract class ClientInput implements Cloneable {
 
-    public ClientInput() {
-        this.input = new InputValues();
-        this.lastInput = new InputValues();
+    private final Map<Keybind, String> keybinds;
+
+    protected Set<String> buttons = new HashSet<>();
+    private Set<String> lastButtons = new HashSet<>();
+
+    protected ClientInput(Map<Keybind, String> keybinds, InputPacket.DevicePacket devicePacket) {
+        this.keybinds = keybinds;
+        this.updateInput(devicePacket);
     }
 
-    public InputValues getInput() {
-        return input;
+    public abstract Translation2d getRequestedVelocity();
+
+    private String getKey(Keybind keybind) {
+        return this.keybinds.get(keybind);
     }
 
-    public void updateInput(InputValues input) {
-        this.input = input;
+    public boolean isHolding(Keybind keybind) {
+        return this.buttons.contains(getKey(keybind));
     }
 
-    public Translation2d getRequestedVelocity() {
-        double x = 0;
-        double y = 0;
-
-        if (this.input.isHoldingKey("w"))
-            y += 1;
-        if (this.input.isHoldingKey("s"))
-            y -= 1;
-        if (this.input.isHoldingKey("d"))
-            x += 1;
-        if (this.input.isHoldingKey("a"))
-            x -= 1;
-
-        return new Translation2d(x, y).normalized();
+    public boolean isPressed(Keybind keybind) {
+        return this.buttons.contains(getKey(keybind)) && !this.lastButtons.contains(getKey(keybind));
     }
 
-    public boolean isPressed(String key) {
-        return this.input.isHoldingKey(key) && !this.lastInput.isHoldingKey(key);
+    public boolean isReleased(Keybind keybind) {
+        return !this.buttons.contains(getKey(keybind)) && this.lastButtons.contains(getKey(keybind));
     }
 
-    public boolean isHolding(String key) {
-        return this.input.isHoldingKey(key);
+    public void updateInput(InputPacket.DevicePacket devicePacket) {
+        this.lastButtons = this.buttons;
+
+        this.buttons = devicePacket.buttons;
     }
 
-    public boolean isReleased(String key) {
-        return !this.input.isHoldingKey(key) && this.lastInput.isHoldingButton(key);
-    }
-
-    public void updateInput() {
-        this.lastInput = this.input;
+    @Override
+    public ClientInput clone() {
+        try {
+            ClientInput copy = (ClientInput) super.clone();
+            copy.buttons = new HashSet<>(this.buttons);
+            copy.lastButtons = new HashSet<>(this.lastButtons);
+            return copy;
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError(e);
+        }
     }
 }

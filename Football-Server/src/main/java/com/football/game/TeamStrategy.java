@@ -1,6 +1,7 @@
 package com.football.game;
 
 import com.football.client.ClientInput;
+import com.football.client.Keybind;
 import com.football.game.players.*;
 import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Translation2d;
@@ -30,6 +31,7 @@ public class TeamStrategy {
     private static final double BALL_CHASE_LATENCY = 0.3;
 
     private transient final Team team;
+    private transient final int inputSlot;
     private transient final List<Player> players;
     private transient final Ball ball;
     private transient final double sideMultiplier;
@@ -44,8 +46,9 @@ public class TeamStrategy {
     private double defenseLine;
     private double offsideLine;
 
-    public TeamStrategy(Game game, Team team) {
+    public TeamStrategy(Game game, Team team, int inputSlot) {
         this.team = team;
+        this.inputSlot = inputSlot;
         this.players = team.getPlayers();
         this.ball = game.getBall();
         this.sideMultiplier = team.getSideMultiplier();
@@ -298,7 +301,7 @@ public class TeamStrategy {
             }
         }
 
-        this.handleControlledMovement(this.chosenPlayer, this.team.getClient().getInput());
+        this.handleControlledMovement(this.chosenPlayer, this.team.getClient().getInput(this.inputSlot));
         for (Player player : this.players) {
             if (!player.equals(this.chosenPlayer)) {
                 if (player instanceof Goalkeeper gk) {
@@ -311,8 +314,8 @@ public class TeamStrategy {
         }
     }
 
-    public void handleControlledMovement(Player player,ClientInput input) {
-        double velocity = input.isHolding("shift") ? Player.SPRINT_VELOCITY : Player.WALK_VELOCITY;
+    public void handleControlledMovement(Player player, ClientInput input) {
+        double velocity = input.isHolding(Keybind.SPRINT) ? Player.SPRINT_VELOCITY : Player.WALK_VELOCITY;
 
         Translation2d targetVelocity = input.getRequestedVelocity().times(velocity);
 
@@ -324,15 +327,15 @@ public class TeamStrategy {
         player.setVelocity(targetVelocity);
 
         if (player.hasBall()) {
-            if (input.isHolding("e")) {
+            if (input.isHolding(Keybind.PASS)) {
                 Player playerToPass = getPlayerToPass(player);
                 player.pass(playerToPass);
                 this.setChosenPlayer(playerToPass);
-            } else if (input.isHolding("f")) {
+            } else if (input.isHolding(Keybind.THROUGH)) {
                 Player playerToPass = getPlayerToPass(player);
                 player.through(playerToPass);
                 this.setChosenPlayer(playerToPass);
-            } else if (input.isHolding("r")) {
+            } else if (input.isHolding(Keybind.SHOOT)) {
                 player.shoot();
             }
         }
@@ -360,7 +363,8 @@ public class TeamStrategy {
             return this.ball.getCarrier();
         }
 
-        if (this.chosenPlayer == null || this.chosenPlayer instanceof Goalkeeper || this.team.getClient().getInput().isPressed("q")) {
+        if (this.chosenPlayer == null || this.chosenPlayer instanceof Goalkeeper ||
+                this.team.getClient().getInput(this.inputSlot).isPressed(Keybind.SWITCH_PLAYER)) {
             return this.team.getClosestPlayerToBall(p -> !p.equals(this.chosenPlayer) && !(p instanceof Goalkeeper));
         }
 
