@@ -9,7 +9,7 @@ import java.util.Map;
 public class InputController extends ClientInput {
     private static final Map<Keybind, String> keybinds = Map.of(
             Keybind.SWITCH_PLAYER, "LB",
-            Keybind.SPRINT, "LT",
+            Keybind.SPRINT, "RT",
             Keybind.PASS, "A",
             Keybind.THROUGH, "Y",
             Keybind.SHOOT, "B"
