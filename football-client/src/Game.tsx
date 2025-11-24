@@ -46,11 +46,30 @@ export default function Game() {
 
   return (
     <div>
-      <h2 style={{ color: "#fff" }}>
+      <div style={{ 
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        gap: "30px",
+        padding: "10px 30px",
+        marginBottom: "15px",
+        borderRadius: "12px",
+        // background: "#222",
+        // border: "3px solid #444",
+        color: "white",
+        fontSize: "42px",
+        fontWeight: "bold",
+        width: "fit-content",
+        marginLeft: "auto",
+        marginRight: "auto",
+        boxShadow: "0 0 20px rgba(0,0,0,0.3)",
+        transition: "background 0.2s, box-shadow 0.2s",
+        animation: "",
+       }}>
         <span style={{ color: "blue" }}>{score.blue}</span>
         {"  -  "}
         <span style={{ color: "red" }}>{score.red}</span>
-      </h2>
+      </div>
 
       <canvas ref={canvasRef} width={1080} height={700} />
     </div>
