@@ -1,7 +1,7 @@
 package com.football;
 
 import com.football.client.Client;
-import com.football.client.InputValues;
+import com.football.client.InputPacket;
 import com.football.util.json.JsonUtil;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
@@ -55,10 +55,16 @@ public class GameServer {
     @OnWebSocketMessage
     public void onMessage(Session session, String message) {
         try {
-            System.out.println(message);
-            InputValues input = JsonUtil.gson.fromJson(message, InputValues.class);
-            getClient(session).setInput(input);
+            if (!message.contains("\"type\":\"input\"")) return;
+
+            InputPacket packet = JsonUtil.gson.fromJson(message, InputPacket.class);
+
+            Client client = getClient(session);
+            if (client != null) {
+                client.updateInput(packet);
+            }
         } catch (Exception e) {
+            System.err.println("Invalid input JSON: " + message);
             e.printStackTrace();
         }
     }

@@ -45,11 +45,11 @@ public class Game {
     private long stateChanged;
     private long startTime = -1;
 
-    public Game(Client client1, Client client2) {
+    public Game(Client client1, int inputSlot1, Client client2, int inputSlot2) {
         this.ball = new Ball(this);
 
-        this.team1 = new Team(this, client1, true);
-        this.team2 = new Team(this, client2, false);
+        this.team1 = new Team(this, client1, true, inputSlot1);
+        this.team2 = new Team(this, client2, false, inputSlot2);
     }
 
     public void start() {

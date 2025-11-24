@@ -1,5 +1,3 @@
-import { FPS } from "./Game";
-import { InputPacket } from "./InputController";
 import { JsonData } from "./types";
 
 export default class Client {
@@ -19,8 +17,8 @@ export default class Client {
     };
   }
 
-  sendInput(input: InputPacket) {
+  sendDevices(devices: any) {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return;
-    this.socket.send(JSON.stringify({ type: "input", input }));
+    this.socket.send(JSON.stringify({ type: "input", devices }));
   }
 }

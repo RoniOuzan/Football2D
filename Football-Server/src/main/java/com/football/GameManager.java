@@ -26,16 +26,13 @@ public class GameManager {
     }
 
     public void addClient(Client client) {
-        if (this.client1 == null) {
-            this.client1 = client;
-        } else if (this.client2 == null) {
-            this.client2 = client;
-        }
-
-        if (this.client1 != null && this.client2 != null && this.game == null) {
-            this.game = new Game(this.client1, this.client2);
-            this.game.start();
-        }
+        this.client1 = client;
+        this.client2 = client;
+//        if (this.client1 == null) {
+//            this.client1 = client;
+//        } else if (this.client2 == null) {
+//            this.client2 = client;
+//        }
     }
 
     public void removeClient(Client client) {
@@ -49,10 +46,15 @@ public class GameManager {
     }
 
     public void update() {
+        if (this.client1 != null && this.game == null && this.client1.getInputs().size() >= 1) {
+            this.game = new Game(this.client1, 0, this.client2, 0);
+            this.game.start();
+        }
+
         if (this.game == null) return;
 
-        this.client1.update();
-        this.client2.update();
+//        this.client1.update();
+//        this.client2.update();
 
         this.game.update();
     }

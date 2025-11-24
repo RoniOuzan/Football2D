@@ -21,7 +21,7 @@ public class Team {
 
     private transient final int sideMultiplier;
 
-    public Team(Game game, Client client, boolean isTeam1) {
+    public Team(Game game, Client client, boolean isTeam1, int inputSlot) {
         this.client = client;
         this.game = game;
 
@@ -29,7 +29,7 @@ public class Team {
 
         this.players = new ArrayList<>();
         this.formation = Formation.FOUR_THREE_THREE;
-        this.teamStrategy = new TeamStrategy(game, this);
+        this.teamStrategy = new TeamStrategy(game, this, inputSlot);
 
         initialize();
     }
