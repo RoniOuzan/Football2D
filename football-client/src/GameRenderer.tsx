@@ -68,6 +68,8 @@ export default class GameRenderer {
     ctx.arc(pitchRight - penaltySpotOffset, pitchHeight / 2, 3, 0, Math.PI * 2);
     ctx.fill();
 
+    drawGoals(ctx, pitchLeft, pitchRight, pitchHeight, goalDepth);
+
     // Ball
     const ball = convert(canvas, data.ball.position, goalDepth);
     ctx.fillStyle = "white";
@@ -125,6 +127,101 @@ function scoreToColor(value: number, min: number, max: number): string {
   const b = Math.floor(255 * (1 - t));
 
   return `rgb(${r}, ${g}, ${b})`;
+}
+
+function drawGoals(
+  ctx: CanvasRenderingContext2D,
+  pitchLeft: number,
+  pitchRight: number,
+  pitchHeight: number,
+  goalDepth: number,
+) {
+  const goalWidth = (7.3 / pitchHeightUnits) * pitchHeight;
+  const goalPostRadius = (0.35 / pitchHeightUnits) * pitchHeight;
+  const goalTop = (pitchHeight - goalWidth) / 2;
+  const netLines = 6;
+
+  // LEFT GOAL
+  ctx.strokeStyle = "red";
+  ctx.lineWidth = 4;
+
+  ctx.beginPath();
+  ctx.moveTo(pitchLeft - goalDepth, goalTop);
+  ctx.lineTo(pitchLeft - goalDepth, goalTop + goalWidth);
+  ctx.lineTo(pitchLeft, goalTop + goalWidth);
+  ctx.lineTo(pitchLeft, goalTop);
+  ctx.lineTo(pitchLeft - goalDepth, goalTop);
+  ctx.stroke();
+
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 1; i < netLines; i++) {
+    const x = pitchLeft - (goalDepth * i) / netLines;
+    ctx.moveTo(x, goalTop);
+    ctx.lineTo(x, goalTop + goalWidth);
+  }
+  ctx.stroke();
+
+  ctx.beginPath();
+  for (let i = 1; i < netLines; i++) {
+    const y = goalTop + (goalWidth * i) / netLines;
+    ctx.moveTo(pitchLeft - goalDepth, y);
+    ctx.lineTo(pitchLeft, y);
+  }
+  ctx.stroke();
+
+  // RIGHT GOAL
+  ctx.strokeStyle = "blue";
+  ctx.lineWidth = 4;
+
+  ctx.beginPath();
+  ctx.moveTo(pitchRight + goalDepth, goalTop);
+  ctx.lineTo(pitchRight + goalDepth, goalTop + goalWidth);
+  ctx.lineTo(pitchRight, goalTop + goalWidth);
+  ctx.lineTo(pitchRight, goalTop);
+  ctx.lineTo(pitchRight + goalDepth, goalTop);
+  ctx.stroke();
+
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 1; i < netLines; i++) {
+    const x = pitchRight + (goalDepth * i) / netLines;
+    ctx.moveTo(x, goalTop);
+    ctx.lineTo(x, goalTop + goalWidth);
+  }
+  ctx.stroke();
+
+  ctx.beginPath();
+  for (let i = 1; i < netLines; i++) {
+    const y = goalTop + (goalWidth * i) / netLines;
+    ctx.moveTo(pitchRight + goalDepth, y);
+    ctx.lineTo(pitchRight, y);
+  }
+  ctx.stroke();
+
+  // --- Draw goal posts (front + back) --- ctx.lineWidth = 2;
+
+  // LEFT goal posts (red) 
+  ctx.fillStyle = "red";
+  ctx.strokeStyle = "#00000000";
+  ctx.beginPath();
+  ctx.arc(pitchLeft, goalTop, goalPostRadius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(pitchLeft, goalTop + goalWidth, goalPostRadius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // RIGHT goal posts (blue) 
+  ctx.fillStyle = "blue";
+  ctx.beginPath();
+  ctx.arc(pitchRight, goalTop, goalPostRadius, 0, Math.PI * 2); ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(pitchRight, goalTop + goalWidth, goalPostRadius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
 }
 
 function drawPlayers(
