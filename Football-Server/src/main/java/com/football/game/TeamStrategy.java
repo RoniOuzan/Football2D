@@ -37,6 +37,7 @@ public class TeamStrategy {
     private transient final double sideMultiplier;
 
     private transient Player ballChaser = null;
+    private transient boolean justPassed = false;
 
     private transient Player chosenPlayer = null;
     @SuppressWarnings(value = {"unused"})
@@ -319,38 +320,92 @@ public class TeamStrategy {
 
         Translation2d targetVelocity = input.getRequestedVelocity().times(velocity);
 
-        if (player.equals(this.ballChaser) && this.ball.getCarrier() == null) {
+        if ((player.equals(this.ballChaser) || this.justPassed) && this.ball.getCarrier() == null) {
             Translation2d chaseVelocity = player.getVelocityToPosition(this.ball.getPredictedPosition(0.5), 1);
             targetVelocity = targetVelocity.times(0.4).plus(chaseVelocity);
+        } else {
+            this.justPassed = false;
         }
 
         player.setVelocity(targetVelocity);
 
         if (player.hasBall()) {
-            if (input.isHolding(Keybind.PASS)) {
-                Player playerToPass = getPlayerToPass(player);
+            if (input.isReleased(Keybind.PASS)) {
+                double hold = input.getLastHoldTime(Keybind.PASS);
+                Player playerToPass = getPlayerToPass(player, hold);
+
                 player.pass(playerToPass);
                 this.setChosenPlayer(playerToPass);
-            } else if (input.isHolding(Keybind.THROUGH)) {
-                Player playerToPass = getPlayerToPass(player);
+                this.justPassed = true;
+            } else if (input.isReleased(Keybind.THROUGH)) {
+                double hold = input.getLastHoldTime(Keybind.THROUGH);
+                Player playerToPass = getPlayerToPass(player, hold);
+
                 player.through(playerToPass);
                 this.setChosenPlayer(playerToPass);
-            } else if (input.isHolding(Keybind.SHOOT)) {
-                player.shoot();
+                this.justPassed = true;
+            } else if (input.isReleased(Keybind.SHOOT)) {
+                double hold = input.getLastHoldTime(Keybind.SHOOT);
+                double power = computeKickPower(hold, 10, 30);
+                player.shoot(power);
             }
         }
     }
 
-    private Player getPlayerToPass(Player player) {
+    private Player getPlayerToPass(Player player, double holdTime) {
+        double desiredDist = getDesiredDistance(holdTime);
+
         return this.team.getPlayers().stream()
                 .filter(p -> !p.equals(player))
                 .min(Comparator.comparingDouble(p -> {
                     Translation2d delta = p.getPosition().minus(player.getPosition());
-                    double angleDiff = Math.abs(delta.getAngle().minus(player.getWantedDirection()).getRadians());
+                    double dist = delta.getNorm();
+                    double angle = Math.abs(delta.getAngle()
+                            .minus(player.getWantedDirection())
+                            .getRadians());
 
-                    return 1 * angleDiff + 0.05 * delta.getNorm();
+                    // ---- FIFA-STYLE WEIGHTS ----
+
+                    // 1. Angle is MOST important (cone targeting)
+                    double anglePenalty = angle * (holdTime < 0.3 ? 14 : 8);
+
+                    // 2. Distance penalty (pick the distance closest to what the power suggests)
+                    double distPenalty = Math.abs(dist - desiredDist) * 0.25;
+
+                    // 3. Backwards passes are discouraged
+                    if (angle > Math.PI * 0.8)
+                        anglePenalty += 50;
+
+                    return anglePenalty + distPenalty;
                 }))
                 .orElse(null);
+    }
+
+    private double getDesiredDistance(double holdTime) {
+        // 0–0.7 sec → 0–1
+        double t = Math.min(holdTime / 0.7, 1.0);
+
+        // FIFA-style curve: slow early, fast late
+        t = Math.pow(t, 1.6);
+
+        // FIFA pass range: short 4m → long 32m
+        return 4 + t * 28;
+    }
+
+    private double adjustForDistance(double basePower, double distance) {
+        double scale = 0.8 + distance / 18.0; // FIFA: further = stronger
+        scale = Math.min(scale, 2.2);         // cap like FIFA
+
+        return basePower * scale;
+    }
+
+    private double computeKickPower(double holdTime, double minPower, double maxPower) {
+        double t = Math.min(holdTime / 0.7, 1.0);
+
+        // Stronger curve, FIFA-like
+        t = Math.pow(t, 1.3);
+
+        return minPower + t * (maxPower - minPower);
     }
 
     public void setChosenPlayer(Player chosenPlayer) {

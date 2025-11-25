@@ -129,19 +129,30 @@ public abstract class Player {
         setVelocity(getVelocityToPosition(targetPosition, speedPercent));
     }
 
-    public void pass(Player player) {
-        Translation2d delta = player.getPosition().minus(this.position);
-        this.ball.kick(delta.times(1.2));
+    public void pass(Player target) {
+        Translation2d toTarget = target.getPosition().minus(this.position);
+
+        Translation2d futureOffset = target.getVelocity().times(0.3); // tweakable
+
+        Translation2d passVector = toTarget.plus(futureOffset).times(1.1);
+        this.ball.kick(passVector);
     }
 
-    public void through(Player player) {
-        Translation2d delta = player.getPosition().minus(this.position);
-        this.ball.kick(delta.times(1.2).plus(player.getVelocity()));
+
+    public void through(Player target) {
+        Translation2d toTarget = target.getPosition().minus(this.position);
+
+        // push forward into space (scaled by velocity)
+        Translation2d lead = target.getVelocity().times(1.0);
+
+        // extra forward through-ball force
+        Translation2d kick = toTarget.plus(lead).times(1.2);
+        this.ball.kick(kick);
     }
 
-    public void shoot() {
+    public void shoot(double velocity) {
         if (this.position.getX() * this.team.getSideMultiplier() < 10) {
-            this.ball.kick(new Translation2d(30, this.direction));
+            this.ball.kick(new Translation2d(velocity, this.direction));
             return;
         }
 
