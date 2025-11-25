@@ -58,8 +58,6 @@ public class GameServer {
             if (!message.contains("\"type\":\"input\"")) return;
 
             InputPacket packet = JsonUtil.gson.fromJson(message, InputPacket.class);
-            System.out.println(message);
-            System.out.println(packet);
 
             Client client = getClient(session);
             if (client != null) {

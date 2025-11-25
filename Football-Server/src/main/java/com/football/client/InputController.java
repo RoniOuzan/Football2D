@@ -28,7 +28,6 @@ public class InputController extends ClientInput {
 
     @Override
     public Translation2d getRequestedVelocity() {
-        System.out.println(leftX);
         Translation2d joy = new Translation2d(this.leftX, -this.leftY);
         return joy.getNorm() < 0.05 ? new Translation2d() : joy.normalized();
     }
