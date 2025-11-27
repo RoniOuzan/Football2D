@@ -1,5 +1,8 @@
 package com.football.client;
 
+import com.football.client.keybinds.Keybind;
+import com.football.game.TeamStrategy;
+import com.football.game.players.Player;
 import com.football.util.math.geometry.Translation2d;
 import lombok.ToString;
 
@@ -67,6 +70,22 @@ public abstract class ClientInput implements Cloneable {
                     double heldTime = (now - pressedAt) / 1000.0;
                     this.holdDurations.put(oldButton, heldTime);
                 }
+            }
+        }
+    }
+
+    public void runInputs(TeamStrategy teamStrategy, Player player) {
+        for (Keybind keybind : this.keybinds.keySet()) {
+            if (this.isPressed(keybind)) {
+                keybind.justPressed(teamStrategy, player);
+            }
+
+            if (this.isHolding(keybind)) {
+                keybind.holding(teamStrategy, player);
+            }
+
+            if (this.isReleased(keybind)) {
+                keybind.justReleased(teamStrategy, player, getLastHoldTime(keybind));
             }
         }
     }

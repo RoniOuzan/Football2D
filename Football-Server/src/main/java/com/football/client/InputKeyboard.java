@@ -1,5 +1,6 @@
 package com.football.client;
 
+import com.football.client.keybinds.Keybind;
 import com.football.util.math.geometry.Translation2d;
 import lombok.ToString;
 

@@ -84,9 +84,9 @@ public class Ball {
     public int isAtGoal() {
         if (Math.abs(this.position.getY()) > Game.GOAL_WIDTH / 2 - RADIUS) return 0;
 
-        if (this.position.getX() >= Game.MAX_X + RADIUS) {
+        if (this.position.getX() > Game.MAX_X + RADIUS) {
             return 1;
-        } else if (this.position.getX() <= -(Game.MAX_X + RADIUS)) {
+        } else if (this.position.getX() < -(Game.MAX_X + RADIUS)) {
             return -1;
         }
         return 0;
@@ -126,14 +126,18 @@ public class Ball {
         double y = this.position.getY();
 
         // Skip bounce inside goal area (you already handle this)
-        if (Math.abs(y) <= Game.GOAL_WIDTH / 2 - RADIUS && Math.abs(x) > Game.MAX_X - RADIUS) {
+        boolean behindGoalLine = Math.abs(x) > Game.MAX_X + RADIUS;
+        boolean insideGoalWidth = Math.abs(y) <= Game.GOAL_WIDTH / 2 + RADIUS;
+        if (behindGoalLine && insideGoalWidth) {
+            // If hitting the side net
             if (Math.abs(y) > Game.GOAL_WIDTH / 2 - RADIUS) {
-                y = MathUtil.clamp(y, -(Game.GOAL_WIDTH / 2 - RADIUS), Game.GOAL_WIDTH / 2 - RADIUS);
+                y = MathUtil.clamp(y, -(Game.GOAL_WIDTH / 2 - RADIUS), (Game.GOAL_WIDTH / 2 - RADIUS));
                 this.velocity = new Translation2d(this.velocity.getX(), 0);
             }
+            // If hitting back of the net
             if (Math.abs(x) > Game.MAX_X + Game.GOAL_DEPTH - RADIUS) {
-                x = MathUtil.clamp(x, -(Game.MAX_X + Game.GOAL_DEPTH - RADIUS), Game.MAX_X + Game.GOAL_DEPTH - RADIUS);
-                this.velocity = new Translation2d();
+                x = MathUtil.clamp(x, -(Game.MAX_X + Game.GOAL_DEPTH - RADIUS), (Game.MAX_X + Game.GOAL_DEPTH - RADIUS));
+                this.velocity = new Translation2d(); // Stop in the net
             }
 
             this.position = new Translation2d(x, y);

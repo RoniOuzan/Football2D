@@ -1,7 +1,7 @@
 package com.football.game;
 
 import com.football.client.ClientInput;
-import com.football.client.Keybind;
+import com.football.client.keybinds.Keybind;
 import com.football.game.players.*;
 import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Rotation2d;
@@ -63,6 +63,10 @@ public class TeamStrategy {
     }
     public Team getTeam() {
         return team;
+    }
+
+    public ClientInput getInput() {
+        return this.team.getClient().getInput(this.inputSlot);
     }
 
     /**
@@ -325,115 +329,24 @@ public class TeamStrategy {
         Translation2d targetVelocity = input.getRequestedVelocity().times(velocity);
 
         if ((player.equals(this.ballChaser) || this.justPassed) && this.ball.getCarrier() == null) {
-            Translation2d chaseVelocity = player.getVelocityToPosition(this.ball.getPredictedPosition(0.5), 1);
-            targetVelocity = targetVelocity.times(0.4).plus(chaseVelocity);
+            targetVelocity = player.getVelocityToPosition(this.ball.getPredictedPosition(0.5), this.justPassed ? 0.8 : 1);
         } else {
             this.justPassed = false;
         }
 
         player.setVelocity(targetVelocity);
 
-        if (player.hasBall()) {
-            if (input.isReleased(Keybind.PASS)) {
-                double hold = input.getLastHoldTime(Keybind.PASS);
-                Player playerToPass = getPlayerToPass(player, hold);
-
-                double finalVelocity = computeHoldTime(hold, 1.2, 3, 12);
-                player.pass(playerToPass, finalVelocity);
-                this.setChosenPlayer(playerToPass);
-                this.justPassed = true;
-            } else if (input.isReleased(Keybind.THROUGH)) {
-                double hold = input.getLastHoldTime(Keybind.THROUGH);
-                Player playerToPass = getPlayerToPass(player, hold);
-
-                player.through(playerToPass, 8);
-                this.setChosenPlayer(playerToPass);
-                this.justPassed = true;
-            } else if (input.isReleased(Keybind.SHOOT)) {
-                double hold = input.getLastHoldTime(Keybind.SHOOT);
-                double finalVelocity = computeHoldTime(hold, 1.3, 15, 35);
-
-                Translation2d target = computeShotTarget(player, input, hold);
-
-                player.shoot(target, finalVelocity);
-            }
-        }
-    }
-
-    private Player getPlayerToPass(Player player, double holdTime) {
-        double desiredDist = computeHoldTime(holdTime, 1.6, 4, 40);
-
-        return this.team.getPlayers().stream()
-                .filter(p -> !p.equals(player))
-                .min(Comparator.comparingDouble(p -> {
-                    Translation2d delta = p.getPosition().minus(player.getPosition());
-                    double dist = delta.getNorm();
-                    double angle = Math.abs(delta.getAngle()
-                            .minus(player.getWantedDirection())
-                            .getRadians());
-
-                    // ---- FIFA-STYLE WEIGHTS ----
-
-                    // 1. Angle is MOST important (cone targeting)
-                    double anglePenalty = angle * (holdTime < 0.3 ? 14 : 8);
-
-                    // 2. Distance penalty (pick the distance closest to what the power suggests)
-                    double distPenalty = Math.abs(dist - desiredDist) * 0.15;
-
-                    // 3. Backwards passes are discouraged
-                    if (angle > Math.PI * 0.8)
-                        anglePenalty += 50;
-
-                    return anglePenalty + distPenalty;
-                }))
-                .orElse(null);
-    }
-
-    private Translation2d computeShotTarget(Player player, ClientInput input, double holdTime) {
-        // ---- 1. Where the player is aiming (raw) ----
-        Translation2d requestedDirection = input.getRequestedVelocity();
-        Rotation2d direction = requestedDirection.getNorm() < 1e-3 ? player.getDirection() : requestedDirection.getAngle();
-
-        // Aim 40 meters forward
-        Translation2d manualTarget = player.getPosition().plus(new Translation2d(40, direction));
-
-        // ---- 2. Ideal scoring target (goal center adjusted) ----
-        Translation2d goalCenter = this.team.getOpponent().getOwnGoalPosition();
-
-        // Best FIFA-style scoring target: slightly offset from center
-        // Picks the post that is closer to the aim direction
-        Translation2d leftPost = goalCenter.plus(new Translation2d(0, -Game.GOAL_WIDTH / 2 + 1));
-        Translation2d rightPost = goalCenter.plus(new Translation2d(0, Game.GOAL_WIDTH / 2 - 1));
-
-        Translation2d bestGoalSpot =
-                (Math.abs(leftPost.minus(player.getPosition()).getAngle().minus(direction).getRadians()) <
-                        Math.abs(rightPost.minus(player.getPosition()).getAngle().minus(direction).getRadians()))
-                        ? leftPost
-                        : rightPost;
-
-        // ---- 3. Assist factor based on hold time ----
-        // tap = manual, full power = more assist
-        double assist = Math.min(holdTime / 0.7, 1.0);
-        assist = Math.pow(assist, 1.2);   // FIFA-like curve
-
-        // ---- 4. Interpolate the target ----
-        return manualTarget.times(1 - assist)
-                .plus(bestGoalSpot.times(assist));
-    }
-
-    private double computeHoldTime(double holdTime, double pow, double min, double max) {
-        // 0–0.7 sec → 0–1
-        double t = Math.min(holdTime / 0.7, 1.0);
-        // FIFA-style curve: slow early, fast late
-        t = Math.pow(t, pow);
-
-        // FIFA pass range: short 4m → long 32m
-        return min + t * (max - min);
+        this.getInput().runInputs(this, player);
     }
 
     public void setChosenPlayer(Player chosenPlayer) {
         this.chosenPlayer = chosenPlayer;
         this.chosenPlayerIndex = this.players.indexOf(chosenPlayer);
+    }
+
+    public void playerPassedTo(Player player) {
+        setChosenPlayer(player);
+        this.justPassed = true;
     }
 
     private Player choosePlayer() {

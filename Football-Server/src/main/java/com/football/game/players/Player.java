@@ -147,6 +147,10 @@ public abstract class Player {
         this.ball.kick(target, finalVelocity);
     }
 
+    public void shoot(Translation2d velocity) {
+        this.ball.kick(velocity);
+    }
+
     public double getTargetScore(Player player, Translation2d target, TeamStrategy strategy) {
         return 0;
     };
