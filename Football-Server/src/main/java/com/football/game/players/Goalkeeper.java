@@ -18,7 +18,8 @@ public class Goalkeeper extends Player {
     }
 
     public void handleTarget(TeamStrategy strategy) {
-        Translation2d goalCenter = this.team.getOwnGoalPosition();
+        Team team = strategy.getTeam();
+        Translation2d goalCenter = team.getOwnGoalPosition();
         Translation2d predictedBall = this.ball.getPredictedPosition(0.3);
 
         double ballDistanceToGoal = this.ball.getPosition().getDistance(goalCenter);
@@ -47,13 +48,13 @@ public class Goalkeeper extends Player {
         }
 
         if (ballDistanceToGoal < 20 && team.getOpponent().hasBall() &&
-                this.team.getPlayers().stream().noneMatch(p -> p.getPosition().getDistance(this.ball.getPosition()) < ballDistanceToGoal)) {
+                team.getPlayers().stream().noneMatch(p -> p.getPosition().getDistance(this.ball.getPosition()) < ballDistanceToGoal)) {
             this.moveTowards(predictedBall, 1); // charge the ball
             return;
         }
 
-        if (!this.team.getOpponent().hasBall() && strategy.getBallChaser().equals(this) &&
-                this.team.getOpponent().getClosestPlayerToBall().getPosition().getDistance(predictedBall) < ballDistanceToGoal) {
+        if (!team.getOpponent().hasBall() && strategy.getBallChaser().equals(this) &&
+                team.getOpponent().getClosestPlayerToBall().getPosition().getDistance(predictedBall) < ballDistanceToGoal) {
             this.moveTowards(predictedBall, 1);
             return;
         }
@@ -61,7 +62,7 @@ public class Goalkeeper extends Player {
         // further ball → further GK
         double keeperDepth = MathUtil.clamp(ballDistanceToGoal * 0.2,
                 3,
-                this.team.hasBall() ? 20 : 10);
+                team.hasBall() ? 20 : 10);
         Translation2d aimPoint = predictedBall.minus(goalCenter).normalized();
         this.moveTowards(goalCenter.plus(aimPoint.times(keeperDepth)), 0.7);
     }

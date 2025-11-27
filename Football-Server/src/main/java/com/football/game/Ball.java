@@ -11,7 +11,7 @@ public class Ball {
     private static final Translation2d OFFSET_FROM_PLAYER = new Translation2d(1, 0);
 
     // --- Physics constants ---
-    private static final double FRICTION = 6.0;      // m/s², slows the ball
+    public static final double FRICTION_ACCEL = -6.0;      // m/s², slows the ball
     private static final double MIN_SPEED = 0.05;    // below this -> stop completely
     private static final double BOUNCE_DAMPING = 0.7; // energy loss on wall bounce
 
@@ -187,7 +187,7 @@ public class Ball {
 
     private void rollingDeceleration() {
         if (this.velocity.getNorm() > 0) {
-            double newSpeed = Math.max(this.velocity.getNorm() - (FRICTION * Constants.PERIOD), 0);
+            double newSpeed = Math.max(this.velocity.getNorm() + (FRICTION_ACCEL * Constants.PERIOD), 0);
             if (newSpeed < MIN_SPEED)
                 newSpeed = 0;
 
@@ -201,8 +201,20 @@ public class Ball {
         return this.position.getDistance(player.getPosition()) < PICK_UP_BALL_THRESHOLD;
     }
 
-    public void kick(Translation2d power) {
+    public void kick(Translation2d velocity) {
         this.setCarrier(null);
-        this.velocity = power;
+        this.velocity = velocity;
+    }
+
+    public void kick(Translation2d target, double finalVelocity) {
+        this.setCarrier(null);
+
+        Translation2d diff = target.minus(this.position);
+
+        this.velocity = diff.normalized().times(calculateInitialVelocity(finalVelocity, diff.getNorm()));
+    }
+
+    public static double calculateInitialVelocity(double finalVelocity, double distance) {
+        return Math.sqrt(Math.pow(finalVelocity, 2) - 2 * distance * FRICTION_ACCEL);
     }
 }

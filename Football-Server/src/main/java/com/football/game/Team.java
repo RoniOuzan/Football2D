@@ -17,6 +17,7 @@ public class Team {
 
     private final List<Player> players;
     private transient final Formation formation;
+
     private final TeamStrategy teamStrategy;
 
     private transient final int sideMultiplier;
@@ -87,7 +88,7 @@ public class Team {
         }
 
         for (Player player : this.players) {
-            player.update();
+            player.update(this);
         }
     }
 

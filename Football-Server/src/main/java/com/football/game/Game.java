@@ -62,13 +62,17 @@ public class Game {
     public Ball getBall() {
         return this.ball;
     }
-
     public Team getTeam1() {
         return team1;
     }
-
     public Team getTeam2() {
         return team2;
+    }
+    public int getScore1() {
+        return score1;
+    }
+    public int getScore2() {
+        return score2;
     }
 
     public double getMatchTime() {
@@ -108,7 +112,7 @@ public class Game {
     }
 
     public State getState() {
-        return state;
+        return this.state;
     }
 
     public void setState(State state) {

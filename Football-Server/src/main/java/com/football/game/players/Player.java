@@ -19,24 +19,23 @@ public abstract class Player {
     public static final double MAX_SKID_ACCELERATION = 10;
     public static final double CARRYING_BALL_MAX_VELOCITY = 7;
 
-    protected transient final Team team;
     protected transient final Ball ball;
 
     protected Translation2d position;
-    protected transient Translation2d initialPosition;
-    protected Translation2d formationPosition;
     protected Rotation2d direction;
 
     protected Translation2d velocity;
     protected transient Translation2d targetVelocity;
 
+    protected transient final Translation2d initialPosition;
+    protected final Translation2d formationPosition;
+
     protected Player(Team team, Ball ball, Translation2d position) {
-        this.team = team;
         this.ball = ball;
 
         this.position = position;
         this.initialPosition = position;
-        this.formationPosition = new Translation2d(position.getX() * 2 + Game.MAX_X * this.team.getSideMultiplier(), position.getY());
+        this.formationPosition = new Translation2d(position.getX() * 2 + Game.MAX_X * team.getSideMultiplier(), position.getY());
         this.direction = new Rotation2d();
 
         this.velocity = new Translation2d();
@@ -129,57 +128,38 @@ public abstract class Player {
         setVelocity(getVelocityToPosition(targetPosition, speedPercent));
     }
 
-    public void pass(Player target) {
-        Translation2d toTarget = target.getPosition().minus(this.position);
-
-        Translation2d futureOffset = target.getVelocity().times(0.3); // tweakable
-
-        Translation2d passVector = toTarget.plus(futureOffset).times(1.1);
-        this.ball.kick(passVector);
+    public void pass(Player targetPlayer, double finalVelocity) {
+        Translation2d target = targetPlayer.getPosition()
+                .plus(targetPlayer.getVelocity().times(0.5));
+        this.ball.kick(target, finalVelocity);
     }
 
 
-    public void through(Player target) {
-        Translation2d toTarget = target.getPosition().minus(this.position);
+    public void through(Player targetPlayer, double finalVelocity) {
+        double[] times = MathUtil.quadraticSolver(-0.5 * Ball.FRICTION_ACCEL, finalVelocity, -this.position.getDistance(targetPlayer.getPosition()));
+        double time = times.length == 1 ? times[0] : (times[0] > 0 ? times[0] : times[1]);
 
-        // push forward into space (scaled by velocity)
-        Translation2d lead = target.getVelocity().times(1.0);
-
-        // extra forward through-ball force
-        Translation2d kick = toTarget.plus(lead).times(1.2);
-        this.ball.kick(kick);
+        Translation2d futurePos = targetPlayer.getPosition().plus(targetPlayer.getVelocity().times(time));
+        this.ball.kick(futurePos, finalVelocity);
     }
 
-    public void shoot(double velocity) {
-        if (this.position.getX() * this.team.getSideMultiplier() < 10) {
-            this.ball.kick(new Translation2d(velocity, this.direction));
-            return;
-        }
-
-        Translation2d opponentGoal = this.team.getOpponent().getOwnGoalPosition();
-
-        Translation2d nearPost = new Translation2d(0,Game.GOAL_WIDTH / 2 - 0.8);
-        if (Math.abs(opponentGoal.plus(nearPost).minus(this.position).getAngle().minus(this.getWantedDirection()).getRadians()) <
-                Math.abs(opponentGoal.minus(nearPost).minus(this.position).getAngle().minus(this.getWantedDirection()).getRadians())) {
-            this.ball.kick(opponentGoal.plus(nearPost).minus(this.position).times(1.5));
-        } else {
-            this.ball.kick(opponentGoal.minus(nearPost).minus(this.position).times(1.5));
-        }
+    public void shoot(Translation2d target, double finalVelocity) {
+        this.ball.kick(target, finalVelocity);
     }
 
     public double getTargetScore(Player player, Translation2d target, TeamStrategy strategy) {
         return 0;
     };
 
-    public void update() {
+    public void update(Team team) {
         this.position = this.position.plus(this.velocity.times(Constants.PERIOD));
 
         // Collision check with all players
-        for (Player p : this.team.getPlayers()) {
+        for (Player p : team.getPlayers()) {
             if (p == this) continue;
             resolveCollision(p);
         }
-        for (Player p : this.team.getOpponent().getPlayers()) {
+        for (Player p : team.getOpponent().getPlayers()) {
             resolveCollision(p);
         }
 

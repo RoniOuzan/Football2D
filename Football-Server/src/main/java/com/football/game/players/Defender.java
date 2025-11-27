@@ -6,6 +6,7 @@ import com.football.game.TeamStrategy;
 import com.football.util.math.geometry.Translation2d;
 
 import java.util.Comparator;
+import java.util.List;
 
 public class Defender extends Player {
 
@@ -19,11 +20,11 @@ public class Defender extends Player {
 
     @Override
     public double getTargetScore(Player player, Translation2d target, TeamStrategy strategy) {
-        return getMarkingScore(player, target) + getDefensiveLineScore(target, strategy.getDefenseLine());
+        return getMarkingScore(player, target, strategy.getTeam().getOpponent()) + getDefensiveLineScore(target, strategy.getDefenseLine());
     }
 
-    private double getMarkingScore(Player player, Translation2d target) {
-        Player closest = this.team.getOpponent().getPlayers().stream()
+    private double getMarkingScore(Player player, Translation2d target, Team opponent) {
+        Player closest = opponent.getPlayers().stream()
                 .min(Comparator.comparingDouble(p -> p.getPosition().getDistance(player.getPosition())))
                 .orElse(null);
 
@@ -45,7 +46,7 @@ public class Defender extends Player {
         // ---- Ball possession factor ----
         // When opponent has the ball, we mark tighter (×2)
         // When we have the ball, there's still marking, but lighter (×0.5)
-        double possessionFactor = this.team.getOpponent().hasBall() ? 1.0 : 0.2;
+        double possessionFactor = opponent.hasBall() ? 1.0 : 0.2;
 
         double weight = MARKING_WEIGHT * distanceFactor * possessionFactor;
 

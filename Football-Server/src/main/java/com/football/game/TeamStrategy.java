@@ -4,6 +4,7 @@ import com.football.client.ClientInput;
 import com.football.client.Keybind;
 import com.football.game.players.*;
 import com.football.util.math.MathUtil;
+import com.football.util.math.geometry.Rotation2d;
 import com.football.util.math.geometry.Translation2d;
 
 import java.util.*;
@@ -59,6 +60,9 @@ public class TeamStrategy {
 
     public double getDefenseLine() {
         return defenseLine;
+    }
+    public Team getTeam() {
+        return team;
     }
 
     /**
@@ -334,26 +338,30 @@ public class TeamStrategy {
                 double hold = input.getLastHoldTime(Keybind.PASS);
                 Player playerToPass = getPlayerToPass(player, hold);
 
-                player.pass(playerToPass);
+                double finalVelocity = computeHoldTime(hold, 1.2, 3, 12);
+                player.pass(playerToPass, finalVelocity);
                 this.setChosenPlayer(playerToPass);
                 this.justPassed = true;
             } else if (input.isReleased(Keybind.THROUGH)) {
                 double hold = input.getLastHoldTime(Keybind.THROUGH);
                 Player playerToPass = getPlayerToPass(player, hold);
 
-                player.through(playerToPass);
+                player.through(playerToPass, 8);
                 this.setChosenPlayer(playerToPass);
                 this.justPassed = true;
             } else if (input.isReleased(Keybind.SHOOT)) {
                 double hold = input.getLastHoldTime(Keybind.SHOOT);
-                double power = computeKickPower(hold, 10, 30);
-                player.shoot(power);
+                double finalVelocity = computeHoldTime(hold, 1.3, 15, 35);
+
+                Translation2d target = computeShotTarget(player, input, hold);
+
+                player.shoot(target, finalVelocity);
             }
         }
     }
 
     private Player getPlayerToPass(Player player, double holdTime) {
-        double desiredDist = getDesiredDistance(holdTime);
+        double desiredDist = computeHoldTime(holdTime, 1.6, 4, 40);
 
         return this.team.getPlayers().stream()
                 .filter(p -> !p.equals(player))
@@ -370,7 +378,7 @@ public class TeamStrategy {
                     double anglePenalty = angle * (holdTime < 0.3 ? 14 : 8);
 
                     // 2. Distance penalty (pick the distance closest to what the power suggests)
-                    double distPenalty = Math.abs(dist - desiredDist) * 0.25;
+                    double distPenalty = Math.abs(dist - desiredDist) * 0.15;
 
                     // 3. Backwards passes are discouraged
                     if (angle > Math.PI * 0.8)
@@ -381,31 +389,46 @@ public class TeamStrategy {
                 .orElse(null);
     }
 
-    private double getDesiredDistance(double holdTime) {
+    private Translation2d computeShotTarget(Player player, ClientInput input, double holdTime) {
+        // ---- 1. Where the player is aiming (raw) ----
+        Translation2d requestedDirection = input.getRequestedVelocity();
+        Rotation2d direction = requestedDirection.getNorm() < 1e-3 ? player.getDirection() : requestedDirection.getAngle();
+
+        // Aim 40 meters forward
+        Translation2d manualTarget = player.getPosition().plus(new Translation2d(40, direction));
+
+        // ---- 2. Ideal scoring target (goal center adjusted) ----
+        Translation2d goalCenter = this.team.getOpponent().getOwnGoalPosition();
+
+        // Best FIFA-style scoring target: slightly offset from center
+        // Picks the post that is closer to the aim direction
+        Translation2d leftPost = goalCenter.plus(new Translation2d(0, -Game.GOAL_WIDTH / 2 + 1));
+        Translation2d rightPost = goalCenter.plus(new Translation2d(0, Game.GOAL_WIDTH / 2 - 1));
+
+        Translation2d bestGoalSpot =
+                (Math.abs(leftPost.minus(player.getPosition()).getAngle().minus(direction).getRadians()) <
+                        Math.abs(rightPost.minus(player.getPosition()).getAngle().minus(direction).getRadians()))
+                        ? leftPost
+                        : rightPost;
+
+        // ---- 3. Assist factor based on hold time ----
+        // tap = manual, full power = more assist
+        double assist = Math.min(holdTime / 0.7, 1.0);
+        assist = Math.pow(assist, 1.2);   // FIFA-like curve
+
+        // ---- 4. Interpolate the target ----
+        return manualTarget.times(1 - assist)
+                .plus(bestGoalSpot.times(assist));
+    }
+
+    private double computeHoldTime(double holdTime, double pow, double min, double max) {
         // 0–0.7 sec → 0–1
         double t = Math.min(holdTime / 0.7, 1.0);
-
         // FIFA-style curve: slow early, fast late
-        t = Math.pow(t, 1.6);
+        t = Math.pow(t, pow);
 
         // FIFA pass range: short 4m → long 32m
-        return 4 + t * 28;
-    }
-
-    private double adjustForDistance(double basePower, double distance) {
-        double scale = 0.8 + distance / 18.0; // FIFA: further = stronger
-        scale = Math.min(scale, 2.2);         // cap like FIFA
-
-        return basePower * scale;
-    }
-
-    private double computeKickPower(double holdTime, double minPower, double maxPower) {
-        double t = Math.min(holdTime / 0.7, 1.0);
-
-        // Stronger curve, FIFA-like
-        t = Math.pow(t, 1.3);
-
-        return minPower + t * (maxPower - minPower);
+        return min + t * (max - min);
     }
 
     public void setChosenPlayer(Player chosenPlayer) {
