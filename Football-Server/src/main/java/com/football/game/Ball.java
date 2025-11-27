@@ -1,6 +1,6 @@
 package com.football.game;
 
-import com.football.Constants;
+import com.football.GameManager;
 import com.football.game.players.Player;
 import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Translation2d;
@@ -81,6 +81,25 @@ public class Ball {
         }
     }
 
+    public boolean shouldBePickedUpBy(Player player) {
+        if (System.currentTimeMillis() - this.timeReleased < CARRY_COOLDOWN_MS)
+            return false;
+        return this.position.getDistance(player.getPosition()) < PICK_UP_BALL_THRESHOLD;
+    }
+
+    public void kick(Translation2d velocity) {
+        this.setCarrier(null);
+        this.velocity = velocity;
+    }
+
+    public void kick(Translation2d target, double finalVelocity) {
+        this.setCarrier(null);
+
+        Translation2d diff = target.minus(this.position);
+
+        this.velocity = diff.normalized().times(calculateInitialVelocity(finalVelocity, diff.getNorm()));
+    }
+
     public int isAtGoal() {
         if (Math.abs(this.position.getY()) > Game.GOAL_WIDTH / 2 - RADIUS) return 0;
 
@@ -104,7 +123,7 @@ public class Ball {
         this.updateCarrier(team1);
         this.updateCarrier(team2);
 
-        this.position = this.position.plus(this.velocity.times(Constants.PERIOD));
+        this.position = this.position.plus(this.velocity.times(GameManager.PERIOD));
 
         if (this.carrier != null) {
             // Ball follows player slightly in front of their facing direction
@@ -191,31 +210,12 @@ public class Ball {
 
     private void rollingDeceleration() {
         if (this.velocity.getNorm() > 0) {
-            double newSpeed = Math.max(this.velocity.getNorm() + (FRICTION_ACCEL * Constants.PERIOD), 0);
+            double newSpeed = Math.max(this.velocity.getNorm() + (FRICTION_ACCEL * GameManager.PERIOD), 0);
             if (newSpeed < MIN_SPEED)
                 newSpeed = 0;
 
             this.velocity = this.velocity.normalized().times(newSpeed);
         }
-    }
-
-    public boolean shouldBePickedUpBy(Player player) {
-        if (System.currentTimeMillis() - this.timeReleased < CARRY_COOLDOWN_MS)
-            return false;
-        return this.position.getDistance(player.getPosition()) < PICK_UP_BALL_THRESHOLD;
-    }
-
-    public void kick(Translation2d velocity) {
-        this.setCarrier(null);
-        this.velocity = velocity;
-    }
-
-    public void kick(Translation2d target, double finalVelocity) {
-        this.setCarrier(null);
-
-        Translation2d diff = target.minus(this.position);
-
-        this.velocity = diff.normalized().times(calculateInitialVelocity(finalVelocity, diff.getNorm()));
     }
 
     public static double calculateInitialVelocity(double finalVelocity, double distance) {

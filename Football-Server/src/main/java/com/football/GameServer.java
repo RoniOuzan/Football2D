@@ -30,7 +30,7 @@ public class GameServer {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        }, 0, (long) (Constants.PERIOD * 1000), TimeUnit.MILLISECONDS);
+        }, 0, (long) (GameManager.PERIOD * 1000), TimeUnit.MILLISECONDS);
     }
 
     @OnWebSocketConnect

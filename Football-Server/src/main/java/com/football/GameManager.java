@@ -2,10 +2,6 @@ package com.football;
 
 import com.football.client.Client;
 import com.football.game.Game;
-import com.football.game.Team;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class GameManager {
     private static GameManager instance = null;
@@ -16,6 +12,9 @@ public class GameManager {
         }
         return instance;
     }
+
+    public static final double FPS = 30;
+    public static final double PERIOD = 1 / FPS;
 
     private transient Client client1 = null;
     private transient Client client2 = null;

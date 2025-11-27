@@ -6,7 +6,6 @@ import com.football.game.TeamStrategy;
 import com.football.util.math.geometry.Translation2d;
 
 import java.util.Comparator;
-import java.util.List;
 
 public class Defender extends Player {
 

@@ -1,6 +1,6 @@
 package com.football.game.players;
 
-import com.football.Constants;
+import com.football.GameManager;
 import com.football.game.Ball;
 import com.football.game.Game;
 import com.football.game.Team;
@@ -83,13 +83,13 @@ public abstract class Player {
         double currentSpeed = this.velocity.getNorm();
         double targetSpeed = this.targetVelocity.getNorm();
 
-        double acceleration = (targetSpeed - currentSpeed) / Constants.PERIOD;
+        double acceleration = (targetSpeed - currentSpeed) / GameManager.PERIOD;
         double maxAccel = maxAcceleration * (1 - (this.velocity.getNorm() / SPRINT_VELOCITY));
 
         // Clamp the rate of change
         double accel = MathUtil.clamp(acceleration, -maxDeceleration, maxAccel);
 
-        double newSpeed = currentSpeed + (accel * Constants.PERIOD);
+        double newSpeed = currentSpeed + (accel * GameManager.PERIOD);
         newSpeed = Math.max(newSpeed, 0);
         if (targetSpeed > 0) {
             newSpeed = Math.min(newSpeed, targetSpeed);
@@ -103,7 +103,7 @@ public abstract class Player {
         Translation2d newVelocity = new Translation2d(newSpeed, direction);
 
         Translation2d deltaSpeed = newVelocity.minus(this.velocity);
-        deltaSpeed = deltaSpeed.limitNorm(maxSkidAcceleration * Constants.PERIOD);
+        deltaSpeed = deltaSpeed.limitNorm(maxSkidAcceleration * GameManager.PERIOD);
 
         this.velocity = this.velocity.plus(deltaSpeed);
 
@@ -156,7 +156,7 @@ public abstract class Player {
     };
 
     public void update(Team team) {
-        this.position = this.position.plus(this.velocity.times(Constants.PERIOD));
+        this.position = this.position.plus(this.velocity.times(GameManager.PERIOD));
 
         // Collision check with all players
         for (Player p : team.getPlayers()) {
