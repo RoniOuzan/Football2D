@@ -1,7 +1,7 @@
 package com.football.game;
 
 import com.football.client.Client;
-    import com.football.util.json.JsonUtil;
+import com.football.util.json.JsonUtil;
 import com.football.util.math.geometry.Translation2d;
 
 import java.util.Arrays;

@@ -3,7 +3,7 @@ package com.football.game.players;
 import com.football.game.Ball;
 import com.football.game.Game;
 import com.football.game.Team;
-import com.football.game.TeamStrategy;
+import com.football.game.strategy.TeamStrategy;
 import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Translation2d;
 

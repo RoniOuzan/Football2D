@@ -1,6 +1,6 @@
 package com.football.client.keybinds;
 
-import com.football.game.TeamStrategy;
+import com.football.game.strategy.TeamStrategy;
 import com.football.game.players.Player;
 
 public enum Keybind implements KeybindAction {

@@ -1,7 +1,7 @@
 package com.football.client.inputs;
 
 import com.football.client.keybinds.Keybind;
-import com.football.game.TeamStrategy;
+import com.football.game.strategy.TeamStrategy;
 import com.football.game.players.Player;
 import com.football.util.math.geometry.Translation2d;
 
