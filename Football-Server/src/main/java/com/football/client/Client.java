@@ -1,5 +1,8 @@
 package com.football.client;
 
+import com.football.client.inputs.*;
+import com.football.client.inputs.devices.InputControllerDevice;
+import com.football.client.inputs.devices.InputKeyboardDevice;
 import org.eclipse.jetty.websocket.api.Session;
 
 import java.util.ArrayList;
@@ -7,18 +10,26 @@ import java.util.List;
 
 public class Client {
     private transient final Session session;
-    private transient final List<ClientInput> inputs = new ArrayList<>();
+
+    private transient final List<InputDevice> inputs;
+    private transient final AllInputDevices allInputDevices;
 
     public Client(Session session) {
         this.session = session;
+
+        this.inputs = new ArrayList<>();
+        this.allInputDevices = new AllInputDevices(this.inputs);
     }
 
-    public List<ClientInput> getInputs() {
-        return inputs;
+    public List<InputDevice> getInputs() {
+        return this.inputs;
     }
 
-    public ClientInput getInput(int slot) {
-        if (slot >= this.inputs.size()) return null;
+    public InputHandler getInput(int slot) {
+        if (slot == -1)
+            return this.allInputDevices;
+        if (slot >= this.inputs.size())
+            return null;
         return this.inputs.get(slot);
     }
 
@@ -40,18 +51,18 @@ public class Client {
         for (int i = 0; i < packet.devices.size(); i++) {
             InputPacket.DevicePacket device = packet.devices.get(i);
 
-            ClientInput input = inputs.get(i);
+            InputDevice input = inputs.get(i);
             if (device.type.equals("keyboard")) {
-                if (input instanceof InputKeyboard) {
+                if (input instanceof InputKeyboardDevice) {
                     input.updateInput(device);
                 } else {
-                    input = new InputKeyboard(device);
+                    input = new InputKeyboardDevice(device);
                 }
             } else if (device.type.equals("controller")) {
-                if (input instanceof InputController) {
+                if (input instanceof InputControllerDevice) {
                     input.updateInput(device);
                 } else {
-                    input = new InputController(device);
+                    input = new InputControllerDevice(device);
                 }
             } else {
                 continue;

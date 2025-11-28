@@ -1,6 +1,7 @@
 package com.football.client.keybinds;
 
-import com.football.client.ClientInput;
+import com.football.client.inputs.InputDevice;
+import com.football.client.inputs.InputHandler;
 import com.football.game.Game;
 import com.football.game.Team;
 import com.football.game.TeamStrategy;
@@ -8,8 +9,6 @@ import com.football.game.players.Player;
 import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Rotation2d;
 import com.football.util.math.geometry.Translation2d;
-
-import java.util.Comparator;
 
 public class Shoot implements KeybindAction {
     @Override
@@ -33,7 +32,7 @@ public class Shoot implements KeybindAction {
         player.shoot(target, finalVelocity);
     }
 
-    private Translation2d computeShotTarget(Player player, Team team, ClientInput input, double holdTime) {
+    private Translation2d computeShotTarget(Player player, Team team, InputHandler input, double holdTime) {
         // ---- 1. Where the player is aiming (raw) ----
         Translation2d requestedDirection = input.getRequestedVelocity();
         Rotation2d direction = requestedDirection.getNorm() < 1e-3 ? player.getDirection() : requestedDirection.getAngle();

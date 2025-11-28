@@ -1,4 +1,4 @@
-package com.football.client;
+package com.football.client.inputs;
 
 import lombok.AllArgsConstructor;
 import lombok.ToString;

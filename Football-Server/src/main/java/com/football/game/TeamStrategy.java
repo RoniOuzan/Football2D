@@ -1,10 +1,10 @@
 package com.football.game;
 
-import com.football.client.ClientInput;
+import com.football.client.inputs.InputDevice;
+import com.football.client.inputs.InputHandler;
 import com.football.client.keybinds.Keybind;
 import com.football.game.players.*;
 import com.football.util.math.MathUtil;
-import com.football.util.math.geometry.Rotation2d;
 import com.football.util.math.geometry.Translation2d;
 
 import java.util.*;
@@ -41,7 +41,7 @@ public class TeamStrategy {
     private transient boolean justPassed = false;
 
     private transient Player chosenPlayer = null;
-    @SuppressWarnings(value = {"unused"})
+    @SuppressWarnings(value = {"unused", "FieldCanBeLocal"})
     private int chosenPlayerIndex = -1; // for json
 
     private final Map<Translation2d, Double> scores;
@@ -65,7 +65,7 @@ public class TeamStrategy {
         return team;
     }
 
-    public ClientInput getInput() {
+    public InputHandler getInput() {
         return this.team.getClient().getInput(this.inputSlot);
     }
 
@@ -323,7 +323,7 @@ public class TeamStrategy {
         }
     }
 
-    public void handleControlledMovement(Player player, ClientInput input) {
+    public void handleControlledMovement(Player player, InputHandler input) {
         double velocity = input.isHolding(Keybind.SPRINT) ? Player.SPRINT_VELOCITY : Player.WALK_VELOCITY;
 
         Translation2d targetVelocity = input.getRequestedVelocity().times(velocity);

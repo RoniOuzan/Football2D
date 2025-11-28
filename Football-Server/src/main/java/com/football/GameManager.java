@@ -49,7 +49,7 @@ public class GameManager {
                 this.game = new Game(this.client1, 0, this.client2, 1);
                 this.game.start();
             } else if (this.client2 != null) {
-                this.game = new Game(this.client1, 0, this.client2, 0);
+                this.game = new Game(this.client1, -1, this.client2, -1);
                 this.game.start();
             }
         }

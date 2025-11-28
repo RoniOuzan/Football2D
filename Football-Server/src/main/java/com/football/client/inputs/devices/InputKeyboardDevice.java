@@ -1,5 +1,7 @@
-package com.football.client;
+package com.football.client.inputs.devices;
 
+import com.football.client.inputs.InputPacket;
+import com.football.client.inputs.InputDevice;
 import com.football.client.keybinds.Keybind;
 import com.football.util.math.geometry.Translation2d;
 import lombok.ToString;
@@ -7,7 +9,7 @@ import lombok.ToString;
 import java.util.Map;
 
 @ToString
-public class InputKeyboard extends ClientInput {
+public class InputKeyboardDevice extends InputDevice {
     private static final Map<Keybind, String> keybinds = Map.of(
             Keybind.SWITCH_PLAYER, "q",
             Keybind.SPRINT, "shift",
@@ -16,7 +18,7 @@ public class InputKeyboard extends ClientInput {
             Keybind.SHOOT, "r"
     );
 
-    public InputKeyboard(InputPacket.DevicePacket devicePacket) {
+    public InputKeyboardDevice(InputPacket.DevicePacket devicePacket) {
         super(keybinds, devicePacket);
     }
 

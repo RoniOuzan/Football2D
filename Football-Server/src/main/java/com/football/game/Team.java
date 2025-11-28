@@ -2,7 +2,6 @@ package com.football.game;
 
 import com.football.client.Client;
 import com.football.game.players.*;
-import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Translation2d;
 
 import java.util.ArrayList;
