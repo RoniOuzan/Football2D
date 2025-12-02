@@ -18,8 +18,8 @@ export default class Client {
     };
   }
 
-  sendDevices(devices: DeviceInput[]) {
+  sendJSON(data: any) {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return;
-    this.socket.send(JSON.stringify({ type: "input", devices }));
+    this.socket.send(JSON.stringify({ type: "input", data }));
   }
 }

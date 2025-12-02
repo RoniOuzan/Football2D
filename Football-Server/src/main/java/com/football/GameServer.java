@@ -1,7 +1,8 @@
 package com.football;
 
 import com.football.client.Client;
-import com.football.client.inputs.InputPacket;
+import com.football.client.json.BasePacket;
+import com.football.client.json.InputPacket;
 import com.football.util.json.JsonUtil;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
@@ -19,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 @WebSocket
 public class GameServer {
     private static final Map<Session, Client> clients = new ConcurrentHashMap<>();
+    private static final PacketHandler packetHandler = new PacketHandler();
 
     private static final ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
 
@@ -54,19 +56,8 @@ public class GameServer {
 
     @OnWebSocketMessage
     public void onMessage(Session session, String message) {
-        try {
-            if (!message.contains("\"type\":\"input\"")) return;
-
-            InputPacket packet = JsonUtil.gson.fromJson(message, InputPacket.class);
-
-            Client client = getClient(session);
-            if (client != null) {
-                client.updateInput(packet);
-            }
-        } catch (Exception e) {
-            System.err.println("Invalid input JSON: " + message);
-            e.printStackTrace();
-        }
+        Client client = getClient(session);
+        packetHandler.handlePacket(client, message);
     }
 
     private static void broadcast(String message) {

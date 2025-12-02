@@ -1,8 +1,10 @@
 package com.football.client;
 
+import com.football.PacketHandler;
 import com.football.client.inputs.*;
 import com.football.client.inputs.devices.InputControllerDevice;
 import com.football.client.inputs.devices.InputKeyboardDevice;
+import com.football.client.json.InputPacket;
 import org.eclipse.jetty.websocket.api.Session;
 
 import java.util.ArrayList;
@@ -14,11 +16,15 @@ public class Client {
     private transient final List<InputDevice> inputs;
     private transient final AllInputDevices allInputDevices;
 
+    private transient final PacketHandler packetHandler;
+
     public Client(Session session) {
         this.session = session;
 
         this.inputs = new ArrayList<>();
         this.allInputDevices = new AllInputDevices(this.inputs);
+
+        this.packetHandler = new PacketHandler();
     }
 
     public List<InputDevice> getInputs() {

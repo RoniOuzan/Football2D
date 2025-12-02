@@ -1,6 +1,6 @@
 package com.football.client.inputs.devices;
 
-import com.football.client.inputs.InputPacket;
+import com.football.client.json.InputPacket;
 import com.football.client.inputs.InputDevice;
 import com.football.client.keybinds.Keybind;
 import com.football.util.math.geometry.Translation2d;

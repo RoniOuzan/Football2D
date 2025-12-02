@@ -1,5 +1,6 @@
-package com.football.client.inputs;
+package com.football.client.json;
 
+import com.football.client.Client;
 import lombok.AllArgsConstructor;
 import lombok.ToString;
 
@@ -8,8 +9,8 @@ import java.util.Set;
 import java.util.Map;
 
 @ToString
-public class InputPacket {
-    public String type;
+@AllArgsConstructor
+public class InputPacket implements DataPacket {
     public List<DevicePacket> devices;
 
     @ToString
@@ -25,5 +26,10 @@ public class InputPacket {
             public double rightX, rightY;
             public double LT, RT;
         }
+    }
+
+    @Override
+    public void handle(Client client) {
+        client.updateInput(this);
     }
 }
