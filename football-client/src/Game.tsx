@@ -1,78 +1,58 @@
 import { useRef, useEffect, useState } from "react";
 import Client from "./Client";
 import InputController from "./InputController";
-import GameRenderer from "./GameRenderer";
 import { JsonData } from "./types";
+import GameRenderer3D from "./GameRenderer";
 
 export const FPS = 30;
 
 export default function Game() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+	const [score, setScore] = useState({ blue: 0, red: 0 });
+	const [data, setData] = useState<JsonData | null>(null);
 
-  const [score, setScore] = useState({ blue: 0, red: 0 });
-  const [, setData] = useState<JsonData | null>(null);
+	const client = useRef<Client | null>(null);
+	const input = useRef<InputController | null>(null);
 
-  const rendererRef = useRef<GameRenderer | null>(null);
-  const client = useRef<Client | null>(null);
-  const input = useRef<InputController | null>(null);
+	useEffect(() => {
+		if (client.current) return;
 
-  const dataRef = useRef<JsonData | null>(null);
+		client.current = new Client((gameState) => {
+			setData(gameState);
+			setScore({ blue: gameState.score2, red: gameState.score1 });
+		});
 
-  useEffect(() => {
-    if (client.current) return;
-    
-    client.current = new Client((gameState) => {
-      setData(gameState);
-      dataRef.current = gameState; // update ref
-      setScore({ blue: gameState.score2, red: gameState.score1 });
-    }); 
+		client.current.connect();
+		input.current = new InputController(client.current);
+	}, []);
 
-    client.current.connect();
+	return (
+		<div>
+			<div
+				style={{
+					display: "flex",
+					justifyContent: "center",
+					alignItems: "center",
+					gap: "30px",
+					padding: "10px 30px",
+					marginBottom: "15px",
+					borderRadius: "12px",
+					color: "white",
+					fontSize: "42px",
+					fontWeight: "bold",
+					width: "fit-content",
+					marginLeft: "auto",
+					marginRight: "auto",
+					boxShadow: "0 0 20px rgba(0,0,0,0.3)",
+					transition: "background 0.2s, box-shadow 0.2s",
+				}}
+			>
+				<span style={{ color: "blue" }}>{score.blue}</span>
+				{"  -  "}
+				<span style={{ color: "red" }}>{score.red}</span>
+			</div>
 
-    input.current = new InputController(client.current);
-  }, []);
-
-  useEffect(() => {
-    rendererRef.current = new GameRenderer();
-
-    const loop = () => {
-      if (rendererRef.current && canvasRef.current && dataRef.current) {
-        rendererRef.current.draw(canvasRef.current, dataRef.current);
-      }
-      requestAnimationFrame(loop);
-    };
-    loop();
-  }, []);
-
-  return (
-    <div>
-      <div style={{ 
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        gap: "30px",
-        padding: "10px 30px",
-        marginBottom: "15px",
-        borderRadius: "12px",
-        // background: "#222",
-        // border: "3px solid #444",
-        color: "white",
-        fontSize: "42px",
-        fontWeight: "bold",
-        width: "fit-content",
-        marginLeft: "auto",
-        marginRight: "auto",
-        boxShadow: "0 0 20px rgba(0,0,0,0.3)",
-        transition: "background 0.2s, box-shadow 0.2s",
-        animation: "",
-       }}>
-        <span style={{ color: "blue" }}>{score.blue}</span>
-        {"  -  "}
-        <span style={{ color: "red" }}>{score.red}</span>
-      </div>
-
-      <canvas ref={canvasRef} width={1080} height={700} />
-    </div>
-  );
+			{/* Render the 3D pitch component */}
+			{data && <GameRenderer3D width={1800} height={700} data={data} />}
+		</div>
+	);
 }
-

@@ -74,7 +74,6 @@ public class GameServer {
                 clients.remove(s);
             }
         }
-
     }
 
     private static Client getClient(Session session) {

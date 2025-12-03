@@ -28,7 +28,7 @@ public abstract class Player {
     protected transient Translation2d targetVelocity;
 
     protected transient final Translation2d initialPosition;
-    protected final Translation2d formationPosition;
+    protected transient final Translation2d formationPosition;
 
     protected Player(Team team, Ball ball, Translation2d position) {
         this.ball = ball;

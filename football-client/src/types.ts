@@ -26,10 +26,8 @@ export interface Team {
 
 export interface Player {
   position: Translation2d;
-  originalPosition: Translation2d;
   direction: Direction;
   velocity: Translation2d;
-  targetVelocity: Translation2d;
 }
 
 export interface Direction {
