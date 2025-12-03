@@ -1,14 +1,18 @@
 import React, { useRef, useEffect, useState } from "react";
-import { JsonData, Team } from "./types";
+import { JsonData, Team, Translation2d } from "./types";
 import { pitchWidthUnits, pitchHeightUnits } from "./types";
 
+const HEIGHT_SCALE = 0.45;     // flatten pitch (FIFA look)
+const TOP_SCALE    = 0.25;     // must be > 0     // top is smaller than 0 (stronger perspective)
+const BOTTOM_SCALE = 1.00;     // bottom is full width
+const ZOOM         = 1.7;     // medium tele zoom
+const TILT_Y       = 0;     // camera shift upward (bird's eye)
+
 interface GameRendererProps {
-	width: number;
-	height: number;
 	data: JsonData;
 }
 
-const GameRenderer3D: React.FC<GameRendererProps> = ({ width, height, data }) => {
+const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const [camera, setCamera] = useState({ x: 0, y: 0 });
 
@@ -16,29 +20,28 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ width, height, data }) =>
 		const canvas = canvasRef.current;
 		if (!canvas) return;
 
-		canvas.width = width;
-		canvas.height = height;
+		canvas.width = window.innerWidth;
+		canvas.height = window.innerHeight;
 
 		const ctx = canvas.getContext("2d");
 		if (!ctx) return;
 
-		const playerRadius = 0.75 * (canvas.height / 64);
 		const goalDepth = (3 / pitchWidthUnits) * canvas.width;
+    const fieldWidthPX = canvas.width - 2 * goalDepth;
 
 		// ----------------------------
 		// Smooth camera follow
 		// ----------------------------
     // Inside useEffect, before drawing anything
-    const effBallX = Math.max(Math.min(data.ball.position.x, 30), -30) + 50;
-    const ballX_px = (effBallX / pitchWidthUnits) * (canvas.width - (2 * goalDepth));
+    const effBallX = Math.max(Math.min(data.ball.position.x, 25), -25) * 0.5;
+    const ballX_px = (effBallX / pitchWidthUnits / 2) * fieldWidthPX;
     
-    const effBallY = Math.max(Math.min(data.ball.position.y, 16), -16) + 32;
-    const ballY_px = (effBallY / pitchHeightUnits) * canvas.height;
+    const effBallY = Math.max(Math.min(data.ball.position.y, 16), -16) * 0.5;
+    const ballY_px = (effBallY / pitchHeightUnits / 2) * canvas.height;
 
-    // Camera X offset: how much to shift everything so the ball is centered
     setCamera(() => ({
-      x: ballX_px - canvas.width / 2,
-      y: ballY_px - canvas.height / 2,
+      x: ballX_px,
+      y: ballY_px,
     }));
 
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -73,7 +76,7 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ width, height, data }) =>
 		ctx.stroke();
 
 		// Center circle
-		drawPerspectiveCircle(ctx, canvas, canvas.width / 2, canvas.height / 2, (10 / pitchHeightUnits) * canvas.height, camera);
+		drawPerspectiveCircle(canvas, ctx, { x: 0, y: 0}, 9.15, goalDepth, camera);
 
 		// Penalty boxes
 		const penaltyWidth = (16.5 / pitchWidthUnits) * canvas.width;
@@ -108,56 +111,64 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ width, height, data }) =>
 		drawGoals(ctx, canvas, goalDepth, camera);
 
 		// Ball
-		const ball = convert(canvas, data.ball.position, goalDepth, camera);
-		ctx.fillStyle = "white";
-		ctx.beginPath();
-		ctx.arc(ball.x, ball.y, 5, 0, Math.PI * 2);
-		ctx.fill();
+    fillCircle(canvas, ctx, data.ball.position, 0.35, goalDepth, "white", camera);
 
 		// Players
-		drawPlayers(canvas, ctx, data.team1, goalDepth, playerRadius, "red", camera);
-		drawPlayers(canvas, ctx, data.team2, goalDepth, playerRadius, "blue", camera);
+		drawPlayers(canvas, ctx, data.team1, goalDepth, "red", camera);
+		drawPlayers(canvas, ctx, data.team2, goalDepth, "blue", camera);
 
 		// Heatmaps
 		drawScores(canvas, ctx, data.team1, goalDepth, camera);
+	}, [data, camera]);
 
-		// Defense line
-		const defenseX_units = data.team1.teamStrategy.defenseLine;
-		const pxLeft = goalDepth;
-		const pxRight = canvas.width - goalDepth;
-		const defenseX = pxLeft + ((defenseX_units + 50) / pitchWidthUnits) * (pxRight - pxLeft);
-		const defenseLineTop = perspectivePoint(defenseX, 0, canvas, camera);
-		const defenseLineBottom = perspectivePoint(defenseX, canvas.height, canvas, camera);
-
-		ctx.strokeStyle = "yellow";
-		ctx.lineWidth = 2;
-		ctx.beginPath();
-		ctx.moveTo(defenseLineTop.x, defenseLineTop.y);
-		ctx.lineTo(defenseLineBottom.x, defenseLineBottom.y);
-		ctx.stroke();
-	}, [data, width, height, camera]);
-
-	return <canvas ref={canvasRef} width={width} height={height} />;
+	return <canvas ref={canvasRef} style={{ backgroundColor: "#006400"}} />;
 };
 
 // --------------------
 // Helpers
 // --------------------
 function perspectivePoint(
-	x: number,
-	y: number,
-	canvas: HTMLCanvasElement,
-	camera: { x: number; y: number }
-) {
-	const topScale = 0.6;
-	const bottomScale = 1.0;
-	const t = y / canvas.height;
-	const scale = topScale + (bottomScale - topScale) * t;
+    x: number,
+    y: number,
+    canvas: HTMLCanvasElement,
+    camera: { x: number; y: number }
+): Translation2d {
+    // squash height
+    let newY = y * HEIGHT_SCALE + (1 - HEIGHT_SCALE) * canvas.height / 2;
 
-	const centerX = canvas.width / 2;
-	const newX = centerX + (x - centerX - camera.x) * scale;
-	const newY = y + camera.y;
-	return { x: newX, y: newY };
+    // tilt upwards
+    newY += TILT_Y;
+
+    // normal FIFA tapering
+    const scale = getScale(canvas, y);
+
+    // screen center
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+
+    // apply zoom around center
+    const dx = (x - cx) * scale * ZOOM;
+    const dy = (newY - cy) * ZOOM;
+
+    return {
+        x: cx + dx - camera.x * ZOOM,
+        y: cy + dy + camera.y * ZOOM
+    };
+}
+
+function getScale(
+    canvas: HTMLCanvasElement,
+    y: number,
+) {
+  // squash height
+  y = y * HEIGHT_SCALE + (1 - HEIGHT_SCALE) * canvas.height / 2;
+
+  // tilt upwards
+  y += TILT_Y;
+
+  // 0 = top of screen, 1 = bottom
+  const t = y / canvas.height;
+  return TOP_SCALE + (BOTTOM_SCALE - TOP_SCALE) * t;
 }
 
 function drawTrapezoidRect(
@@ -184,24 +195,14 @@ function drawTrapezoidRect(
 }
 
 function drawPerspectiveCircle(
-	ctx: CanvasRenderingContext2D,
 	canvas: HTMLCanvasElement,
-	cx: number,
-	cy: number,
-	r: number,
+	ctx: CanvasRenderingContext2D,
+	position: Translation2d,
+	radius: number,
+  goalDepth: number,
 	camera: { x: number; y: number }
 ) {
-	const steps = 40;
-	ctx.beginPath();
-	for (let i = 0; i <= steps; i++) {
-		const angle = (i / steps) * Math.PI * 2;
-		const px = cx + Math.cos(angle) * r;
-		const py = cy + Math.sin(angle) * r;
-		const { x, y } = perspectivePoint(px, py, canvas, camera);
-		if (i === 0) ctx.moveTo(x, y);
-		else ctx.lineTo(x, y);
-	}
-	ctx.stroke();
+	drawCircle(canvas, ctx, position, radius, goalDepth, "white", camera);
 }
 
 // Players & Ball
@@ -210,7 +211,7 @@ function convert(
 	position: { x: number; y: number },
 	goalDepth: number,
 	camera: { x: number; y: number }
-) {
+): Translation2d {
 	const pitchLeft = goalDepth;
 	const pitchRight = canvas.width - goalDepth;
 	const x = pitchLeft + ((position.x + 50) / pitchWidthUnits) * (pitchRight - pitchLeft);
@@ -219,30 +220,79 @@ function convert(
 }
 
 function drawPlayers(
-	canvas: HTMLCanvasElement,
-	ctx: CanvasRenderingContext2D,
-	team: Team | undefined,
-	goalDepth: number,
-	radius: number,
-	color: string,
-	camera: { x: number; y: number }
+    canvas: HTMLCanvasElement,
+    ctx: CanvasRenderingContext2D,
+    team: Team | undefined,
+    goalDepth: number,
+    color: string,
+    camera: { x: number; y: number }
 ) {
-	if (!team) return;
-	team.players.forEach((p, i) => {
-		const pos = convert(canvas, p.position, goalDepth, camera);
-		ctx.fillStyle = color;
-		ctx.beginPath();
-		ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
-		ctx.fill();
+    if (!team) return;
 
-		if (i === team.teamStrategy.chosenPlayerIndex) {
-			ctx.strokeStyle = "yellow";
-			ctx.lineWidth = 2;
-			ctx.beginPath();
-			ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
-			ctx.stroke();
-		}
-	});
+    const baseSize = 0.75;
+
+    team.players.forEach((p, i) => {
+        const {pos, radiusX, radiusY} = fillCircle(canvas, ctx, p.position, baseSize, goalDepth, color, camera);
+
+        // highlight selected player
+        if (i === team.teamStrategy.chosenPlayerIndex) {
+            ctx.strokeStyle = "yellow";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.ellipse(pos.x, pos.y, radiusX, radiusY, 0, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+    });
+}
+
+function fillCircle(
+  canvas: HTMLCanvasElement,
+  ctx: CanvasRenderingContext2D,
+  position: Translation2d,
+  radius: number,
+  goalDepth: number,
+  color: string,
+  camera: { x: number; y: number }
+) {
+    radius *= (canvas.width - (2 * goalDepth)) / pitchWidthUnits;
+    const pos = convert(canvas, position, goalDepth, camera);
+    // const scale = getScale(canvas, p.position.y);
+
+    // perspective scaling for ellipse
+    const radiusX = radius * ZOOM;
+    const radiusY = radiusX * 0.5; // flatten for FIFA look
+
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(pos.x, pos.y, radiusX, radiusY, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    return {pos, radiusX, radiusY};
+}
+
+function drawCircle(
+  canvas: HTMLCanvasElement,
+  ctx: CanvasRenderingContext2D,
+  position: Translation2d,
+  radius: number,
+  goalDepth: number,
+  color: string,
+  camera: { x: number; y: number }
+) {
+    radius *= (canvas.width - (2 * goalDepth)) / pitchWidthUnits;
+    const pos = convert(canvas, position, goalDepth, camera);
+    // const scale = getScale(canvas, p.position.y);
+
+    // perspective scaling for ellipse
+    const radiusX = radius * ZOOM;
+    const radiusY = radiusX * 0.55; // flatten for FIFA look
+
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(pos.x, pos.y, radiusX, radiusY, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    return {pos, radiusX, radiusY};
 }
 
 // Heatmap
@@ -267,13 +317,17 @@ function drawScores(
 	const max = Math.min(Math.max(...values), 50);
 
 	team.teamStrategy.scores.forEach(entry => {
-		const pos = convert(canvas, entry.key, goalDepth, camera);
+    const pos = entry.key;
 		const color = scoreToColor(entry.value, -120, max);
-		ctx.fillStyle = color;
+		const sizeX = pitchWidthUnits / 40;
+		const sizeY = pitchHeightUnits / 40;
 		ctx.globalAlpha = 0.3;
-		const sizeX = (canvas.width - 2 * goalDepth) / 40;
-		const sizeY = canvas.height / 40;
-		ctx.fillRect(pos.x - sizeX / 2, pos.y - sizeY / 2, sizeX, sizeY);
+    fillPoly(ctx, color, [
+      convert(canvas, { x: pos.x - sizeX / 2, y: pos.y - sizeY / 2 }, goalDepth, camera),
+      convert(canvas, { x: pos.x - sizeX / 2, y: pos.y + sizeY / 2 }, goalDepth, camera),
+      convert(canvas, { x: pos.x + sizeX / 2, y: pos.y + sizeY / 2 }, goalDepth, camera),
+      convert(canvas, { x: pos.x + sizeX / 2, y: pos.y - sizeY / 2 }, goalDepth, camera),
+    ]);
 		ctx.globalAlpha = 1.0;
 	});
 }
@@ -312,6 +366,21 @@ function drawGoals(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, goa
 	ctx.lineTo(topRight.x, topRight.y);
 	ctx.closePath();
 	ctx.stroke();
+}
+
+function fillPoly(ctx: CanvasRenderingContext2D, color: string, points: Translation2d[]) {
+    if (!points || points.length < 3) return; // Need at least 3 points
+
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+
+    for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+    }
+
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
 }
 
 export default GameRenderer3D;

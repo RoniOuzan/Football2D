@@ -7,7 +7,7 @@ import GameRenderer3D from "./GameRenderer";
 export const FPS = 30;
 
 export default function Game() {
-	const [score, setScore] = useState({ blue: 0, red: 0 });
+	const [score, ] = useState({ blue: 0, red: 0 });
 	const [data, setData] = useState<JsonData | null>(null);
 
 	const client = useRef<Client | null>(null);
@@ -18,7 +18,6 @@ export default function Game() {
 
 		client.current = new Client((gameState) => {
 			setData(gameState);
-			setScore({ blue: gameState.score2, red: gameState.score1 });
 		});
 
 		client.current.connect();
@@ -26,33 +25,34 @@ export default function Game() {
 	}, []);
 
 	return (
-		<div>
+		<div style={{ width: "100vw", height: "100vh", position: "relative" }}>
+			{/* Score overlay on the field */}
 			<div
 				style={{
+					position: "absolute",
+					top: "20px",
+					left: "50%",
+					transform: "translateX(-50%)",
 					display: "flex",
 					justifyContent: "center",
 					alignItems: "center",
 					gap: "30px",
 					padding: "10px 30px",
-					marginBottom: "15px",
 					borderRadius: "12px",
 					color: "white",
 					fontSize: "42px",
 					fontWeight: "bold",
-					width: "fit-content",
-					marginLeft: "auto",
-					marginRight: "auto",
+					backgroundColor: "rgba(0,0,0,0.4)",
 					boxShadow: "0 0 20px rgba(0,0,0,0.3)",
-					transition: "background 0.2s, box-shadow 0.2s",
 				}}
 			>
-				<span style={{ color: "blue" }}>{score.blue}</span>
+				<span style={{ color: "blue" }}>{data ? data.score2 : score.blue}</span>
 				{"  -  "}
-				<span style={{ color: "red" }}>{score.red}</span>
+				<span style={{ color: "red" }}>{data ? data.score1 : score.red}</span>
 			</div>
 
-			{/* Render the 3D pitch component */}
-			{data && <GameRenderer3D width={1800} height={700} data={data} />}
+			{/* Render the 3D pitch component full screen */}
+			{data && <GameRenderer3D data={data} />}
 		</div>
 	);
 }

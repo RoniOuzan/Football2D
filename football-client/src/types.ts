@@ -41,6 +41,5 @@ export interface TeamStrategy {
     key: Translation2d;
     value: number;
   }[];
-  defenseLine: number;
   chosenPlayerIndex: number;
 }
