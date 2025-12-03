@@ -1,5 +1,7 @@
 export const pitchWidthUnits = 100;
 export const pitchHeightUnits = 64;
+export const maxX = pitchWidthUnits / 2;
+export const maxY = pitchHeightUnits / 2;
 
 export interface Translation2d {
   x: number;
