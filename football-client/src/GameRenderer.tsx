@@ -75,7 +75,7 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
     const fieldWidthPX = canvas.width - 2 * goalDepth;
 
     // Smooth camera follow: limit ball movement and scale
-    const effectiveBallX = Math.max(Math.min(data.ball.position.x, 25), -25) * 0.5;
+    const effectiveBallX = Math.max(Math.min(data.ball.position.x, 50), -50) * 0.5;
     const cameraX = (effectiveBallX / pitchWidthUnits / 2) * fieldWidthPX;
 
     const effectiveBallY = Math.max(Math.min(data.ball.position.y, 16), -16) * 0.5;
@@ -112,7 +112,7 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
     drawCircleWorld(ctx, canvas, { x: -(maxX - 11), y: 0}, 0.25, goalDepth, "white", camera, true);
 
     // Goals
-    drawGoals(ctx, canvas, goalDepth, camera);
+    drawGoals3D(ctx, canvas, goalDepth, camera);
 
     const draws: { obj: Player | 'ball', depth: number, draw: () => void }[] = [];
 
@@ -141,9 +141,7 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
     });
 
     draws.sort((a, b) => b.depth - a.depth);
-    draws.forEach(d => {
-      d.draw();
-    })
+    draws.forEach(d => d.draw());
 
     // Heatmap
     drawHeatmap(ctx, canvas, data.team1, goalDepth, camera);
@@ -460,80 +458,102 @@ function drawRectWorld(
   ctx.stroke();
 }
 
-function drawGoals(
+function drawGoals3D(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   goalDepth: number,
   camera: Camera
 ) {
-  const goalWidth = (7.3 / pitchHeightUnits) * canvas.height;
-  // LEFT GOAL
-  ctx.strokeStyle = "red";
-  ctx.lineWidth = 4;
-  let topLeft = perspectivePoint(
-    0,
-    (canvas.height - goalWidth) / 2,
-    canvas,
-    camera
-  );
-  let topRight = perspectivePoint(
-    goalDepth,
-    (canvas.height - goalWidth) / 2,
-    canvas,
-    camera
-  );
-  let bottomLeft = perspectivePoint(
-    0,
-    (canvas.height + goalWidth) / 2,
-    canvas,
-    camera
-  );
-  let bottomRight = perspectivePoint(
-    goalDepth,
-    (canvas.height + goalWidth) / 2,
-    canvas,
-    camera
-  );
-  ctx.beginPath();
-  ctx.moveTo(topLeft.x, topLeft.y);
-  ctx.lineTo(bottomLeft.x, bottomLeft.y);
-  ctx.lineTo(bottomRight.x, bottomRight.y);
-  ctx.lineTo(topRight.x, topRight.y);
-  ctx.closePath();
-  ctx.stroke();
-  // RIGHT GOAL
-  ctx.strokeStyle = "blue";
-  topLeft = perspectivePoint(
-    canvas.width,
-    (canvas.height - goalWidth) / 2,
-    canvas,
-    camera
-  );
-  topRight = perspectivePoint(
-    canvas.width - goalDepth,
-    (canvas.height - goalWidth) / 2,
-    canvas,
-    camera
-  );
-  bottomLeft = perspectivePoint(
-    canvas.width,
-    (canvas.height + goalWidth) / 2,
-    canvas,
-    camera
-  );
-  bottomRight = perspectivePoint(
-    canvas.width - goalDepth,
-    (canvas.height + goalWidth) / 2,
-    canvas,
-    camera
-  );
-  ctx.beginPath();
-  ctx.moveTo(topLeft.x, topLeft.y);
-  ctx.lineTo(bottomLeft.x, bottomLeft.y);
-  ctx.lineTo(bottomRight.x, bottomRight.y);
-  ctx.lineTo(topRight.x, topRight.y);
-  ctx.closePath();
-  ctx.stroke();
+  const goalWidth = 7.32; // meters
+  const goalHeight = 2.44; // meters
+  const postThickness = 0.2; // meters, make it wider
+
+  const goals = [
+    { x: -maxX, mirror: false },   // left goal
+    { x: maxX, mirror: true }     // right goal
+  ];
+
+  goals.forEach(goal => {
+    const frontX = goal.x;
+    const backX = goal.mirror ? goal.x + 3 : goal.x - 3;
+    const topY = goalWidth / 2;
+    const bottomY = -goalWidth / 2;
+
+    // Front posts
+    const LFTop = worldToScreen(canvas, goalDepth, { x: frontX, y: topY }, camera);
+    const LFBottom = worldToScreen(canvas, goalDepth, { x: frontX, y: bottomY }, camera);
+    const LBTop = worldToScreen(canvas, goalDepth, { x: backX, y: topY }, camera);
+    const LBBottom = worldToScreen(canvas, goalDepth, { x: backX, y: bottomY }, camera);
+
+    const goalHeightPX = toPixelRadius(canvas, goalDepth, goalHeight);
+
+    const postsColor = "#E0E0E0";
+    ctx.strokeStyle = postsColor;
+    ctx.lineWidth = toPixelRadius(canvas, goalDepth, postThickness); // scale thickness
+
+    // Draw posts (verticals)
+    ctx.beginPath();
+    ctx.moveTo(LFTop.x, LFTop.y);
+    ctx.lineTo(LFTop.x, LFTop.y - goalHeightPX); // top-left front
+    ctx.moveTo(LFBottom.x, LFBottom.y);
+    ctx.lineTo(LFBottom.x, LFBottom.y - goalHeightPX); // bottom-left front
+
+    ctx.moveTo(LBTop.x, LBTop.y);
+    ctx.lineTo(LBTop.x, LBTop.y - goalHeightPX); // top-left back
+    ctx.moveTo(LBBottom.x, LBBottom.y);
+    ctx.lineTo(LBBottom.x, LBBottom.y - goalHeightPX); // bottom-left back
+    ctx.stroke();
+
+    // Crossbars
+    ctx.beginPath();
+    ctx.moveTo(LFTop.x, LFTop.y - goalHeightPX);
+    ctx.lineTo(LFBottom.x, LFBottom.y - goalHeightPX); // front
+    ctx.moveTo(LBTop.x, LBTop.y - goalHeightPX);
+    ctx.lineTo(LBBottom.x, LBBottom.y - goalHeightPX); // back
+    ctx.moveTo(LBTop.x, LBTop.y);
+    ctx.lineTo(LBBottom.x, LBBottom.y); // back lower
+    ctx.stroke();
+
+    // Side bars connecting front to back (top and bottom)
+    ctx.beginPath();
+    ctx.moveTo(LFTop.x, LFTop.y - goalHeightPX);
+    ctx.lineTo(LBTop.x, LBTop.y - goalHeightPX); // top
+    ctx.moveTo(LFBottom.x, LFBottom.y - goalHeightPX);
+    ctx.lineTo(LBBottom.x, LBBottom.y - goalHeightPX); // top-bottom sides
+    ctx.moveTo(LFTop.x, LFTop.y);
+    ctx.lineTo(LBTop.x, LBTop.y); // bottom front-back
+    ctx.moveTo(LFBottom.x, LFBottom.y);
+    ctx.lineTo(LBBottom.x, LBBottom.y); // bottom front-back
+    ctx.stroke();
+
+    // NET
+    const netColor = "#e3e3e390";
+    fillPoly(ctx, netColor, [
+      {x: LFTop.x, y: LFTop.y - goalHeightPX},
+      {x: LFBottom.x, y: LFBottom.y - goalHeightPX},
+      {x: LBBottom.x, y: LBBottom.y - goalHeightPX},
+      {x: LBTop.x, y: LBTop.y - goalHeightPX},
+    ]);
+    fillPoly(ctx, netColor, [
+      {x: LBTop.x, y: LBTop.y},
+      {x: LBBottom.x, y: LBBottom.y},
+      {x: LBBottom.x, y: LBBottom.y - goalHeightPX},
+      {x: LBTop.x, y: LBTop.y - goalHeightPX},
+    ]);
+    fillPoly(ctx, netColor, [
+      {x: LBTop.x, y: LBTop.y},
+      {x: LFTop.x, y: LFTop.y},
+      {x: LFTop.x, y: LFTop.y - goalHeightPX},
+      {x: LBTop.x, y: LBTop.y - goalHeightPX},
+    ]);
+    
+    fillPoly(ctx, netColor, [
+      {x: LBBottom.x, y: LBBottom.y},
+      {x: LFBottom.x, y: LFBottom.y},
+      {x: LFBottom.x, y: LFBottom.y - goalHeightPX},
+      {x: LBBottom.x, y: LBBottom.y - goalHeightPX},
+    ]);
+  });
 }
 
 function scoreToColor(value: number, min: number, max: number): string {
