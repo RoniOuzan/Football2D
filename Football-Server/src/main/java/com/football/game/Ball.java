@@ -15,7 +15,6 @@ public class Ball {
     private static final double MIN_SPEED = 0.05;    // below this -> stop completely
     private static final double BOUNCE_DAMPING = 0.7; // energy loss on wall bounce
 
-    private static final double PICK_UP_BALL_THRESHOLD = 1;
     private static final long CARRY_COOLDOWN_MS = 300;
 
     private static final double RADIUS = 0.35;
@@ -84,7 +83,7 @@ public class Ball {
     public boolean shouldBePickedUpBy(Player player) {
         if (System.currentTimeMillis() - this.timeReleased < CARRY_COOLDOWN_MS)
             return false;
-        return this.position.getDistance(player.getPosition()) < PICK_UP_BALL_THRESHOLD;
+        return this.position.getDistance(player.getPosition()) < OFFSET_FROM_PLAYER;
     }
 
     public void kick(Translation2d velocity) {

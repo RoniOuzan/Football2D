@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from "react";
-import { JsonData, maxX, Team, Translation2d } from "./types";
+import { JsonData, maxX, Player, Team, Translation2d } from "./types";
 import { pitchWidthUnits, pitchHeightUnits } from "./types";
 
 const HEIGHT_SCALE = 0.45;      // Flatten vertical scale for FIFA perspective
@@ -114,12 +114,36 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
     // Goals
     drawGoals(ctx, canvas, goalDepth, camera);
 
+    const draws: { obj: Player | 'ball', depth: number, draw: () => void }[] = [];
+
     // Ball
-    drawCircle(ctx, canvas, data.ball.position, 0.35, goalDepth, "white", camera, true);
+    draws.push({
+      obj: 'ball',
+      depth: getScale(canvas, data.ball.position.y),
+      draw: () => drawCircle(ctx, canvas, data.ball.position, 0.35, goalDepth, "white", camera, true),
+    });
 
     // Players
-    drawTeam(ctx, canvas, data.team1, goalDepth, "red", camera);
-    drawTeam(ctx, canvas, data.team2, goalDepth, "blue", camera);
+    
+    data.team1.players.forEach(player => {
+      draws.push({
+        obj: player,
+        depth: getScale(canvas, player.position.y),
+        draw: () => drawPlayer(ctx, canvas, player, goalDepth, "red", camera),
+      });
+    });
+    data.team2.players.forEach(player => {
+      draws.push({
+        obj: player,
+        depth: getScale(canvas, player.position.y),
+        draw: () => drawPlayer(ctx, canvas, player, goalDepth, "blue", camera),
+      });
+    });
+
+    draws.sort((a, b) => b.depth - a.depth);
+    draws.forEach(d => {
+      d.draw();
+    })
 
     // Heatmap
     drawHeatmap(ctx, canvas, data.team1, goalDepth, camera);
@@ -210,22 +234,28 @@ function drawCircle(
   filled ? ctx.fill() : ctx.stroke();
 }
 
+const playersLastVelocity = new Map<Player, Translation2d>();
+
 function drawPlayer(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
-  position: Translation2d,
+  player: Player,
   goalDepth: number,
   color: string,
   camera: Camera
 ) {
+  const position = player.position;
+  const velocity = player.velocity;
   const screen = worldToScreen(canvas, goalDepth, position, camera);
+
+  const speed = Math.hypot(velocity.x, velocity.y);
 
   // Perspective scaling
   const scale = getScale(canvas, toPixelY(canvas, position.y)) * ZOOM;
 
-  const bodyHeight = toPixelRadius(canvas, goalDepth, 1.2) * scale;      // player height
-  const bodyWidth = toPixelRadius(canvas, goalDepth, 1) * scale;       // torso width
-  const radiusFeetY = bodyWidth / 2 * 0.6; // more flattening for distant
+  const bodyHeight = toPixelRadius(canvas, goalDepth, 1.2) * scale;
+  const bodyWidth = toPixelRadius(canvas, goalDepth, 1) * scale;
+  const radiusFeetY = (bodyWidth / 2) * 0.6;
   const headRadius = toPixelRadius(canvas, goalDepth, 0.3) * scale;
 
   const x = screen.x;
@@ -234,7 +264,84 @@ function drawPlayer(
 
   ctx.save();
 
-  // --- BODY ---
+  // =====================================================
+  // ⭐ IMPROVED RUNNING ANIMATION (stable speed + accel fix)
+  // =====================================================
+
+  const vx = velocity.x;
+  const vy = velocity.y;
+
+  // Speed + acceleration
+  const lastVel = playersLastVelocity.get(player) ?? {x: 0, y: 0};
+  const ax = vx - lastVel.x;
+  const ay = vy - lastVel.y;
+  playersLastVelocity.set(player, velocity);
+
+  // Direction of movement
+  const dir = -player.direction.value;
+
+  // ====================================
+  // 🧠 REALISTIC STEP FREQUENCY (FIFA-like)
+  // ====================================
+  const baseStepHz = 1.6;
+  const maxStepHz = 3.2;
+  const normalizedSpeed = Math.min(speed / 6, 1);
+  const stepHz = baseStepHz + (maxStepHz - baseStepHz) * normalizedSpeed;
+
+  // ====================================
+  // 🏃‍♂️ RUNNING STABILITY FACTOR
+  // prevents huge leg swing during accel/decel
+  // ====================================
+  const accelMag = Math.hypot(ax, ay);
+  const maxAccel = 0.45; // tune based on game physics
+  let runningFactor = 1 - Math.min(accelMag / maxAccel, 1);
+  runningFactor = Math.pow(runningFactor, 1.6); // smoother falloff
+
+  // ====================================
+  // 👣 LEG MOTION
+  // ====================================
+  const phase = (performance.now() * 0.001 * stepHz) % 1;
+  const step = Math.sin(phase * Math.PI * 2);
+
+  const sideSwing = step * (bodyWidth * 0.22) * runningFactor;
+  const strideMax = bodyWidth * 0.35;
+  const forwardSwing =
+    Math.cos(phase * Math.PI * 2) *
+    (strideMax * normalizedSpeed * runningFactor);
+
+  // rotate by direction
+  const fx = Math.cos(dir) * forwardSwing;
+  const fy = Math.sin(dir) * forwardSwing;
+
+  // FOOT POSITIONS (idle, walk, jog, etc)
+  const idle = speed < 0.1 || runningFactor < 0.1;
+
+  const leftFootX = idle ? x - bodyWidth * 0.22 : x - sideSwing + fx;
+  const leftFootY = idle ? y + radiusFeetY : y + radiusFeetY + fy * 0.25;
+
+  const rightFootX = idle ? x + bodyWidth * 0.22 : x + sideSwing - fx;
+  const rightFootY = idle ? y + radiusFeetY : y + radiusFeetY - fy * 0.25;
+
+  // =====================================================
+  // 🦵 LEGS (drawn BEFORE body → more FIFA-like)
+  // =====================================================
+
+  ctx.fillStyle = color;
+
+  // Left foot
+  ctx.beginPath();
+  ctx.ellipse(leftFootX, leftFootY, bodyWidth * 0.28, radiusFeetY, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Right foot
+  ctx.beginPath();
+  ctx.ellipse(rightFootX, rightFootY, bodyWidth * 0.28, radiusFeetY, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // =====================================================
+  // 👕 BODY
+  // =====================================================
+
   ctx.fillStyle = color;
   ctx.beginPath();
   ctx.roundRect(
@@ -245,39 +352,22 @@ function drawPlayer(
   );
   ctx.fill();
 
-  // --- FEET ---
-  ctx.beginPath();
-  ctx.fillStyle = color;
-  ctx.ellipse(x, y + radiusFeetY, bodyWidth / 2, radiusFeetY, 0, 0, Math.PI);
-  ctx.fill();
+  // =====================================================
+  // 😀 HEAD
+  // =====================================================
 
   ctx.beginPath();
-  ctx.fillStyle = color;
-  ctx.ellipse(x, y - bodyHeight * yOffset + 1, bodyWidth / 2, radiusFeetY, 0, Math.PI, Math.PI * 2);
-  ctx.fill();
-
-  // --- HEAD ---
-  ctx.beginPath();
-  ctx.fillStyle = "#ffe0bd";  // light skin tone; you can change
-  ctx.arc(x, y - bodyHeight * yOffset - headRadius + 2 * scale, headRadius, 0, Math.PI * 2);
+  ctx.fillStyle = "#ffe0bd";
+  ctx.arc(
+    x,
+    y - bodyHeight * yOffset - headRadius + 2 * scale,
+    headRadius,
+    0,
+    Math.PI * 2
+  );
   ctx.fill();
 
   ctx.restore();
-}
-
-function drawTeam(
-  ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
-  team: Team | undefined,
-  goalDepth: number,
-  color: string,
-  camera: Camera
-) {
-  if (!team) return;
-  
-  team.players.forEach(player => {
-    drawPlayer(ctx, canvas, player.position, goalDepth, color, camera);
-  });
 }
 
 function drawHeatmap(
