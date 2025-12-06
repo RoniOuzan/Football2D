@@ -115,7 +115,7 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
     drawGoals(ctx, canvas, goalDepth, camera);
 
     // Ball
-    drawCircleWorld(ctx, canvas, data.ball.position, 0.35, goalDepth, "white", camera, true);
+    drawCircle(ctx, canvas, data.ball.position, 0.35, goalDepth, "white", camera, true);
 
     // Players
     drawTeam(ctx, canvas, data.team1, goalDepth, "red", camera);
@@ -187,6 +187,84 @@ function drawCircleWorld(
   filled ? ctx.fill() : ctx.stroke();
 }
 
+function drawCircle(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  position: Translation2d,
+  radiusMeters: number,
+  goalDepth: number,
+  color: string,
+  camera: Camera,
+  filled: boolean
+) {
+  const pixelRadius = toPixelRadius(canvas, goalDepth, radiusMeters);
+  const screen = worldToScreen(canvas, goalDepth, position, camera);
+  // Perspective scaling: farther objects are flatter, closer more circular
+  const scale = getScale(canvas, toPixelY(canvas, position.y));
+  const radius = pixelRadius * ZOOM * scale;
+
+  ctx.beginPath();
+  ctx.arc(screen.x, screen.y, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  filled ? ctx.fill() : ctx.stroke();
+}
+
+function drawPlayer(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  position: Translation2d,
+  goalDepth: number,
+  color: string,
+  camera: Camera
+) {
+  const screen = worldToScreen(canvas, goalDepth, position, camera);
+
+  // Perspective scaling
+  const scale = getScale(canvas, toPixelY(canvas, position.y)) * ZOOM;
+
+  const bodyHeight = toPixelRadius(canvas, goalDepth, 1.2) * scale;      // player height
+  const bodyWidth = toPixelRadius(canvas, goalDepth, 1) * scale;       // torso width
+  const radiusFeetY = bodyWidth / 2 * 0.6; // more flattening for distant
+  const headRadius = toPixelRadius(canvas, goalDepth, 0.3) * scale;
+
+  const x = screen.x;
+  const y = screen.y;
+  const yOffset = 0.7;
+
+  ctx.save();
+
+  // --- BODY ---
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.roundRect(
+    x - bodyWidth / 2,
+    y - bodyHeight * yOffset,
+    bodyWidth,
+    bodyHeight
+  );
+  ctx.fill();
+
+  // --- FEET ---
+  ctx.beginPath();
+  ctx.fillStyle = color;
+  ctx.ellipse(x, y + radiusFeetY, bodyWidth / 2, radiusFeetY, 0, 0, Math.PI);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.fillStyle = color;
+  ctx.ellipse(x, y - bodyHeight * yOffset + 1, bodyWidth / 2, radiusFeetY, 0, Math.PI, Math.PI * 2);
+  ctx.fill();
+
+  // --- HEAD ---
+  ctx.beginPath();
+  ctx.fillStyle = "#ffe0bd";  // light skin tone; you can change
+  ctx.arc(x, y - bodyHeight * yOffset - headRadius + 2 * scale, headRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
 function drawTeam(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
@@ -196,8 +274,10 @@ function drawTeam(
   camera: Camera
 ) {
   if (!team) return;
-  const playerSize = 0.75;
-  team.players.forEach(player => drawCircleWorld(ctx, canvas, player.position, playerSize, goalDepth, color, camera, true));
+  
+  team.players.forEach(player => {
+    drawPlayer(ctx, canvas, player.position, goalDepth, color, camera);
+  });
 }
 
 function drawHeatmap(

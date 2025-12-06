@@ -8,7 +8,7 @@ import com.football.util.math.interpolation.TimeInterpolatableBuffer;
 
 public class Ball {
 
-    private static final Translation2d OFFSET_FROM_PLAYER = new Translation2d(1, 0);
+    private static final double OFFSET_FROM_PLAYER = 0.75;
 
     // --- Physics constants ---
     public static final double FRICTION_ACCEL = -6.0;      // m/s², slows the ball
@@ -129,7 +129,7 @@ public class Ball {
             // Ball follows player slightly in front of their facing direction
             this.velocity = this.carrier.getVelocity();
             this.position = this.carrier.getPosition()
-                    .plus(OFFSET_FROM_PLAYER.rotateBy(this.carrier.getDirection()));
+                    .plus(new Translation2d(OFFSET_FROM_PLAYER, this.carrier.getDirection()));
         } else {
             if (!goalPostCollision()) {
                 wallCollision();

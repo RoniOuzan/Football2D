@@ -1,9 +1,6 @@
 package com.football;
 
 import com.football.client.Client;
-import com.football.client.json.BasePacket;
-import com.football.client.json.InputPacket;
-import com.football.util.json.JsonUtil;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;

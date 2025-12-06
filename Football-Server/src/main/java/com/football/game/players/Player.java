@@ -11,7 +11,7 @@ import com.football.util.math.geometry.Translation2d;
 
 public abstract class Player {
 
-    public static final double PLAYER_RADIUS = 0.75;
+    public static final double PLAYER_RADIUS = 0.5;
     public static final double MAX_ACCELERATION = 8;
     public static final double MAX_DECELERATION = 10;
     public static final double SPRINT_VELOCITY = 10;
