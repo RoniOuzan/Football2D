@@ -129,7 +129,7 @@ public class Ball {
             this.position = this.carrier.getPosition()
                     .plus(new Translation2d(OFFSET_FROM_PLAYER, this.carrier.getDirection()));
         } else {
-            if (!goalPostCollision()) {
+            if (!goalPostCollision()) { 
                 wallCollision();
             }
             rollingDeceleration();
