@@ -111,6 +111,9 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
     drawCircleWorld(ctx, canvas, { x: maxX - 11, y: 0}, 0.25, goalDepth, "white", camera, true);
     drawCircleWorld(ctx, canvas, { x: -(maxX - 11), y: 0}, 0.25, goalDepth, "white", camera, true);
 
+    // Heatmap
+    // drawHeatmap(ctx, canvas, data.team1, goalDepth, camera);
+
     // Goals
     drawGoals3D(ctx, canvas, goalDepth, camera);
 
@@ -124,26 +127,25 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
     });
 
     // Players
-    data.team1.players.forEach(player => {
+    data.team1.players.forEach((player, i) => {
       draws.push({
         obj: player,
         depth: getScale(canvas, player.position.y),
-        draw: () => drawPlayer(ctx, canvas, player, goalDepth, "red", camera),
+        draw: () => drawPlayer(ctx, canvas, player, i, data.team1.teamStrategy.chosenPlayerIndex, goalDepth, "red", camera),
+        // draw: () => drawCircleWorld(ctx, canvas, player.position, 0.75, goalDepth, "red", camera, true)
       });
     });
-    data.team2.players.forEach(player => {
+    data.team2.players.forEach((player, i) => {
       draws.push({
         obj: player,
         depth: getScale(canvas, player.position.y),
-        draw: () => drawPlayer(ctx, canvas, player, goalDepth, "blue", camera),
+        draw: () => drawPlayer(ctx, canvas, player, i, data.team2.teamStrategy.chosenPlayerIndex, goalDepth, "blue", camera),
+        // draw: () => drawCircleWorld(ctx, canvas, player.position, 0.75, goalDepth, "blue", camera, true)
       });
     });
 
     draws.sort((a, b) => b.depth - a.depth);
     draws.forEach(d => d.draw());
-
-    // Heatmap
-    drawHeatmap(ctx, canvas, data.team1, goalDepth, camera);
 
   }, [data, camera]);
 
@@ -192,7 +194,9 @@ function drawCircleWorld(
   goalDepth: number,
   color: string,
   camera: Camera,
-  filled: boolean
+  filled: boolean,
+  startAngle: number = 0,
+  endAngle: number = Math.PI * 2,
 ) {
   const pixelRadius = toPixelRadius(canvas, goalDepth, radiusMeters);
   const screen = worldToScreen(canvas, goalDepth, position, camera);
@@ -202,7 +206,7 @@ function drawCircleWorld(
   const radiusY = radiusX * 0.6; // more flattening for distant
 
   ctx.beginPath();
-  ctx.ellipse(screen.x, screen.y, radiusX, radiusY, 0, 0, Math.PI * 2);
+  ctx.ellipse(screen.x, screen.y, radiusX, radiusY, 0, startAngle, endAngle);
   ctx.strokeStyle = color;
   ctx.fillStyle = color;
   filled ? ctx.fill() : ctx.stroke();
@@ -237,6 +241,8 @@ function drawPlayer(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   player: Player,
+  index: number,
+  chosenPlayer: number,
   goalDepth: number,
   color: string,
   camera: Camera
@@ -364,8 +370,68 @@ function drawPlayer(
   );
   ctx.fill();
 
+  if (index === chosenPlayer) {
+    drawCircleWorld(ctx, canvas, position, 0.8, goalDepth, "yellow", camera, false, 305 * Math.PI / 180, 235 * Math.PI / 180);
+  }
+
   ctx.restore();
 }
+
+// function drawPlayer(
+//   ctx: CanvasRenderingContext2D,
+//   canvas: HTMLCanvasElement,
+//   player: Player,
+//   goalDepth: number,
+//   color: string,
+//   camera: Camera
+// ) {
+//   const position = player.position;
+//   const screen = worldToScreen(canvas, goalDepth, position, camera);
+
+//   // Perspective scaling
+//   const scale = getScale(canvas, toPixelY(canvas, position.y)) * ZOOM;
+
+//   const bodyHeight = toPixelRadius(canvas, goalDepth, 1.2) * scale;      // player height
+//   const bodyWidth = toPixelRadius(canvas, goalDepth, 1) * scale;       // torso width
+//   const radiusFeetY = bodyWidth / 2 * 0.6; // more flattening for distant
+//   const headRadius = toPixelRadius(canvas, goalDepth, 0.3) * scale;
+
+//   const x = screen.x;
+//   const y = screen.y;
+//   const yOffset = 0.7;
+
+//   ctx.save();
+
+//   // --- BODY ---
+//   ctx.fillStyle = color;
+//   ctx.beginPath();
+//   ctx.roundRect(
+//     x - bodyWidth / 2,
+//     y - bodyHeight * yOffset,
+//     bodyWidth,
+//     bodyHeight
+//   );
+//   ctx.fill();
+
+//   // --- FEET ---
+//   ctx.beginPath();
+//   ctx.fillStyle = color;
+//   ctx.ellipse(x, y + radiusFeetY, bodyWidth / 2, radiusFeetY, 0, 0, Math.PI);
+//   ctx.fill();
+
+//   ctx.beginPath();
+//   ctx.fillStyle = color;
+//   ctx.ellipse(x, y - bodyHeight * yOffset + 1, bodyWidth / 2, radiusFeetY, 0, Math.PI, Math.PI * 2);
+//   ctx.fill();
+
+//   // --- HEAD ---
+//   ctx.beginPath();
+//   ctx.fillStyle = "#ffe0bd";  // light skin tone; you can change
+//   ctx.arc(x, y - bodyHeight * yOffset - headRadius + 2 * scale, headRadius, 0, Math.PI * 2);
+//   ctx.fill();
+
+//   ctx.restore();
+// }
 
 function drawHeatmap(
   ctx: CanvasRenderingContext2D,
@@ -418,7 +484,7 @@ function drawPitch(
   const topRight = perspectivePoint(canvas.width - goalDepth, 0, canvas, camera);
   const bottomLeft = perspectivePoint(goalDepth, canvas.height, canvas, camera);
   const bottomRight = perspectivePoint(canvas.width - goalDepth, canvas.height, canvas, camera);
-  ctx.fillStyle = "#006400";
+  ctx.fillStyle = "#008800";
   ctx.strokeStyle = "white";
   ctx.lineWidth = 2;
   ctx.beginPath();

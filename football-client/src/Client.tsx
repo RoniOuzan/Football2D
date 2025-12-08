@@ -10,7 +10,7 @@ export default class Client {
   }
 
   connect() {
-    this.socket = new WebSocket("ws://localhost:9090/game");
+    this.socket = new WebSocket("ws://192.168.129.62:9090/game");
 
     this.socket.onmessage = (ev) => {
       if (!ev.data) return;

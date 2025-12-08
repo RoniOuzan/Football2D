@@ -60,7 +60,7 @@ public class Team {
     public Player getClosestPlayerToBall(Predicate<Player> filter) {
         return this.players.stream()
                 .filter(filter)
-                .min(Comparator.comparingDouble(p -> p.getPosition().getDistance(this.game.getBall().getPosition())))
+                .min(Comparator.comparingDouble(p -> p.getPosition().getDistance(this.game.getBall().getPredictedPosition(1))))
                 .orElse(null);
     }
 
