@@ -125,7 +125,6 @@ public class Ball {
         this.position = this.position.plus(this.velocity.times(GameManager.PERIOD));
 
         if (this.carrier != null) {
-            // Ball follows player slightly in front of their facing direction
             this.velocity = this.carrier.getVelocity();
             this.position = this.carrier.getPosition()
                     .plus(new Translation2d(OFFSET_FROM_PLAYER, this.carrier.getDirection()));
@@ -161,6 +160,8 @@ public class Ball {
             this.position = new Translation2d(x, y);
             return;
         }
+
+        if (insideGoalWidth) return;
 
         if (x - RADIUS < -Game.MAX_X) { // Left wall
             wallBounce(-Game.MAX_X + RADIUS, y, new Translation2d(1, 0)); // normal points right

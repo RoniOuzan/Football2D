@@ -56,8 +56,8 @@ public class Shoot implements KeybindAction {
         // ---- 3. Assist factor based on hold time ----
         // tap = manual, full power = more assist
         double assist = Math.min(holdTime / 0.7, 1.0);
-        assist = Math.pow(assist, 1.3);   // FIFA-like curve
-        assist = MathUtil.clamp(assist, 0.3, 0.9);
+        assist = Math.pow(assist, 1.3);
+        assist = 0.6 + assist * 0.4;
 
         // ---- 4. Interpolate the target ----
         return manualTarget.times(1 - assist)
