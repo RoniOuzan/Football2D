@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from "react";
-import { JsonData, maxX, Player, Team, Translation2d } from "./types";
+import { JsonData, maxX, maxY, Player, Team, Translation2d, Translation3d } from "./types";
 import { pitchWidthUnits, pitchHeightUnits } from "./types";
 
 const HEIGHT_SCALE = 0.45;      // Flatten vertical scale for FIFA perspective
@@ -11,6 +11,7 @@ const TILT_Y = 0;               // Camera vertical tilt
 interface Camera {
   x: number;
   y: number;
+  z: number;
 }
 
 interface GameRendererProps {
@@ -48,18 +49,49 @@ function toPixelRadius(
 // Convert a world position in meters to screen position considering perspective and camera
 function worldToScreen(
   canvas: HTMLCanvasElement,
-  goalDepth: number,
-  position: Translation2d,
+  position: Translation3d | Translation2d,
   camera: Camera
 ): Translation2d {
-  const pixelX = toPixelX(canvas, goalDepth, position.x);
-  const pixelY = toPixelY(canvas, position.y);
-  return perspectivePoint(pixelX, pixelY, canvas, camera);
+  const pitch = radians(-45);  // camera pitched downward 20°
+
+  // world → camera direction
+  const dx = position.x - camera.x;
+  const dy = position.y - camera.y;
+  const dz = ("z" in position ? position.z : 0) - camera.z;
+
+  // rotate by -pitch around X to remove pitch
+  const cosP = Math.cos(-pitch);
+  const sinP = Math.sin(-pitch);
+
+  const x1 = dx;
+  let y1 = dy * cosP - dz * sinP;   // forward
+  const z1 = dy * sinP + dz * cosP;   // up
+
+  if (y1 < 0) {
+    y1 = 0;
+  } 
+
+  // perspective projection
+  const fov = radians(90);
+  const focal = 1 / Math.tan(fov / 2);  // projection scale
+
+  const px = (x1 / y1) * focal;
+  const py = (z1 / y1) * focal;
+
+  // convert to pixel space
+  return {
+    x: canvas.width / 2  + px * (canvas.width / 2),
+    y: canvas.height / 2 - py * (canvas.height / 2)
+  };
+}
+
+function radians(angle: number): number {
+  return angle * (Math.PI / 180);
 }
 
 const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [camera, setCamera] = useState<Camera>({ x: 0, y: 0 });
+  const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, z: 0 });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -75,77 +107,80 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
     const fieldWidthPX = canvas.width - 2 * goalDepth;
 
     // Smooth camera follow: limit ball movement and scale
-    const effectiveBallX = Math.max(Math.min(data.ball.position.x, 50), -50) * 0.5;
-    const cameraX = (effectiveBallX / pitchWidthUnits / 2) * fieldWidthPX;
+    // const effectiveBallX = Math.max(Math.min(data.ball.position.x, 50), -50) * 0.5;
+    // const cameraX = (effectiveBallX / pitchWidthUnits / 2) * fieldWidthPX;
 
-    const effectiveBallY = Math.max(Math.min(data.ball.position.y, 16), -16) * 0.5;
-    const cameraY = (effectiveBallY / pitchHeightUnits / 2) * canvas.height;
+    // const effectiveBallY = Math.max(Math.min(data.ball.position.y, 16), -16) * 0.5;
+    // const cameraY = (effectiveBallY / pitchHeightUnits / 2) * canvas.height;
 
-    setCamera({ x: cameraX, y: cameraY });
+    setCamera({ x: 0, y: -35, z: 45 });
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    drawPitch(ctx, canvas, goalDepth, camera);
+    drawPitch(ctx, canvas, camera);
 
     // Halfway line
-    const halfTop = perspectivePoint(canvas.width / 2, 0, canvas, camera);
-    const halfBottom = perspectivePoint(canvas.width / 2, canvas.height, canvas, camera);
+    const halfTop = worldToScreen(canvas, {x: 0, y: maxY}, camera);
+    const halfBottom = worldToScreen(canvas, {x: 0, y: -maxY}, camera);
     ctx.beginPath();
     ctx.moveTo(halfTop.x, halfTop.y);
     ctx.lineTo(halfBottom.x, halfBottom.y);
     ctx.stroke();
 
-    // Center circle
-    drawCircleWorld(ctx, canvas, { x: 0, y: 0 }, 9.15, goalDepth, "white", camera, false);
-    drawCircleWorld(ctx, canvas, { x: 0, y: 0}, 0.25, goalDepth, "white", camera, true);
+     // Center circle
+    drawCircleWorld(ctx, canvas, { x: 0, y: 0 }, 9.15, "white", camera, false);
+    drawCircleWorld(ctx, canvas, { x: 0, y: 0 }, 0.25, "white", camera, true);
 
-    // Penalty boxes
-    drawRectWorld(ctx, canvas, goalDepth, 16.5, 40.3, camera);
-    drawRectWorld(ctx, canvas, goalDepth, 16.5, 40.3, camera, true);
+    // // Penalty boxes
+    drawRectWorld(ctx, canvas, 16.5, 40.3, camera);
+    drawRectWorld(ctx, canvas, 16.5, 40.3, camera, true);
 
-    // Six-yard boxes
-    drawRectWorld(ctx, canvas, goalDepth, 5.5, 18.3, camera);
-    drawRectWorld(ctx, canvas, goalDepth, 5.5, 18.3, camera, true);
+    // // Six-yard boxes
+    drawRectWorld(ctx, canvas, 5.5, 18.3, camera);
+    drawRectWorld(ctx, canvas, 5.5, 18.3, camera, true);
 
-    // Penalty spots
-    drawCircleWorld(ctx, canvas, { x: maxX - 11, y: 0}, 0.25, goalDepth, "white", camera, true);
-    drawCircleWorld(ctx, canvas, { x: -(maxX - 11), y: 0}, 0.25, goalDepth, "white", camera, true);
+    // // Penalty spots
+    drawCircleWorld(ctx, canvas, { x: maxX - 11, y: 0}, 0.25, "white", camera, true);
+    drawCircleWorld(ctx, canvas, { x: -(maxX - 11), y: 0}, 0.25, "white", camera, true);
 
-    // Heatmap
+    drawCircleWorld(ctx, canvas, { x: maxX - 16.5, y: 0 }, 9.15, "white", camera, false, 90, 270);
+    drawCircleWorld(ctx, canvas, { x: -maxX + 16.5, y: 0 }, 9.15, "white", camera, false, -90, 90);
+
+    // // Heatmap
     // drawHeatmap(ctx, canvas, data.team1, goalDepth, camera);
 
-    // Goals
+    // // Goals
     drawGoals3D(ctx, canvas, goalDepth, camera);
 
-    const draws: { obj: Player | 'ball', depth: number, draw: () => void }[] = [];
+    // const draws: { obj: Player | 'ball', depth: number, draw: () => void }[] = [];
 
-    // Ball
-    draws.push({
-      obj: 'ball',
-      depth: getScale(canvas, data.ball.position.y),
-      draw: () => drawCircle(ctx, canvas, data.ball.position, 0.35, goalDepth, "white", camera, true),
-    });
+    // // Ball
+    // draws.push({
+    //   obj: 'ball',
+    //   depth: getScale(canvas, data.ball.position.y),
+    //   draw: () => drawCircle(ctx, canvas, data.ball.position, 0.35, goalDepth, "white", camera, true),
+    // });
 
-    // Players
-    data.team1.players.forEach((player, i) => {
-      draws.push({
-        obj: player,
-        depth: getScale(canvas, player.position.y),
-        draw: () => drawPlayer(ctx, canvas, player, i, data.team1.teamStrategy.chosenPlayerIndex, goalDepth, "red", camera),
-        // draw: () => drawCircleWorld(ctx, canvas, player.position, 0.75, goalDepth, "red", camera, true)
-      });
-    });
-    data.team2.players.forEach((player, i) => {
-      draws.push({
-        obj: player,
-        depth: getScale(canvas, player.position.y),
-        draw: () => drawPlayer(ctx, canvas, player, i, data.team2.teamStrategy.chosenPlayerIndex, goalDepth, "blue", camera),
-        // draw: () => drawCircleWorld(ctx, canvas, player.position, 0.75, goalDepth, "blue", camera, true)
-      });
-    });
+    // // Players
+    // data.team1.players.forEach((player, i) => {
+    //   draws.push({
+    //     obj: player,
+    //     depth: getScale(canvas, player.position.y),
+    //     draw: () => drawPlayer(ctx, canvas, player, i, data.team1.teamStrategy.chosenPlayerIndex, goalDepth, "red", camera),
+    //     // draw: () => drawCircleWorld(ctx, canvas, player.position, 0.75, goalDepth, "red", camera, true)
+    //   });
+    // });
+    // data.team2.players.forEach((player, i) => {
+    //   draws.push({
+    //     obj: player,
+    //     depth: getScale(canvas, player.position.y),
+    //     draw: () => drawPlayer(ctx, canvas, player, i, data.team2.teamStrategy.chosenPlayerIndex, goalDepth, "blue", camera),
+    //     // draw: () => drawCircleWorld(ctx, canvas, player.position, 0.75, goalDepth, "blue", camera, true)
+    //   });
+    // });
 
-    draws.sort((a, b) => b.depth - a.depth);
-    draws.forEach(d => d.draw());
+    // draws.sort((a, b) => b.depth - a.depth);
+    // draws.forEach(d => d.draw());
 
   }, [data, camera]);
 
@@ -190,26 +225,51 @@ function drawCircleWorld(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   position: Translation2d,
-  radiusMeters: number,
-  goalDepth: number,
+  radius: number,
   color: string,
   camera: Camera,
   filled: boolean,
-  startAngle: number = 0,
-  endAngle: number = Math.PI * 2,
+  startAngle = 0,
+  endAngle = 360,
 ) {
-  const pixelRadius = toPixelRadius(canvas, goalDepth, radiusMeters);
-  const screen = worldToScreen(canvas, goalDepth, position, camera);
-  // Perspective scaling: farther objects are flatter, closer more circular
-  const scale = getScale(canvas, toPixelY(canvas, position.y));
-  const radiusX = pixelRadius * ZOOM * scale;
-  const radiusY = radiusX * 0.6; // more flattening for distant
+  const samples = 32;
+  const pts: Translation2d[] = [];
+  startAngle = radians(startAngle);
+  endAngle = radians(endAngle);
+
+  for (let i = 0; i <= samples; i++) {
+    // compute angle proportionally between start and end
+    const angle = startAngle + ((i / samples) * (endAngle - startAngle));
+
+    const wx = position.x + Math.cos(angle) * radius;
+    const wy = position.y + Math.sin(angle) * radius;
+
+    // project to screen
+    const p = worldToScreen(canvas, { x: wx, y: wy }, camera);
+
+    pts.push(p);
+  }
+
+  if (pts.length < 2) return;
 
   ctx.beginPath();
-  ctx.ellipse(screen.x, screen.y, radiusX, radiusY, 0, startAngle, endAngle);
-  ctx.strokeStyle = color;
-  ctx.fillStyle = color;
-  filled ? ctx.fill() : ctx.stroke();
+  ctx.moveTo(pts[0].x, pts[0].y);
+
+  for (let i = 1; i < pts.length; i++) {
+    ctx.lineTo(pts[i].x, pts[i].y);
+  }
+
+  if (filled) {
+    // optionally connect last point to center for filled arc
+    const center = worldToScreen(canvas, position, camera);
+    ctx.lineTo(center.x, center.y);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  } else {
+    ctx.strokeStyle = color;
+    ctx.stroke();
+  }
 }
 
 function drawCircle(
@@ -223,7 +283,7 @@ function drawCircle(
   filled: boolean
 ) {
   const pixelRadius = toPixelRadius(canvas, goalDepth, radiusMeters);
-  const screen = worldToScreen(canvas, goalDepth, position, camera);
+  const screen = worldToScreen(canvas, position, camera);
   // Perspective scaling: farther objects are flatter, closer more circular
   const scale = getScale(canvas, toPixelY(canvas, position.y));
   const radius = pixelRadius * ZOOM * scale;
@@ -249,7 +309,7 @@ function drawPlayer(
 ) {
   const position = player.position;
   const velocity = player.velocity;
-  const screen = worldToScreen(canvas, goalDepth, position, camera);
+  const screen = worldToScreen(canvas, position, camera);
 
   const speed = Math.hypot(velocity.x, velocity.y);
 
@@ -371,7 +431,7 @@ function drawPlayer(
   ctx.fill();
 
   if (index === chosenPlayer) {
-    drawCircleWorld(ctx, canvas, position, 0.8, goalDepth, "yellow", camera, false, 305 * Math.PI / 180, 235 * Math.PI / 180);
+    drawCircleWorld(ctx, canvas, position, 0.8, "yellow", camera, false, 305 * Math.PI / 180, 235 * Math.PI / 180);
   }
 
   ctx.restore();
@@ -450,10 +510,10 @@ function drawHeatmap(
   for (const entry of team.teamStrategy.scores) {
     const color = scoreToColor(entry.value, -120, maxValue);
     fillPoly(ctx, color, [
-      worldToScreen(canvas, goalDepth, { x: entry.key.x - sizeX / 2, y: entry.key.y - sizeY / 2 }, camera),
-      worldToScreen(canvas, goalDepth, { x: entry.key.x - sizeX / 2, y: entry.key.y + sizeY / 2 }, camera),
-      worldToScreen(canvas, goalDepth, { x: entry.key.x + sizeX / 2, y: entry.key.y + sizeY / 2 }, camera),
-      worldToScreen(canvas, goalDepth, { x: entry.key.x + sizeX / 2, y: entry.key.y - sizeY / 2 }, camera)
+      worldToScreen(canvas, { x: entry.key.x - sizeX / 2, y: entry.key.y - sizeY / 2 }, camera),
+      worldToScreen(canvas, { x: entry.key.x - sizeX / 2, y: entry.key.y + sizeY / 2 }, camera),
+      worldToScreen(canvas, { x: entry.key.x + sizeX / 2, y: entry.key.y + sizeY / 2 }, camera),
+      worldToScreen(canvas, { x: entry.key.x + sizeX / 2, y: entry.key.y - sizeY / 2 }, camera)
     ]);
   }
   ctx.restore();
@@ -477,13 +537,12 @@ function fillPoly(
 function drawPitch(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
-  goalDepth: number,
   camera: Camera
 ) {
-  const topLeft = perspectivePoint(goalDepth, 0, canvas, camera);
-  const topRight = perspectivePoint(canvas.width - goalDepth, 0, canvas, camera);
-  const bottomLeft = perspectivePoint(goalDepth, canvas.height, canvas, camera);
-  const bottomRight = perspectivePoint(canvas.width - goalDepth, canvas.height, canvas, camera);
+  const topLeft = worldToScreen(canvas, {x: -maxX, y: maxY}, camera);
+  const topRight = worldToScreen(canvas, {x: maxX, y: maxY}, camera);
+  const bottomLeft = worldToScreen(canvas, {x: -maxX, y: -maxY}, camera);
+  const bottomRight = worldToScreen(canvas, {x: maxX, y: -maxY}, camera);
   ctx.fillStyle = "#008800";
   ctx.strokeStyle = "white";
   ctx.lineWidth = 2;
@@ -500,20 +559,16 @@ function drawPitch(
 function drawRectWorld(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
-  goalDepth: number,
   widthM: number,
   heightM: number,
   camera: Camera,
   mirror = false
 ) {
-  const pxW = (widthM / pitchWidthUnits) * (canvas.width - 2 * goalDepth);
-  const pxH = (heightM / pitchHeightUnits) * canvas.height;
-  const left = mirror ? canvas.width - goalDepth - pxW : goalDepth;
-  const top = (canvas.height - pxH) / 2;
-  const TL = perspectivePoint(left, top, canvas, camera);
-  const TR = perspectivePoint(left + pxW, top, canvas, camera);
-  const BL = perspectivePoint(left, top + pxH, canvas, camera);
-  const BR = perspectivePoint(left + pxW, top + pxH, canvas, camera);
+  const xMult = mirror ? -1 : 1;
+  const TL = worldToScreen(canvas, {x: xMult * (maxX - widthM), y: heightM / 2, z: 0}, camera);
+  const TR = worldToScreen(canvas, {x: xMult * (maxX - widthM), y: -heightM / 2}, camera);
+  const BR = worldToScreen(canvas, {x: xMult * (maxX), y: -heightM / 2}, camera);
+  const BL = worldToScreen(canvas, {x: xMult * (maxX), y: heightM / 2}, camera);
   ctx.beginPath();
   ctx.moveTo(TL.x, TL.y);
   ctx.lineTo(TR.x, TR.y);
@@ -545,10 +600,10 @@ function drawGoals3D(
     const bottomY = -goalWidth / 2;
 
     // Front posts
-    const LFTop = worldToScreen(canvas, goalDepth, { x: frontX, y: topY }, camera);
-    const LFBottom = worldToScreen(canvas, goalDepth, { x: frontX, y: bottomY }, camera);
-    const LBTop = worldToScreen(canvas, goalDepth, { x: backX, y: topY }, camera);
-    const LBBottom = worldToScreen(canvas, goalDepth, { x: backX, y: bottomY }, camera);
+    const LFTop = worldToScreen(canvas, { x: frontX, y: topY, z: 0 }, camera);
+    const LFBottom = worldToScreen(canvas, { x: frontX, y: bottomY, z: 0 }, camera);
+    const LBTop = worldToScreen(canvas, { x: backX, y: topY, z: 0 }, camera);
+    const LBBottom = worldToScreen(canvas, { x: backX, y: bottomY, z: 0 }, camera);
 
     const goalHeightPX = toPixelRadius(canvas, goalDepth, goalHeight);
 

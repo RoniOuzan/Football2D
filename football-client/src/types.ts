@@ -8,6 +8,12 @@ export interface Translation2d {
   y: number;
 }
 
+export interface Translation3d {
+  x: number;
+  y: number;
+  z: number;
+}
+
 export interface JsonData {
   ball: Ball;
   team1: Team;
