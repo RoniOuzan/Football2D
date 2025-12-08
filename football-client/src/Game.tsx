@@ -7,12 +7,9 @@ import { JsonData } from "./types";
 export const FPS = 30;
 
 export default function Game() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
   const [score, setScore] = useState({ blue: 0, red: 0 });
   const [, setData] = useState<JsonData | null>(null);
 
-  const rendererRef = useRef<GameRenderer | null>(null);
   const client = useRef<Client | null>(null);
   const input = useRef<InputController | null>(null);
 
@@ -30,18 +27,6 @@ export default function Game() {
     client.current.connect();
 
     input.current = new InputController(client.current);
-  }, []);
-
-  useEffect(() => {
-    rendererRef.current = new GameRenderer();
-
-    const loop = () => {
-      if (rendererRef.current && canvasRef.current && dataRef.current) {
-        rendererRef.current.draw(canvasRef.current, dataRef.current);
-      }
-      requestAnimationFrame(loop);
-    };
-    loop();
   }, []);
 
   return (
@@ -71,7 +56,7 @@ export default function Game() {
         <span style={{ color: "red" }}>{score.red}</span>
       </div>
 
-      <canvas ref={canvasRef} width={1080} height={700} />
+      {dataRef.current && <GameRenderer data={dataRef.current}/>}
     </div>
   );
 }
