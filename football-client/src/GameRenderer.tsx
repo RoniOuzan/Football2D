@@ -2,11 +2,7 @@ import React, { useRef, useEffect, useState } from "react";
 import { JsonData, maxX, maxY, Player, Team, Translation2d, Translation3d } from "./types";
 import { pitchWidthUnits, pitchHeightUnits } from "./types";
 
-const HEIGHT_SCALE = 0.45;      // Flatten vertical scale for FIFA perspective
-const TOP_SCALE = 0.25;         // Top edge scaling (strong perspective)
-const BOTTOM_SCALE = 1.0;       // Bottom edge scaling (full width)
 const ZOOM = 1.7;               // Medium zoom level
-const TILT_Y = 0;               // Camera vertical tilt
 
 interface Camera {
   x: number;
@@ -75,6 +71,8 @@ function radians(angle: number): number {
   return angle * (Math.PI / 180);
 }
 
+let draws: { depth: number, draw: (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => void }[] = [];
+
 const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, z: 0, pitch: 0, yaw: 0 });
@@ -88,8 +86,6 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-
-    const goalDepth = (3 / pitchWidthUnits) * canvas.width;
 
     // Smooth camera follow: limit ball movement and scale
     const cameraX = Math.max(Math.min(data.ball.position.x, 50), -50) * 0.3;
@@ -135,71 +131,55 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
     // Heatmap
     // drawHeatmap(ctx, canvas, data.team1, camera);
 
-    const draws: { obj: Player | 'ball', depth: number, draw: () => void }[] = [];
-
     // Ball
-    draws.push({
-      obj: 'ball',
-      depth: getScale(canvas, data.ball.position.y),
-      draw: () => drawBall(ctx, canvas, {x: data.ball.position.x, y: data.ball.position.y, z: 0.25}, 0.25, camera),
-    });
+    drawBall(ctx, canvas, {x: data.ball.position.x, y: data.ball.position.y, z: 0.25}, 0.25, camera)
 
     // Players
     data.team1.players.forEach((player, i) => {
-      draws.push({
-        obj: player,
-        depth: getScale(canvas, player.position.y),
-        draw: () => drawPlayer(ctx, canvas, player, i, data.team1.teamStrategy.chosenPlayerIndex, "red", camera),
-      });
+      drawPlayer(ctx, canvas, player, i, data.team1.teamStrategy.chosenPlayerIndex, "red", camera);
     });
     data.team2.players.forEach((player, i) => {
-      draws.push({
-        obj: player,
-        depth: getScale(canvas, player.position.y),
-        draw: () => drawPlayer(ctx, canvas, player, i, data.team2.teamStrategy.chosenPlayerIndex, "blue", camera),
-      });
+      drawPlayer(ctx, canvas, player, i, data.team2.teamStrategy.chosenPlayerIndex, "blue", camera);
     });
 
-    draws.sort((a, b) => b.depth - a.depth);
-    draws.forEach(d => d.draw());
-
-    // // Goals
+    // Goals
     drawGoals3D(ctx, canvas, camera);
+
+    draws.sort((a, b) => b.depth - a.depth);
+    draws.forEach(d => d.draw(ctx, canvas));
+    draws = [];
 
   }, [data]);
 
   return <canvas ref={canvasRef} style={{ backgroundColor: "#006400" }} />;
 };
 
-// -----------------------
-// Perspective helpers
-// -----------------------
-function perspectivePoint(
-  x: number,
-  y: number,
-  canvas: HTMLCanvasElement,
-  camera: Camera
-): Translation2d {
-  let newY = y * HEIGHT_SCALE + (1 - HEIGHT_SCALE) * canvas.height / 2;
-  newY += TILT_Y;
-  const scale = getScale(canvas, y);
-  const centerX = canvas.width / 2;
-  const centerY = canvas.height / 2;
-  const dx = (x - centerX) * scale * ZOOM;
-  const dy = (newY - centerY) * ZOOM;
-  return {
-    x: centerX + dx - camera.x * ZOOM,
-    y: centerY + dy + camera.y * ZOOM
-  };
+function getDistanceToCamera(position: Translation3d | Translation2d, camera: Camera) {
+  const dx = position.x - camera.x;
+  const dy = position.y - camera.y;
+  const dz = ("z" in position ? position.z : 0) - camera.z;
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
-function getScale(
-  canvas: HTMLCanvasElement,
-  y: number
-): number {
-  y = y * HEIGHT_SCALE + (1 - HEIGHT_SCALE) * canvas.height / 2 + TILT_Y;
-  const t = y / canvas.height;
-  return TOP_SCALE + (BOTTOM_SCALE - TOP_SCALE) * t;
+function line(camera: Camera, pos1: Translation3d | Translation2d, pos2: Translation3d | Translation2d) {
+  draws.push({
+    depth: getDistanceToCamera(pos1, camera),
+    draw: (ctx, canvas) => {
+      const screen1 = worldToScreen(canvas, pos1, camera);
+      const screen2 = worldToScreen(canvas, pos2, camera);
+
+      ctx.beginPath();
+      ctx.moveTo(screen1.x, screen1.y);
+      ctx.lineTo(screen2.x, screen2.y);
+      ctx.stroke();
+    }
+  });
+}
+
+function lines(camera: Camera, pos: Translation3d[] | Translation2d[]) {
+  for (let i = 1; i < pos.length; i++) {
+      line(camera, pos[i - 1], pos[i]);
+  }
 }
 
 // -----------------------
@@ -216,44 +196,49 @@ function drawCircleWorld(
   startAngle = 0,
   endAngle = 360,
 ) {
-  const samples = 32;
-  const pts: Translation2d[] = [];
-  startAngle = radians(startAngle);
-  endAngle = radians(endAngle);
+  draws.push({
+    depth: getDistanceToCamera(position, camera),
+    draw: () => {
+      const samples = 32;
+      const pts: Translation2d[] = [];
+      startAngle = radians(startAngle);
+      endAngle = radians(endAngle);
 
-  for (let i = 0; i <= samples; i++) {
-    // compute angle proportionally between start and end
-    const angle = startAngle + ((i / samples) * (endAngle - startAngle));
+      for (let i = 0; i <= samples; i++) {
+        // compute angle proportionally between start and end
+        const angle = startAngle + ((i / samples) * (endAngle - startAngle));
 
-    const wx = position.x + Math.cos(angle) * radius;
-    const wy = position.y + Math.sin(angle) * radius;
+        const wx = position.x + Math.cos(angle) * radius;
+        const wy = position.y + Math.sin(angle) * radius;
 
-    // project to screen
-    const p = worldToScreen(canvas, { x: wx, y: wy, z: "z" in position ? position.z : 0 }, camera);
+        // project to screen
+        const p = worldToScreen(canvas, { x: wx, y: wy, z: "z" in position ? position.z : 0 }, camera);
 
-    pts.push(p);
-  }
+        pts.push(p);
+      }
 
-  if (pts.length < 2) return;
+      if (pts.length < 2) return;
 
-  ctx.beginPath();
-  ctx.moveTo(pts[0].x, pts[0].y);
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
 
-  for (let i = 1; i < pts.length; i++) {
-    ctx.lineTo(pts[i].x, pts[i].y);
-  }
+      for (let i = 1; i < pts.length; i++) {
+        ctx.lineTo(pts[i].x, pts[i].y);
+      }
 
-  if (filled) {
-    // optionally connect last point to center for filled arc
-    const center = worldToScreen(canvas, position, camera);
-    ctx.lineTo(center.x, center.y);
-    ctx.closePath();
-    ctx.fillStyle = color;
-    ctx.fill();
-  } else {
-    ctx.strokeStyle = color;
-    ctx.stroke();
-  }
+      if (filled) {
+        // optionally connect last point to center for filled arc
+        const center = worldToScreen(canvas, position, camera);
+        ctx.lineTo(center.x, center.y);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+      } else {  
+        ctx.strokeStyle = color;
+        ctx.stroke();
+      }
+    }
+  });
 }
 
 function drawBall(
@@ -263,16 +248,21 @@ function drawBall(
   radius: number,
   camera: Camera
 ) {
-  const ballScreen = worldToScreen(canvas, ball, camera);
-  const screenRadius = calculateRadius(canvas, ball, radius, camera);
+  draws.push({
+    depth: getDistanceToCamera(ball, camera),
+    draw: () => {
+      const ballScreen = worldToScreen(canvas, ball, camera);
+      const screenRadius = calculateRadius(canvas, ball, radius, camera);
 
-  ctx.beginPath();
-  ctx.arc(ballScreen.x, ballScreen.y, screenRadius, 0, Math.PI * 2);
-  ctx.fillStyle = "white";
-  ctx.fill();
-  ctx.strokeStyle = "black";
-  ctx.lineWidth = 0.5;
-  ctx.stroke(); 
+      ctx.beginPath();
+      ctx.arc(ballScreen.x, ballScreen.y, screenRadius, 0, Math.PI * 2);
+      ctx.fillStyle = "white";
+      ctx.fill();
+      ctx.strokeStyle = "black";
+      ctx.lineWidth = 0.5;
+      ctx.stroke(); 
+    }
+  });
 }
 
 function calculateRadius(
@@ -366,32 +356,42 @@ function drawPlayer(
   const topLeft = {x: top.x - bodyRadiusPX, y: top.y};
   const topRight = {x: top.x + bodyRadiusPX, y: top.y};
 
-  ctx.beginPath();
-  ctx.fillStyle = color;
-  ctx.moveTo(bottomLeft.x, bottomLeft.y);
-  ctx.lineTo(bottomRight.x, bottomRight.y);
-  ctx.lineTo(topRight.x, topRight.y);
-  ctx.lineTo(topLeft.x, topLeft.y);
-  ctx.fill();
+  draws.push({
+    depth: getDistanceToCamera({...pos, z: legsHeight}, camera),
+    draw: () => {
+      ctx.beginPath();
+      ctx.fillStyle = color;
+      ctx.moveTo(bottomLeft.x, bottomLeft.y);
+      ctx.lineTo(bottomRight.x, bottomRight.y);
+      ctx.lineTo(topRight.x, topRight.y);
+      ctx.lineTo(topLeft.x, topLeft.y);
+      ctx.fill();
+    }
+  })
 
   // ---------- HEAD ----------
   const headHeight = 1.7; // meters from ground
   const headRadius = 0.25; // meters
-  const headScreen = worldToScreen(canvas, { x: pos.x, y: pos.y, z: headHeight }, camera);
-  const headPixelRadius = calculateRadius(canvas, { x: pos.x, y: pos.y, z: headHeight }, headRadius, camera);
+  const headScreen = worldToScreen(canvas, {...pos, z: headHeight }, camera);
+  const headPixelRadius = calculateRadius(canvas, {...pos, z: headHeight }, headRadius, camera);
 
-  ctx.beginPath();
-  ctx.arc(
-    headScreen.x,
-    headScreen.y,
-    headPixelRadius,
-    0,
-    Math.PI * 2
-  );
-  ctx.fillStyle = "#ffe0c4";
-  ctx.fill();
-  ctx.strokeStyle = "#00000055";
-  ctx.stroke();
+  draws.push({
+    depth: getDistanceToCamera({...pos, z: headHeight}, camera),
+    draw: () => {
+      ctx.beginPath();
+      ctx.arc(
+        headScreen.x,
+        headScreen.y,
+        headPixelRadius,
+        0,
+        Math.PI * 2
+      );
+      ctx.fillStyle = "#ffe0c4";
+      ctx.fill();
+      ctx.strokeStyle = "#00000055";
+      ctx.stroke();
+    }
+  });
 
   // ---------- LEGS (dynamic swing) ----------
   const speed = Math.hypot(player.velocity.x, player.velocity.y);
@@ -415,14 +415,7 @@ function drawPlayer(
   const leftLegTop = worldToScreen(canvas, { x: leftLegX, y: pos.y, z: legsHeight + leftLegZ }, camera);
   const leftLegBottom = worldToScreen(canvas, { x: leftLegX, y: pos.y, z: leftFootZ }, camera);
 
-  if (leftLegTop && leftLegBottom) {
-    ctx.beginPath();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 4;
-    ctx.moveTo(leftLegTop.x, leftLegTop.y);
-    ctx.lineTo(leftLegBottom.x, leftLegBottom.y);
-    ctx.stroke();
-  }
+  line(camera, leftLegTop, leftLegBottom);
 
   // Right leg (opposite phase)
   const rightLegX = pos.x + sideOffset;
@@ -432,14 +425,7 @@ function drawPlayer(
   const rightLegTop = worldToScreen(canvas, { x: rightLegX, y: pos.y, z: legsHeight + rightLegZ }, camera);
   const rightLegBottom = worldToScreen(canvas, { x: rightLegX, y: pos.y, z: rightFootZ }, camera);
 
-  if (rightLegTop && rightLegBottom) {
-    ctx.beginPath();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 4;
-    ctx.moveTo(rightLegTop.x, rightLegTop.y);
-    ctx.lineTo(rightLegBottom.x, rightLegBottom.y);
-    ctx.stroke();
-  }
+  line(camera, rightLegTop, rightLegBottom);
 
   if (index === chosenPlayer) {
     drawCircleWorld(ctx, canvas, pos, bodyRadius * 1.5, "yellow", camera, false, 123, 415);
@@ -461,23 +447,27 @@ function drawHeatmap(
   const sizeY = pitchHeightUnits / 40;
   for (const entry of team.teamStrategy.scores) {
     const color = scoreToColor(entry.value, -120, maxValue);
-    fillPoly(ctx, color, [
-      worldToScreen(canvas, { x: entry.key.x - sizeX / 2, y: entry.key.y - sizeY / 2 }, camera),
-      worldToScreen(canvas, { x: entry.key.x - sizeX / 2, y: entry.key.y + sizeY / 2 }, camera),
-      worldToScreen(canvas, { x: entry.key.x + sizeX / 2, y: entry.key.y + sizeY / 2 }, camera),
-      worldToScreen(canvas, { x: entry.key.x + sizeX / 2, y: entry.key.y - sizeY / 2 }, camera)
-    ]);
+    fillPoly(ctx, canvas, color, [
+      { x: entry.key.x - sizeX / 2, y: entry.key.y - sizeY / 2 },
+      { x: entry.key.x - sizeX / 2, y: entry.key.y + sizeY / 2 },
+      { x: entry.key.x + sizeX / 2, y: entry.key.y + sizeY / 2 },
+      { x: entry.key.x + sizeX / 2, y: entry.key.y - sizeY / 2 },
+    ], camera);
   }
   ctx.restore();
 }
 
 function fillPoly(
   ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
   color: string,
-  points: Translation2d[]
+  points: Translation2d[],
+  camera: Camera
 ) {
   ctx.fillStyle = color;
   ctx.beginPath();
+  points = points.map(p => worldToScreen(canvas, p, camera));
+
   ctx.moveTo(points[0].x, points[0].y);
   for (let i = 1; i < points.length; i++) {
     ctx.lineTo(points[i].x, points[i].y);
@@ -547,48 +537,55 @@ function drawGoals3D(
   ];
 
   goals.forEach(goal => {
-    const frontFarDown = worldToScreen(canvas, {x: goal.frontX, y: goalWidth / 2, z: 0}, camera);
-    const frontFarUp = worldToScreen(canvas, {x: goal.frontX, y: goalWidth / 2, z: goalHeight}, camera);
-    const frontCloseDown = worldToScreen(canvas, {x: goal.frontX, y: -goalWidth / 2, z: 0}, camera);
-    const frontCloseUp = worldToScreen(canvas, {x: goal.frontX, y: -goalWidth / 2, z: goalHeight}, camera);
+    const frontFarDown = {x: goal.frontX, y: goalWidth / 2, z: 0};
+    const frontFarUp = {x: goal.frontX, y: goalWidth / 2, z: goalHeight};
+    const frontCloseDown = {x: goal.frontX, y: -goalWidth / 2, z: 0};
+    const frontCloseUp = {x: goal.frontX, y: -goalWidth / 2, z: goalHeight}
 
-    const backFarDown = worldToScreen(canvas, {x: goal.backX, y: goalWidth / 2, z: 0}, camera);
-    const backFarUp = worldToScreen(canvas, {x: goal.backX, y: goalWidth / 2, z: goalBackHeight}, camera);
-    const backCloseDown = worldToScreen(canvas, {x: goal.backX, y: -goalWidth / 2, z: 0}, camera);
-    const backCloseUp = worldToScreen(canvas, {x: goal.backX, y: -goalWidth / 2, z: goalBackHeight}, camera);
+    const backFarDown = {x: goal.backX, y: goalWidth / 2, z: 0};
+    const backFarUp = {x: goal.backX, y: goalWidth / 2, z: goalBackHeight};
+    const backCloseDown = {x: goal.backX, y: -goalWidth / 2, z: 0};
+    const backCloseUp = {x: goal.backX, y: -goalWidth / 2, z: goalBackHeight};
 
     const postsColor = "#E0E0E0";
     ctx.strokeStyle = postsColor;
     ctx.lineWidth = 3;
 
-    ctx.beginPath();
-    ctx.moveTo(frontFarDown.x, frontFarDown.y);
-    ctx.lineTo(frontFarUp.x, frontFarUp.y);
-    ctx.lineTo(frontCloseUp.x, frontCloseUp.y);
-    ctx.lineTo(frontCloseDown.x, frontCloseDown.y);
-    ctx.lineTo(backCloseDown.x, backCloseDown.y);
-    ctx.lineTo(backFarDown.x, backFarDown.y);
-    ctx.lineTo(frontFarDown.x, frontFarDown.y);
+    lines(camera, [
+      frontFarDown,
+      frontFarUp,
+      frontCloseUp,
+      frontCloseDown,
+      backCloseDown,
+      backFarDown,
+      frontFarDown,
+    ]);
 
-    ctx.moveTo(frontFarUp.x, frontFarUp.y);
-    ctx.lineTo(backFarUp.x, backFarUp.y);
-    ctx.lineTo(backFarDown.x, backFarDown.y);
+    lines(camera, [
+      frontFarUp,
+      backFarUp,
+      backFarDown,
+    ]);
+
+    lines(camera, [
+      backFarUp,
+      backCloseUp,
+      backCloseDown,
+    ]);
     
-    ctx.moveTo(backFarUp.x, backFarUp.y);
-    ctx.lineTo(backCloseUp.x, backCloseUp.y);
-    ctx.lineTo(backCloseDown.x, backCloseDown.y);
-
-    ctx.moveTo(backCloseUp.x, backCloseUp.y);
-    ctx.lineTo(frontCloseUp.x, frontCloseUp.y);
-
-    ctx.stroke();
+    line(camera, backCloseUp, frontCloseUp);
 
     // NET
     const netColor = "#e3e3e390";
-    fillPoly(ctx, netColor, [frontFarUp, frontCloseUp, backCloseUp, backFarUp]);
-    fillPoly(ctx, netColor, [frontFarUp, frontFarDown, backFarDown, backFarUp]);
-    fillPoly(ctx, netColor, [backFarUp, backFarDown, backCloseDown, backCloseUp]);
-    fillPoly(ctx, netColor, [frontCloseUp, frontCloseDown, backCloseDown, backCloseUp]);
+    draws.push({
+      depth: getDistanceToCamera(frontFarUp, camera),
+      draw: () => {
+        fillPoly(ctx, canvas, netColor, [frontFarUp, frontCloseUp, backCloseUp, backFarUp], camera);
+        fillPoly(ctx, canvas, netColor, [frontFarUp, frontFarDown, backFarDown, backFarUp], camera);
+        fillPoly(ctx, canvas, netColor, [backFarUp, backFarDown, backCloseDown, backCloseUp], camera);
+        fillPoly(ctx, canvas, netColor, [frontCloseUp, frontCloseDown, backCloseDown, backCloseUp], camera);
+      }
+    })
   });
 }
 
