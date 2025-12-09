@@ -97,6 +97,9 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
     const cameraY = Math.max(Math.min(data.ball.position.y, 16), -16) * 0.3;
 
     setCamera({ x: cameraX, y: -80 + cameraY, z: 50, pitch: radians(-33 + (cameraY / 10)), yaw: radians(-cameraX / 10) });
+    // const chosenPlayer = data.team1.players[data.team1.teamStrategy.chosenPlayerIndex];
+    // const thirdPerson = {x: 3 * chosenPlayer.direction.cos, y: 3 * chosenPlayer.direction.sin}
+    // setCamera({x: chosenPlayer.position.x - thirdPerson.x, y: chosenPlayer.position.y - thirdPerson.y, z: 2.5, pitch: radians(-15), yaw: chosenPlayer.direction.value - Math.PI / 2})
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
