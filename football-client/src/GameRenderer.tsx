@@ -12,38 +12,12 @@ interface Camera {
   x: number;
   y: number;
   z: number;
+  pitch: number;
+  yaw: number;
 }
 
 interface GameRendererProps {
   data: JsonData;
-}
-
-// Convert meters to X pixels relative to the pitch
-function toPixelX(
-  canvas: HTMLCanvasElement,
-  goalDepth: number,
-  xMeters: number
-): number {
-  const pitchLeft = goalDepth;
-  const pitchRight = canvas.width - goalDepth;
-  return pitchLeft + ((xMeters + pitchWidthUnits / 2) / pitchWidthUnits) * (pitchRight - pitchLeft);
-}
-
-// Convert meters to Y pixels relative to the pitch
-function toPixelY(
-  canvas: HTMLCanvasElement,
-  yMeters: number
-): number {
-  return ((pitchHeightUnits / 2 - yMeters) / pitchHeightUnits) * canvas.height;
-}
-
-// Convert meters to radius in pixels
-function toPixelRadius(
-  canvas: HTMLCanvasElement,
-  goalDepth: number,
-  radiusMeters: number
-): number {
-  return radiusMeters * ((canvas.width - 2 * goalDepth) / pitchWidthUnits);
 }
 
 // Convert a world position in meters to screen position considering perspective and camera
@@ -52,36 +26,48 @@ function worldToScreen(
   position: Translation3d | Translation2d,
   camera: Camera
 ): Translation2d {
-  const pitch = radians(-45);  // camera pitched downward 20°
-
-  // world → camera direction
+  // world → camera relative position
   const dx = position.x - camera.x;
   const dy = position.y - camera.y;
   const dz = ("z" in position ? position.z : 0) - camera.z;
 
-  // rotate by -pitch around X to remove pitch
-  const cosP = Math.cos(-pitch);
-  const sinP = Math.sin(-pitch);
+  // ---------- 1) Rotate by -yaw around Z ----------
+  // yaw = turning left/right (horizontal rotation)
+  const cy = Math.cos(-camera.yaw);
+  const sy = Math.sin(-camera.yaw);
 
-  const x1 = dx;
-  let y1 = dy * cosP - dz * sinP;   // forward
-  const z1 = dy * sinP + dz * cosP;   // up
+  const xYaw = dx * cy - dy * sy;
+  const yYaw = dx * sy + dy * cy;
+  const zYaw = dz;
 
-  if (y1 < 0) {
+  // ---------- 2) Rotate by -pitch around X ----------
+  // pitch = looking up/down
+  const cp = Math.cos(-camera.pitch);
+  const sp = Math.sin(-camera.pitch);
+
+  const x1 = xYaw;
+  let y1 = yYaw * cp - zYaw * sp;   // forward
+  const z1 = yYaw * sp + zYaw * cp;   // up
+
+  // near-plane (avoid division by zero)
+  const NEAR = 0.05;
+  if (y1 < NEAR) {
     y1 = 0;
-  } 
+  }
 
-  // perspective projection
+  // ---------- 3) Perspective projection ----------
   const fov = radians(90);
-  const focal = 1 / Math.tan(fov / 2);  // projection scale
+  const focal = 1 / Math.tan(fov / 2);
 
-  const px = (x1 / y1) * focal;
-  const py = (z1 / y1) * focal;
+  const aspect = canvas.width / canvas.height;
 
-  // convert to pixel space
+  const px = (x1 / y1) * focal * ZOOM;
+  const py = (z1 / y1) * focal * aspect * ZOOM;
+
+  // ---------- 4) Convert to screen coords ----------
   return {
-    x: canvas.width / 2  + px * (canvas.width / 2),
-    y: canvas.height / 2 - py * (canvas.height / 2)
+    x: canvas.width / 2 + px * (canvas.width / 2),
+    y: canvas.height / 2 - py * (canvas.height / 2),
   };
 }
 
@@ -91,7 +77,7 @@ function radians(angle: number): number {
 
 const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, z: 0 });
+  const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, z: 0, pitch: 0, yaw: 0 });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -104,16 +90,13 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
     if (!ctx) return;
 
     const goalDepth = (3 / pitchWidthUnits) * canvas.width;
-    const fieldWidthPX = canvas.width - 2 * goalDepth;
 
     // Smooth camera follow: limit ball movement and scale
-    // const effectiveBallX = Math.max(Math.min(data.ball.position.x, 50), -50) * 0.5;
-    // const cameraX = (effectiveBallX / pitchWidthUnits / 2) * fieldWidthPX;
+    const cameraX = Math.max(Math.min(data.ball.position.x, 50), -50) * 0.3;
 
-    // const effectiveBallY = Math.max(Math.min(data.ball.position.y, 16), -16) * 0.5;
-    // const cameraY = (effectiveBallY / pitchHeightUnits / 2) * canvas.height;
+    const cameraY = Math.max(Math.min(data.ball.position.y, 16), -16) * 0.3;
 
-    setCamera({ x: 0, y: -35, z: 45 });
+    setCamera({ x: cameraX, y: -80 + cameraY, z: 50, pitch: radians(-33 + (cameraY / 10)), yaw: radians(-cameraX / 10) });
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -146,43 +129,41 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
     drawCircleWorld(ctx, canvas, { x: maxX - 16.5, y: 0 }, 9.15, "white", camera, false, 90, 270);
     drawCircleWorld(ctx, canvas, { x: -maxX + 16.5, y: 0 }, 9.15, "white", camera, false, -90, 90);
 
-    // // Heatmap
-    // drawHeatmap(ctx, canvas, data.team1, goalDepth, camera);
+    // Heatmap
+    // drawHeatmap(ctx, canvas, data.team1, camera);
+
+    const draws: { obj: Player | 'ball', depth: number, draw: () => void }[] = [];
+
+    // Ball
+    draws.push({
+      obj: 'ball',
+      depth: getScale(canvas, data.ball.position.y),
+      draw: () => drawBall(ctx, canvas, {x: data.ball.position.x, y: data.ball.position.y, z: 0.25}, 0.25, camera),
+    });
+
+    // Players
+    data.team1.players.forEach((player, i) => {
+      draws.push({
+        obj: player,
+        depth: getScale(canvas, player.position.y),
+        draw: () => drawPlayer(ctx, canvas, player, i, data.team1.teamStrategy.chosenPlayerIndex, "red", camera),
+      });
+    });
+    data.team2.players.forEach((player, i) => {
+      draws.push({
+        obj: player,
+        depth: getScale(canvas, player.position.y),
+        draw: () => drawPlayer(ctx, canvas, player, i, data.team2.teamStrategy.chosenPlayerIndex, "blue", camera),
+      });
+    });
+
+    draws.sort((a, b) => b.depth - a.depth);
+    draws.forEach(d => d.draw());
 
     // // Goals
-    drawGoals3D(ctx, canvas, goalDepth, camera);
+    drawGoals3D(ctx, canvas, camera);
 
-    // const draws: { obj: Player | 'ball', depth: number, draw: () => void }[] = [];
-
-    // // Ball
-    // draws.push({
-    //   obj: 'ball',
-    //   depth: getScale(canvas, data.ball.position.y),
-    //   draw: () => drawCircle(ctx, canvas, data.ball.position, 0.35, goalDepth, "white", camera, true),
-    // });
-
-    // // Players
-    // data.team1.players.forEach((player, i) => {
-    //   draws.push({
-    //     obj: player,
-    //     depth: getScale(canvas, player.position.y),
-    //     draw: () => drawPlayer(ctx, canvas, player, i, data.team1.teamStrategy.chosenPlayerIndex, goalDepth, "red", camera),
-    //     // draw: () => drawCircleWorld(ctx, canvas, player.position, 0.75, goalDepth, "red", camera, true)
-    //   });
-    // });
-    // data.team2.players.forEach((player, i) => {
-    //   draws.push({
-    //     obj: player,
-    //     depth: getScale(canvas, player.position.y),
-    //     draw: () => drawPlayer(ctx, canvas, player, i, data.team2.teamStrategy.chosenPlayerIndex, goalDepth, "blue", camera),
-    //     // draw: () => drawCircleWorld(ctx, canvas, player.position, 0.75, goalDepth, "blue", camera, true)
-    //   });
-    // });
-
-    // draws.sort((a, b) => b.depth - a.depth);
-    // draws.forEach(d => d.draw());
-
-  }, [data, camera]);
+  }, [data]);
 
   return <canvas ref={canvasRef} style={{ backgroundColor: "#006400" }} />;
 };
@@ -224,7 +205,7 @@ function getScale(
 function drawCircleWorld(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
-  position: Translation2d,
+  position: Translation2d | Translation3d,
   radius: number,
   color: string,
   camera: Camera,
@@ -245,7 +226,7 @@ function drawCircleWorld(
     const wy = position.y + Math.sin(angle) * radius;
 
     // project to screen
-    const p = worldToScreen(canvas, { x: wx, y: wy }, camera);
+    const p = worldToScreen(canvas, { x: wx, y: wy, z: "z" in position ? position.z : 0 }, camera);
 
     pts.push(p);
   }
@@ -272,30 +253,79 @@ function drawCircleWorld(
   }
 }
 
-function drawCircle(
+function drawBall(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
-  position: Translation2d,
-  radiusMeters: number,
-  goalDepth: number,
-  color: string,
-  camera: Camera,
-  filled: boolean
+  ball: Translation3d,
+  radius: number,
+  camera: Camera
 ) {
-  const pixelRadius = toPixelRadius(canvas, goalDepth, radiusMeters);
-  const screen = worldToScreen(canvas, position, camera);
-  // Perspective scaling: farther objects are flatter, closer more circular
-  const scale = getScale(canvas, toPixelY(canvas, position.y));
-  const radius = pixelRadius * ZOOM * scale;
+  const ballScreen = worldToScreen(canvas, ball, camera);
+  const screenRadius = calculateRadius(canvas, ball, radius, camera);
 
   ctx.beginPath();
-  ctx.arc(screen.x, screen.y, radius, 0, Math.PI * 2);
-  ctx.strokeStyle = color;
-  ctx.fillStyle = color;
-  filled ? ctx.fill() : ctx.stroke();
+  ctx.arc(ballScreen.x, ballScreen.y, screenRadius, 0, Math.PI * 2);
+  ctx.fillStyle = "white";
+  ctx.fill();
+  ctx.strokeStyle = "black";
+  ctx.lineWidth = 0.5;
+  ctx.stroke(); 
 }
 
-const playersLastVelocity = new Map<Player, Translation2d>();
+function calculateRadius(
+  canvas: HTMLCanvasElement,
+  position: Translation3d,
+  radius: number,
+  camera: Camera
+): number {
+  const center = worldToScreen(canvas, position, camera);
+
+  const dx = position.x - camera.x;
+  const dy = position.y - camera.y;
+  const dz = position.z - camera.z;
+
+  const fLen = Math.hypot(dx, dy, dz);
+  const forward = { x: dx / fLen, y: dy / fLen, z: dz / fLen };
+
+  const upWorld = { x: 0, y: 0, z: 1 };
+
+  let right = {
+    x: forward.y * upWorld.z - forward.z * upWorld.y,
+    y: forward.z * upWorld.x - forward.x * upWorld.z,
+    z: forward.x * upWorld.y - forward.y * upWorld.x
+  };
+
+  const rLen = Math.hypot(right.x, right.y, right.z);
+  if (rLen < 1e-6) return 0; // camera looking straight up/down
+  right.x /= rLen; 
+  right.y /= rLen; 
+  right.z /= rLen;
+
+  let up = {
+    x: right.y * forward.z - right.z * forward.y,
+    y: right.z * forward.x - right.x * forward.z,
+    z: right.x * forward.y - right.y * forward.x
+  };
+
+  const uLen = Math.hypot(up.x, up.y, up.z);
+  up.x /= uLen; up.y /= uLen; up.z /= uLen;
+
+  const pRight = worldToScreen(canvas, {
+    x: position.x + right.x * radius,
+    y: position.y + right.y * radius,
+    z: position.z + right.z * radius
+  }, camera);
+
+  const pUp = worldToScreen(canvas, {
+    x: position.x + up.x * radius,
+    y: position.y + up.y * radius,
+    z: position.z + up.z * radius
+  }, camera);
+
+  const r1 = Math.hypot(pRight.x - center.x, pRight.y - center.y);
+  const r2 = Math.hypot(pUp.x - center.x, pUp.y - center.y);
+  return Math.max(r1, r2);
+}
 
 function drawPlayer(
   ctx: CanvasRenderingContext2D,
@@ -303,201 +333,120 @@ function drawPlayer(
   player: Player,
   index: number,
   chosenPlayer: number,
-  goalDepth: number,
   color: string,
   camera: Camera
 ) {
-  const position = player.position;
-  const velocity = player.velocity;
-  const screen = worldToScreen(canvas, position, camera);
+  // World position of the player
+  const pos: Translation3d = { x: player.position.x, y: player.position.y, z: 0 };
 
-  const speed = Math.hypot(velocity.x, velocity.y);
+  // Screen position at feet
+  const screenFeet = worldToScreen(canvas, pos, camera);
+  if (!screenFeet) return;
 
-  // Perspective scaling
-  const scale = getScale(canvas, toPixelY(canvas, position.y)) * ZOOM;
+  // ---------- SHADOW ----------
+  drawCircleWorld(ctx, canvas, pos, 0.65, "rgba(0,0,0,0.25)", camera, true);
 
-  const bodyHeight = toPixelRadius(canvas, goalDepth, 1.2) * scale;
-  const bodyWidth = toPixelRadius(canvas, goalDepth, 1) * scale;
-  const radiusFeetY = (bodyWidth / 2) * 0.6;
-  const headRadius = toPixelRadius(canvas, goalDepth, 0.3) * scale;
+  // ---------- BODY ----------
+  const legsHeight = 0.6; // meters
+  const bodyHeight = 0.8; // meters
+  const bodyRadius = 0.35; // torso radius
 
-  const x = screen.x;
-  const y = screen.y;
-  const yOffset = 0.7;
+  drawCircleWorld(ctx, canvas, {x: pos.x, y: pos.y, z: legsHeight}, bodyRadius, color, camera, true);
+  drawCircleWorld(ctx, canvas, {x: pos.x, y: pos.y, z: legsHeight + bodyHeight}, bodyRadius, color, camera, true);
+  
+  const bodyRadiusPX = calculateRadius(canvas, pos, bodyRadius, camera);
+  const bottom = worldToScreen(canvas, {x: pos.x, y: pos.y, z: legsHeight}, camera);
+  const bottomLeft = {x: bottom.x - bodyRadiusPX, y: bottom.y};
+  const bottomRight = {x: bottom.x + bodyRadiusPX, y: bottom.y};
+  
+  const top = worldToScreen(canvas, {x: pos.x, y: pos.y, z: legsHeight + bodyHeight}, camera);
+  const topLeft = {x: top.x - bodyRadiusPX, y: top.y};
+  const topRight = {x: top.x + bodyRadiusPX, y: top.y};
 
-  ctx.save();
+  ctx.beginPath();
+  ctx.fillStyle = color;
+  ctx.moveTo(bottomLeft.x, bottomLeft.y);
+  ctx.lineTo(bottomRight.x, bottomRight.y);
+  ctx.lineTo(topRight.x, topRight.y);
+  ctx.lineTo(topLeft.x, topLeft.y);
+  ctx.fill();
 
-  // =====================================================
-  // ⭐ IMPROVED RUNNING ANIMATION (stable speed + accel fix)
-  // =====================================================
+  // ---------- HEAD ----------
+  const headHeight = 1.7; // meters from ground
+  const headRadius = 0.25; // meters
+  const headScreen = worldToScreen(canvas, { x: pos.x, y: pos.y, z: headHeight }, camera);
+  const headPixelRadius = calculateRadius(canvas, { x: pos.x, y: pos.y, z: headHeight }, headRadius, camera);
 
-  const vx = velocity.x;
-  const vy = velocity.y;
+  ctx.beginPath();
+  ctx.arc(
+    headScreen.x,
+    headScreen.y,
+    headPixelRadius,
+    0,
+    Math.PI * 2
+  );
+  ctx.fillStyle = "#ffe0c4";
+  ctx.fill();
+  ctx.strokeStyle = "#00000055";
+  ctx.stroke();
 
-  // Speed + acceleration
-  const lastVel = playersLastVelocity.get(player) ?? {x: 0, y: 0};
-  const ax = vx - lastVel.x;
-  const ay = vy - lastVel.y;
-  playersLastVelocity.set(player, velocity);
-
-  // Direction of movement
-  const dir = -player.direction.value;
-
-  // ====================================
-  // 🧠 REALISTIC STEP FREQUENCY (FIFA-like)
-  // ====================================
+  // ---------- LEGS (dynamic swing) ----------
+  const speed = Math.hypot(player.velocity.x, player.velocity.y);
   const baseStepHz = 1.6;
   const maxStepHz = 3.2;
   const normalizedSpeed = Math.min(speed / 6, 1);
   const stepHz = baseStepHz + (maxStepHz - baseStepHz) * normalizedSpeed;
 
-  // ====================================
-  // 🏃‍♂️ RUNNING STABILITY FACTOR
-  // prevents huge leg swing during accel/decel
-  // ====================================
-  const accelMag = Math.hypot(ax, ay);
-  const maxAccel = 0.45; // tune based on game physics
-  let runningFactor = 1 - Math.min(accelMag / maxAccel, 1);
-  runningFactor = Math.pow(runningFactor, 1.6); // smoother falloff
+  // Swing amplitude (in meters)
+  const strideLength = 0.35;
+  const sideOffset = 0.2;
 
-  // ====================================
-  // 👣 LEG MOTION
-  // ====================================
   const phase = (performance.now() * 0.001 * stepHz) % 1;
   const step = Math.sin(phase * Math.PI * 2);
 
-  const sideSwing = step * (bodyWidth * 0.22) * runningFactor;
-  const strideMax = bodyWidth * 0.35;
-  const forwardSwing =
-    Math.cos(phase * Math.PI * 2) *
-    (strideMax * normalizedSpeed * runningFactor);
+  // Left leg
+  const leftLegX = pos.x - sideOffset;
+  const leftLegZ = strideLength * step * normalizedSpeed;
+  const leftFootZ = 0;
 
-  // rotate by direction
-  const fx = Math.cos(dir) * forwardSwing;
-  const fy = Math.sin(dir) * forwardSwing;
+  const leftLegTop = worldToScreen(canvas, { x: leftLegX, y: pos.y, z: legsHeight + leftLegZ }, camera);
+  const leftLegBottom = worldToScreen(canvas, { x: leftLegX, y: pos.y, z: leftFootZ }, camera);
 
-  // FOOT POSITIONS (idle, walk, jog, etc)
-  const idle = speed < 0.1 || runningFactor < 0.1;
-
-  const leftFootX = idle ? x - bodyWidth * 0.22 : x - sideSwing + fx;
-  const leftFootY = idle ? y + radiusFeetY : y + radiusFeetY + fy * 0.25;
-
-  const rightFootX = idle ? x + bodyWidth * 0.22 : x + sideSwing - fx;
-  const rightFootY = idle ? y + radiusFeetY : y + radiusFeetY - fy * 0.25;
-
-  // =====================================================
-  // 🦵 LEGS (drawn BEFORE body → more FIFA-like)
-  // =====================================================
-
-  ctx.fillStyle = color;
-
-  // Left foot
-  ctx.beginPath();
-  ctx.ellipse(leftFootX, leftFootY, bodyWidth * 0.28, radiusFeetY, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Right foot
-  ctx.beginPath();
-  ctx.ellipse(rightFootX, rightFootY, bodyWidth * 0.28, radiusFeetY, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // =====================================================
-  // 👕 BODY
-  // =====================================================
-
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.roundRect(
-    x - bodyWidth / 2,
-    y - bodyHeight * yOffset,
-    bodyWidth,
-    bodyHeight
-  );
-  ctx.fill();
-
-  // =====================================================
-  // 😀 HEAD
-  // =====================================================
-
-  ctx.beginPath();
-  ctx.fillStyle = "#ffe0bd";
-  ctx.arc(
-    x,
-    y - bodyHeight * yOffset - headRadius + 2 * scale,
-    headRadius,
-    0,
-    Math.PI * 2
-  );
-  ctx.fill();
-
-  if (index === chosenPlayer) {
-    drawCircleWorld(ctx, canvas, position, 0.8, "yellow", camera, false, 305 * Math.PI / 180, 235 * Math.PI / 180);
+  if (leftLegTop && leftLegBottom) {
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4;
+    ctx.moveTo(leftLegTop.x, leftLegTop.y);
+    ctx.lineTo(leftLegBottom.x, leftLegBottom.y);
+    ctx.stroke();
   }
 
-  ctx.restore();
+  // Right leg (opposite phase)
+  const rightLegX = pos.x + sideOffset;
+  const rightLegZ = -strideLength * step * normalizedSpeed;
+  const rightFootZ = 0;
+
+  const rightLegTop = worldToScreen(canvas, { x: rightLegX, y: pos.y, z: legsHeight + rightLegZ }, camera);
+  const rightLegBottom = worldToScreen(canvas, { x: rightLegX, y: pos.y, z: rightFootZ }, camera);
+
+  if (rightLegTop && rightLegBottom) {
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4;
+    ctx.moveTo(rightLegTop.x, rightLegTop.y);
+    ctx.lineTo(rightLegBottom.x, rightLegBottom.y);
+    ctx.stroke();
+  }
+
+  if (index === chosenPlayer) {
+    drawCircleWorld(ctx, canvas, pos, bodyRadius * 1.5, "yellow", camera, false, 123, 415);
+  }
 }
-
-// function drawPlayer(
-//   ctx: CanvasRenderingContext2D,
-//   canvas: HTMLCanvasElement,
-//   player: Player,
-//   goalDepth: number,
-//   color: string,
-//   camera: Camera
-// ) {
-//   const position = player.position;
-//   const screen = worldToScreen(canvas, goalDepth, position, camera);
-
-//   // Perspective scaling
-//   const scale = getScale(canvas, toPixelY(canvas, position.y)) * ZOOM;
-
-//   const bodyHeight = toPixelRadius(canvas, goalDepth, 1.2) * scale;      // player height
-//   const bodyWidth = toPixelRadius(canvas, goalDepth, 1) * scale;       // torso width
-//   const radiusFeetY = bodyWidth / 2 * 0.6; // more flattening for distant
-//   const headRadius = toPixelRadius(canvas, goalDepth, 0.3) * scale;
-
-//   const x = screen.x;
-//   const y = screen.y;
-//   const yOffset = 0.7;
-
-//   ctx.save();
-
-//   // --- BODY ---
-//   ctx.fillStyle = color;
-//   ctx.beginPath();
-//   ctx.roundRect(
-//     x - bodyWidth / 2,
-//     y - bodyHeight * yOffset,
-//     bodyWidth,
-//     bodyHeight
-//   );
-//   ctx.fill();
-
-//   // --- FEET ---
-//   ctx.beginPath();
-//   ctx.fillStyle = color;
-//   ctx.ellipse(x, y + radiusFeetY, bodyWidth / 2, radiusFeetY, 0, 0, Math.PI);
-//   ctx.fill();
-
-//   ctx.beginPath();
-//   ctx.fillStyle = color;
-//   ctx.ellipse(x, y - bodyHeight * yOffset + 1, bodyWidth / 2, radiusFeetY, 0, Math.PI, Math.PI * 2);
-//   ctx.fill();
-
-//   // --- HEAD ---
-//   ctx.beginPath();
-//   ctx.fillStyle = "#ffe0bd";  // light skin tone; you can change
-//   ctx.arc(x, y - bodyHeight * yOffset - headRadius + 2 * scale, headRadius, 0, Math.PI * 2);
-//   ctx.fill();
-
-//   ctx.restore();
-// }
 
 function drawHeatmap(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   team: Team | undefined,
-  goalDepth: number,
   camera: Camera
 ) {
   if (!team) return;
@@ -581,98 +530,62 @@ function drawRectWorld(
 function drawGoals3D(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
-  goalDepth: number,
   camera: Camera
 ) {
   const goalWidth = 7.32; // meters
   const goalHeight = 2.44; // meters
+  const goalBackHeight = 2; // meters
+  const goalDepth = 3; // meters
   const postThickness = 0.2; // meters, make it wider
 
   const goals = [
-    { x: -maxX, mirror: false },   // left goal
-    { x: maxX, mirror: true }     // right goal
+    { frontX: -maxX, backX: -maxX - goalDepth, mirror: false },   // left goal
+    { frontX: maxX, backX: maxX + goalDepth, mirror: true }     // right goal
   ];
 
   goals.forEach(goal => {
-    const frontX = goal.x;
-    const backX = goal.mirror ? goal.x + 3 : goal.x - 3;
-    const topY = goalWidth / 2;
-    const bottomY = -goalWidth / 2;
+    const frontFarDown = worldToScreen(canvas, {x: goal.frontX, y: goalWidth / 2, z: 0}, camera);
+    const frontFarUp = worldToScreen(canvas, {x: goal.frontX, y: goalWidth / 2, z: goalHeight}, camera);
+    const frontCloseDown = worldToScreen(canvas, {x: goal.frontX, y: -goalWidth / 2, z: 0}, camera);
+    const frontCloseUp = worldToScreen(canvas, {x: goal.frontX, y: -goalWidth / 2, z: goalHeight}, camera);
 
-    // Front posts
-    const LFTop = worldToScreen(canvas, { x: frontX, y: topY, z: 0 }, camera);
-    const LFBottom = worldToScreen(canvas, { x: frontX, y: bottomY, z: 0 }, camera);
-    const LBTop = worldToScreen(canvas, { x: backX, y: topY, z: 0 }, camera);
-    const LBBottom = worldToScreen(canvas, { x: backX, y: bottomY, z: 0 }, camera);
-
-    const goalHeightPX = toPixelRadius(canvas, goalDepth, goalHeight);
+    const backFarDown = worldToScreen(canvas, {x: goal.backX, y: goalWidth / 2, z: 0}, camera);
+    const backFarUp = worldToScreen(canvas, {x: goal.backX, y: goalWidth / 2, z: goalBackHeight}, camera);
+    const backCloseDown = worldToScreen(canvas, {x: goal.backX, y: -goalWidth / 2, z: 0}, camera);
+    const backCloseUp = worldToScreen(canvas, {x: goal.backX, y: -goalWidth / 2, z: goalBackHeight}, camera);
 
     const postsColor = "#E0E0E0";
     ctx.strokeStyle = postsColor;
-    ctx.lineWidth = toPixelRadius(canvas, goalDepth, postThickness); // scale thickness
+    ctx.lineWidth = 3;
 
-    // Draw posts (verticals)
     ctx.beginPath();
-    ctx.moveTo(LFTop.x, LFTop.y);
-    ctx.lineTo(LFTop.x, LFTop.y - goalHeightPX); // top-left front
-    ctx.moveTo(LFBottom.x, LFBottom.y);
-    ctx.lineTo(LFBottom.x, LFBottom.y - goalHeightPX); // bottom-left front
+    ctx.moveTo(frontFarDown.x, frontFarDown.y);
+    ctx.lineTo(frontFarUp.x, frontFarUp.y);
+    ctx.lineTo(frontCloseUp.x, frontCloseUp.y);
+    ctx.lineTo(frontCloseDown.x, frontCloseDown.y);
+    ctx.lineTo(backCloseDown.x, backCloseDown.y);
+    ctx.lineTo(backFarDown.x, backFarDown.y);
+    ctx.lineTo(frontFarDown.x, frontFarDown.y);
 
-    ctx.moveTo(LBTop.x, LBTop.y);
-    ctx.lineTo(LBTop.x, LBTop.y - goalHeightPX); // top-left back
-    ctx.moveTo(LBBottom.x, LBBottom.y);
-    ctx.lineTo(LBBottom.x, LBBottom.y - goalHeightPX); // bottom-left back
-    ctx.stroke();
+    ctx.moveTo(frontFarUp.x, frontFarUp.y);
+    ctx.lineTo(backFarUp.x, backFarUp.y);
+    ctx.lineTo(backFarDown.x, backFarDown.y);
+    
+    ctx.moveTo(backFarUp.x, backFarUp.y);
+    ctx.lineTo(backCloseUp.x, backCloseUp.y);
+    ctx.lineTo(backCloseDown.x, backCloseDown.y);
 
-    // Crossbars
-    ctx.beginPath();
-    ctx.moveTo(LFTop.x, LFTop.y - goalHeightPX);
-    ctx.lineTo(LFBottom.x, LFBottom.y - goalHeightPX); // front
-    ctx.moveTo(LBTop.x, LBTop.y - goalHeightPX);
-    ctx.lineTo(LBBottom.x, LBBottom.y - goalHeightPX); // back
-    ctx.moveTo(LBTop.x, LBTop.y);
-    ctx.lineTo(LBBottom.x, LBBottom.y); // back lower
-    ctx.stroke();
+    ctx.moveTo(backCloseUp.x, backCloseUp.y);
+    ctx.lineTo(frontCloseUp.x, frontCloseUp.y);
 
-    // Side bars connecting front to back (top and bottom)
-    ctx.beginPath();
-    ctx.moveTo(LFTop.x, LFTop.y - goalHeightPX);
-    ctx.lineTo(LBTop.x, LBTop.y - goalHeightPX); // top
-    ctx.moveTo(LFBottom.x, LFBottom.y - goalHeightPX);
-    ctx.lineTo(LBBottom.x, LBBottom.y - goalHeightPX); // top-bottom sides
-    ctx.moveTo(LFTop.x, LFTop.y);
-    ctx.lineTo(LBTop.x, LBTop.y); // bottom front-back
-    ctx.moveTo(LFBottom.x, LFBottom.y);
-    ctx.lineTo(LBBottom.x, LBBottom.y); // bottom front-back
     ctx.stroke();
 
     // NET
     const netColor = "#e3e3e390";
-    fillPoly(ctx, netColor, [
-      {x: LFTop.x, y: LFTop.y - goalHeightPX},
-      {x: LFBottom.x, y: LFBottom.y - goalHeightPX},
-      {x: LBBottom.x, y: LBBottom.y - goalHeightPX},
-      {x: LBTop.x, y: LBTop.y - goalHeightPX},
-    ]);
-    fillPoly(ctx, netColor, [
-      {x: LBTop.x, y: LBTop.y},
-      {x: LBBottom.x, y: LBBottom.y},
-      {x: LBBottom.x, y: LBBottom.y - goalHeightPX},
-      {x: LBTop.x, y: LBTop.y - goalHeightPX},
-    ]);
-    fillPoly(ctx, netColor, [
-      {x: LBTop.x, y: LBTop.y},
-      {x: LFTop.x, y: LFTop.y},
-      {x: LFTop.x, y: LFTop.y - goalHeightPX},
-      {x: LBTop.x, y: LBTop.y - goalHeightPX},
-    ]);
-    
-    fillPoly(ctx, netColor, [
-      {x: LBBottom.x, y: LBBottom.y},
-      {x: LFBottom.x, y: LFBottom.y},
-      {x: LFBottom.x, y: LFBottom.y - goalHeightPX},
-      {x: LBBottom.x, y: LBBottom.y - goalHeightPX},
-    ]);
+    fillPoly(ctx, netColor, [frontFarUp, frontCloseUp, backCloseUp, backFarUp]);
+    fillPoly(ctx, netColor, [frontFarUp, frontFarDown, backFarDown, backFarUp]);
+    fillPoly(ctx, netColor, [backFarUp, backFarDown, backCloseDown, backCloseUp]);
+    fillPoly(ctx, netColor, [frontCloseUp, frontCloseDown, backCloseDown, backCloseUp]);
   });
 }
 
