@@ -27,7 +27,7 @@ public class Pass implements KeybindAction {
     }
 
     protected Player getPlayerToPass(Player player, Team team, double holdTime) {
-        double desiredDist = computeHoldTime(holdTime, 1.6, 4, 40);
+        double desiredDist = computeHoldTime(holdTime, 1.6, 4, 50);
 
         return team.getPlayers().stream()
                 .filter(p -> !p.equals(player))
@@ -43,7 +43,7 @@ public class Pass implements KeybindAction {
                     double anglePenalty = angle * (holdTime < 0.3 ? 14 : 8);
 
                     // 2. Distance penalty (pick the distance closest to what the power suggests)
-                    double distPenalty = Math.abs(dist - desiredDist) * 0.15;
+                    double distPenalty = Math.abs(dist - desiredDist) * 0.25;
 
                     // 3. Backwards passes are discouraged
                     if (angle > Math.PI * 0.8)

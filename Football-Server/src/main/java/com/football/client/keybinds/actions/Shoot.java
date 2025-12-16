@@ -27,13 +27,13 @@ public class Shoot implements KeybindAction {
             player.shoot(new Translation3d(
                     finalVelocity,
                     player.getWantedDirection(),
-                    holdTime * 3
+                    3
             ));
             return;
         }
 
         Translation2d target = computeShotTarget(player, teamStrategy.getTeam(), teamStrategy.getInput(), holdTime);
-        player.shoot(new Translation3d(target, holdTime * 3), finalVelocity);
+        player.shoot(new Translation3d(target, 2), finalVelocity);
     }
 
     private Translation2d computeShotTarget(Player player, Team team, InputHandler input, double holdTime) {

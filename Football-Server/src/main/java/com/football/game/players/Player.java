@@ -132,26 +132,28 @@ public abstract class Player {
     public void pass(Player targetPlayer, double finalVelocity) {
         Translation2d target = targetPlayer.getPosition()
                 .plus(targetPlayer.getVelocity().times(0.5));
-        this.ball.kick(new Translation3d(target), finalVelocity);
-    }
 
-    public void cross(Player targetPlayer, double finalVelocity) {
-        Translation2d target = targetPlayer.getPosition()
-                .plus(targetPlayer.getVelocity().times(0.5));
-        this.ball.kick(new Translation3d(target, 20), finalVelocity);
+        this.ball.kick(target, finalVelocity, 0.03);
     }
-
 
     public void through(Player targetPlayer, double finalVelocity) {
         double[] times = MathUtil.quadraticSolver(-0.5 * Ball.FRICTION_ACCEL, finalVelocity, -this.position.getDistance(targetPlayer.getPosition()));
         double time = times.length == 1 ? times[0] : (times[0] > 0 ? times[0] : times[1]);
 
         Translation2d futurePos = targetPlayer.getPosition().plus(targetPlayer.getVelocity().times(time));
-        this.ball.kick(new Translation3d(futurePos), finalVelocity);
+        this.ball.kick(futurePos, finalVelocity, 0.06);
+    }
+
+    public void cross(Player targetPlayer, double finalVelocity) {
+        // Crosses are lofted + predictive
+        Translation2d target = targetPlayer.getPosition()
+                .plus(targetPlayer.getVelocity().times(0.5));
+
+        this.ball.kick(target, finalVelocity, 1);
     }
 
     public void shoot(Translation3d target, double finalVelocity) {
-        this.ball.kick(target, finalVelocity);
+        this.ball.kick(target, finalVelocity, 1);
     }
 
     public void shoot(Translation3d velocity) {

@@ -16,7 +16,7 @@ public class Through extends Pass {
 
         Player playerToPass = getPlayerToPass(player, teamStrategy.getTeam(), holdTime);
 
-        player.through(playerToPass, 8);
+        player.through(playerToPass, 6);
         teamStrategy.playerPassedTo(playerToPass);
     }
 }

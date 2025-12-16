@@ -277,4 +277,9 @@ public final class MathUtil {
             return new double[]{ x1, x2 };
         }
     }
+
+    public static double lerp(double a, double b, double t) {
+        t = clamp(t, 0, 1);
+        return a + (b - a) * t;
+    }
 }

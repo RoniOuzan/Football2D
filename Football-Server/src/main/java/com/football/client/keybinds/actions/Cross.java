@@ -16,7 +16,9 @@ public class Cross extends Pass {
 
         Player playerToPass = getPlayerToPass(player, teamStrategy.getTeam(), holdTime);
 
-        player.cross(playerToPass, 4);
+        double finalVelocity = computeHoldTime(holdTime, 1.2, 4, 8);
+
+        player.cross(playerToPass, finalVelocity);
         teamStrategy.playerPassedTo(playerToPass);
     }
 }
