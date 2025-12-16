@@ -10,7 +10,6 @@ import {
   pitchWidthUnits,
   pitchHeightUnits
 } from "./types";
-import { dir } from "console";
 
 const ZOOM = 1.5;
 const NEAR = 0.05;
@@ -153,34 +152,34 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
     const cameraX = Math.max(Math.min(data.ball.position.x, 50), -50) * 0.3;
     const cameraY = Math.max(Math.min(data.ball.position.y, 16), -16) * 0.1;
 
-    // setCamera({ 
-    //   x: cameraX, 
-    //   y: -60 + cameraY, 
-    //   z: 30, 
-    //   pitch: radians(-30 + cameraY), 
-    //   yaw: radians(-cameraX / 2) 
-    // });
-    const chosenPlayer = data.team1.players[data.team1.teamStrategy.chosenPlayerIndex];
-    const thirdPerson = {x: 6 * chosenPlayer.direction.cos, y: 6 * chosenPlayer.direction.sin}
-    setCamera({x: chosenPlayer.position.x - thirdPerson.x, y: chosenPlayer.position.y - thirdPerson.y, z: 3, pitch: radians(-15), yaw: chosenPlayer.direction.value - Math.PI / 2})
+    setCamera({ 
+      x: cameraX, 
+      y: -60 + cameraY, 
+      z: 30, 
+      pitch: radians(-30 + cameraY), 
+      yaw: radians(-cameraX / 2) 
+    });
+    // const chosenPlayer = data.team1.players[data.team1.teamStrategy.chosenPlayerIndex];
+    // const thirdPerson = {x: 6 * chosenPlayer.direction.cos, y: 6 * chosenPlayer.direction.sin}
+    // setCamera({x: chosenPlayer.position.x - thirdPerson.x, y: chosenPlayer.position.y - thirdPerson.y, z: 3, pitch: radians(-15), yaw: chosenPlayer.direction.value - Math.PI / 2})
 
-    // setCamera({ x: 0, y: 0, z: 10, pitch: radians(-20), yaw: radians(90)})
+    // setCamera({ x: 43, y: 0, z: 5, pitch: radians(-30), yaw: radians(-90)})
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     drawPitch(ctx, canvas, camera);
-    drawLine(ctx, canvas, camera, { x: 0, y: maxY }, { x: 0, y: -maxY }, "white", 0.25);
+    drawLineFlat(ctx, canvas, camera, { x: 0, y: maxY }, { x: 0, y: -maxY }, "white", 0.25);
 
-    drawCircleWorld(ctx, canvas, camera, { x: 0, y: 0 }, 9.15, "white", 0.3);
-    drawCircleWorld(ctx, canvas, camera, { x: 0, y: 0 }, 0.3, "white", 0);
+    drawCircleWorld(ctx, canvas, camera, { x: 0, y: 0 }, 9.15, "white", 0.25);
+    drawCircleWorld(ctx, canvas, camera, { x: 0, y: 0 }, 0.25, "white", 0);
 
     // Big Rect
-    drawRectWorld(ctx, canvas, 16.5, 40.3, camera, 0.2);
-    drawRectWorld(ctx, canvas, 16.5, 40.3, camera, 0.2, true);
+    drawRectWorld(ctx, canvas, 16.5, 40.3, camera, 0.25);
+    drawRectWorld(ctx, canvas, 16.5, 40.3, camera, 0.25, true);
 
     // Small Rect
-    drawRectWorld(ctx, canvas, 5.5, 18.3, camera, 0.2);
-    drawRectWorld(ctx, canvas, 5.5, 18.3, camera, 0.2, true);
+    drawRectWorld(ctx, canvas, 5.5, 18.3, camera, 0.25);
+    drawRectWorld(ctx, canvas, 5.5, 18.3, camera, 0.25, true);
 
     // Penealy spot
     drawCircleWorld(ctx, canvas, camera, { x: maxX - 11, y: 0}, 0.25, "white", 0);
@@ -190,7 +189,7 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
     drawCircleWorld(ctx, canvas, camera, { x: maxX - 11, y: 0 }, 9.15, "white", 0.25, 128, 232);
     drawCircleWorld(ctx, canvas, camera, { x: -maxX + 11, y: 0 }, 9.15, "white", 0.25, -52, 52);
 
-    drawBall(ctx, canvas, camera, { ...data.ball.position, z: 0.25 }, 0.25);
+    drawBall(ctx, canvas, camera, { ...data.ball.position, z: 0.2 }, 0.2);
 
     data.team1.players.forEach((p, i) =>
       drawPlayer(ctx, canvas, p, i, data.team1.teamStrategy.chosenPlayerIndex, "red", camera)
@@ -219,35 +218,85 @@ function getDistanceToCamera(p: Translation3d | Translation2d, c: Camera) {
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
-function drawLine(
+function drawLineFlat(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   camera: Camera,
   p1: Translation3d | Translation2d,
   p2: Translation3d | Translation2d,
   color: string,
-  widthWorld: number,
+  widthWorld: number
 ) {
-  // Convert points to camera space
-  const c1 = worldToCamera(p1, camera);
-  const c2 = worldToCamera(p2, camera);
+  const p1z = "z" in p1 ? p1.z : 0;
+  const p2z = "z" in p2 ? p2.z : 0;
 
-  // Avoid lines behind near plane
-  if (c1.y < NEAR && c2.y < NEAR) return;
-
-  // Direction vector from p1 to p2
-  const p1z = ("z" in p1 ? p1.z : 0);
-  const p2z = ("z" in p2 ? p2.z : 0);
   const dir = {
     x: p2.x - p1.x,
     y: p2.y - p1.y,
     z: p2z - p1z
   };
 
-  // Perpendicular vector for line width
-  // We pick a vector perpendicular to direction and "up"
-  let up = { x: 0, y: 0, z: 1 };
-  let perp = {
+  const perp = getPerpVector(dir, {x: 0, y: 0, z: 1});
+
+  const width = widthWorld / 2;
+  const offset = { x: perp.x * width, y: perp.y * width, z: perp.z * width };
+
+  const pts: Translation3d[] = [
+    { x: p1.x + offset.x, y: p1.y + offset.y, z: p1z + offset.z },
+    { x: p1.x - offset.x, y: p1.y - offset.y, z: p1z - offset.z },
+    { x: p2.x - offset.x, y: p2.y - offset.y, z: p2z - offset.z },
+    { x: p2.x + offset.x, y: p2.y + offset.y, z: p2z + offset.z },
+  ];
+
+  fillPoly(ctx, canvas, pts, camera, color);
+}
+
+function drawLine3d(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  camera: Camera,
+  p1: Translation3d,
+  p2: Translation3d,
+  color: string,
+  widthWorld: number
+) {
+  const p1z = "z" in p1 ? p1.z : 0;
+  const p2z = "z" in p2 ? p2.z : 0;
+
+  const dir = {
+    x: p2.x - p1.x,
+    y: p2.y - p1.y,
+    z: p2z - p1z
+  };
+
+  const dirFromCamera = {
+    x: p2.x - camera.x,
+    y: p2.y - camera.y,
+    z: p2z - camera.z
+  }
+
+  const perp = getPerpVector(dir, dirFromCamera);
+
+  const width = widthWorld / 2;
+  const offset = { x: perp.x * width, y: perp.y * width, z: perp.z * width };
+
+  const pts: Translation3d[] = [
+    { x: p1.x + offset.x, y: p1.y + offset.y, z: p1z + offset.z },
+    { x: p1.x - offset.x, y: p1.y - offset.y, z: p1z - offset.z },
+    { x: p2.x - offset.x, y: p2.y - offset.y, z: p2z - offset.z },
+    { x: p2.x + offset.x, y: p2.y + offset.y, z: p2z + offset.z },
+  ];
+
+  fillPoly(ctx, canvas, pts, camera, color);
+  drawSphere(ctx, canvas, camera, p1, width, color, false);
+  drawSphere(ctx, canvas, camera, p2, width, color, false);
+}
+
+function getPerpVector(dir: Translation3d, u: Translation3d): Translation3d {
+  let up: Translation3d = u;
+
+  // Cross product: perp = dir × up
+  const perp: Translation3d = {
     x: dir.y * up.z - dir.z * up.y,
     y: dir.z * up.x - dir.x * up.z,
     z: dir.x * up.y - dir.y * up.x
@@ -255,24 +304,23 @@ function drawLine(
 
   // Normalize
   const len = Math.hypot(perp.x, perp.y, perp.z);
-  if (len === 0) return;
-  perp.x /= len; perp.y /= len; perp.z /= len;
+  if (len === 0) return { x: 1, y: 0, z: 0 }; // fallback
+  return { x: perp.x / len, y: perp.y / len, z: perp.z / len };
+}
 
-  // Scale to half width
-  perp.x *= widthWorld / 2;
-  perp.y *= widthWorld / 2;
-  perp.z *= widthWorld / 2;
-
-  // Compute rectangle corners
-  const pts: Translation3d[] = [
-    { x: p1.x + perp.x, y: p1.y + perp.y, z: p1z + perp.z },
-    { x: p1.x - perp.x, y: p1.y - perp.y, z: p1z - perp.z },
-    { x: p2.x - perp.x, y: p2.y - perp.y, z: p2z - perp.z },
-    { x: p2.x + perp.x, y: p2.y + perp.y, z: p2z + perp.z },
-  ];
-
-  // Draw polygon using fillPoly
-  fillPoly(ctx, canvas, pts, camera, color);
+function strokePoly3d(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  points: Translation3d[],
+  camera: Camera,
+  color: string,
+  width: number,
+  closePath: boolean = true
+) {
+  for (let i = 0; i < points.length; i++) {
+    if (!closePath && i == points.length - 1) continue;
+    drawLine3d(ctx, canvas, camera, points[i], points[(i + 1) % points.length], color, width);
+  }
 }
 
 function strokePoly(
@@ -286,7 +334,7 @@ function strokePoly(
 ) {
   for (let i = 0; i < points.length; i++) {
     if (!closePath && i == points.length - 1) continue;
-    drawLine(ctx, canvas, camera, points[i], points[(i + 1) % points.length], color, width);
+    drawLineFlat(ctx, canvas, camera, points[i], points[(i + 1) % points.length], color, width);
   }
 }
 
@@ -323,7 +371,15 @@ function drawPitch(
   ];
 
   fillPoly(ctx, canvas, corners, camera, "#008800");
-  strokePoly(ctx, canvas, corners, camera, "white", 0.2);
+  const lineWidth = 0.2;
+  const halfWidth = lineWidth / 2;
+  strokePoly(ctx, canvas, corners.map(p => {
+    return { 
+      x: p.x - halfWidth * Math.sign(p.x), 
+      y: p.y - halfWidth * Math.sign(p.y), 
+      z: 0 
+    };
+  }), camera, "white", 0.2);
 }
 
 function drawRectWorld(
@@ -397,7 +453,8 @@ function drawSphere(
   if (!center) return;
 
   // Compute camera axes
-  const cy = Math.cos(camera.yaw), sy = Math.sin(camera.yaw);
+  const cy = Math.cos(camera.yaw);
+  const sy = Math.sin(camera.yaw);
   // const cp = Math.cos(camera.pitch), sp = Math.sin(camera.pitch);
 
   // Camera right vector (local X axis in world space)
@@ -457,15 +514,20 @@ function drawPlayer(
   camera: Camera
 ) {
   const pos: Translation3d = { x: player.position.x, y: player.position.y, z: 0 };
-
-  // ---------- SHADOW ----------
-  drawCircleWorld(ctx, canvas, camera, pos, 0.65, "rgba(0,0,0,0.25)", 0);
-
-  // ---------- BODY ----------
+  
   const legsHeight = 0.6; // meters
   const bodyHeight = 0.8;
   const bodyRadius = 0.28;
+  
+  // ---------- SHADOW ----------
+  drawCircleWorld(ctx, canvas, camera, pos, 0.55, "rgba(0,0,0,0.25)", 0);
 
+  // ---------- HIGHLIGHT CHOSEN PLAYER ----------
+  if (index === chosenPlayer) {
+    drawCircleWorld(ctx, canvas, camera, pos, bodyRadius * 1.5, "yellow", 0.2);
+  }
+
+  // ---------- BODY ----------
   const torsoBottom = { x: pos.x, y: pos.y, z: legsHeight };
   const torsoTop = { x: pos.x, y: pos.y, z: legsHeight + bodyHeight };
 
@@ -513,11 +575,6 @@ function drawPlayer(
     z: 0
   };
   drawCylinder(ctx, canvas, camera, rightTop, rightBottom, legRadius, color);
-  
-  // ---------- HIGHLIGHT CHOSEN PLAYER ----------
-  if (index === chosenPlayer) {
-    drawCircleWorld(ctx, canvas, camera, pos, bodyRadius * 1.5, "yellow", 0.2);
-  }
 }
 
 function drawCylinder(
@@ -628,7 +685,7 @@ function drawGoals3D(
   const goalHeight = 2.44; // meters
   const goalBackHeight = 1.9; // meters
   const goalDepth = 2.3; // meters
-  const postThickness = 0.15; // meters, make it wider
+  const postThickness = 0.18; // meters
 
   const goals = [
     { frontX: -maxX, backX: -maxX - goalDepth, mirror: false },   // left goal
@@ -655,13 +712,13 @@ function drawGoals3D(
       depth: getDistanceToCamera(frontFarUp, camera),
       draw: () => {
         fillPoly(ctx, canvas, [frontFarUp, frontCloseUp, backCloseUp, backFarUp], camera, netColor);
-        strokePoly(ctx, canvas, [frontFarUp, frontCloseUp, backCloseUp, backFarUp], camera, postsColor, postThickness);
+        strokePoly3d(ctx, canvas, [frontFarUp, frontCloseUp, backCloseUp, backFarUp], camera, postsColor, postThickness);
         fillPoly(ctx, canvas, [frontFarUp, frontFarDown, backFarDown, backFarUp], camera, netColor);
-        strokePoly(ctx, canvas, [frontFarUp, frontFarDown, backFarDown, backFarUp], camera, postsColor, postThickness);
+        strokePoly3d(ctx, canvas, [frontFarUp, frontFarDown, backFarDown, backFarUp], camera, postsColor, postThickness);
         fillPoly(ctx, canvas, [backFarUp, backFarDown, backCloseDown, backCloseUp], camera, netColor);
-        strokePoly(ctx, canvas, [backFarUp, backFarDown, backCloseDown, backCloseUp], camera, postsColor, postThickness);
+        strokePoly3d(ctx, canvas, [backFarUp, backFarDown, backCloseDown, backCloseUp], camera, postsColor, postThickness);
         fillPoly(ctx, canvas, [frontCloseUp, frontCloseDown, backCloseDown, backCloseUp], camera, netColor);
-        strokePoly(ctx, canvas, [frontCloseUp, frontCloseDown, backCloseDown, backCloseUp], camera, postsColor, postThickness);
+        strokePoly3d(ctx, canvas, [frontCloseUp, frontCloseDown, backCloseDown, backCloseUp], camera, postsColor, postThickness);
       }
     })
   });
