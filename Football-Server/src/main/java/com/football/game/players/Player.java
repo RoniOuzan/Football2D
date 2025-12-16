@@ -11,7 +11,7 @@ import com.football.util.math.geometry.Translation2d;
 
 public abstract class Player {
 
-    public static final double PLAYER_RADIUS = 0.75;
+    public static final double PLAYER_RADIUS = 0.5;
     public static final double MAX_ACCELERATION = 8;
     public static final double MAX_DECELERATION = 10;
     public static final double SPRINT_VELOCITY = 10;
@@ -28,7 +28,7 @@ public abstract class Player {
     protected transient Translation2d targetVelocity;
 
     protected transient final Translation2d initialPosition;
-    protected final Translation2d formationPosition;
+    protected transient final Translation2d formationPosition;
 
     protected Player(Team team, Ball ball, Translation2d position) {
         this.ball = ball;
@@ -203,15 +203,25 @@ public abstract class Player {
         double x = this.position.getX();
         double y = this.position.getY();
 
-        double newX = MathUtil.clamp(x, -Game.MAX_X + PLAYER_RADIUS, Game.MAX_X - PLAYER_RADIUS);
-        double newY = MathUtil.clamp(y, -Game.MAX_Y + PLAYER_RADIUS, Game.MAX_Y - PLAYER_RADIUS);
+        double maxX;
+        double maxY;
+        if (Math.abs(y) <= Game.GOAL_WIDTH / 2 - PLAYER_RADIUS) {
+            maxX = Game.MAX_X + Game.GOAL_DEPTH;
+            maxY = Game.GOAL_WIDTH / 2;
+        } else {
+            maxX = Game.MAX_X;
+            maxY = Game.MAX_Y;
+        }
+
+        double newX = MathUtil.clamp(x, -(maxX - PLAYER_RADIUS), maxX - PLAYER_RADIUS);
+        double newY = MathUtil.clamp(y, -(maxY - PLAYER_RADIUS), maxY - PLAYER_RADIUS);
 
         // If clamped, reduce velocity in direction of impact
         if (newX != x) {
-            this.velocity = new Translation2d(0, this.velocity.getY());
+            this.velocity = new Translation2d(-this.velocity.getX(), this.velocity.getY());
         }
         if (newY != y) {
-            this.velocity = new Translation2d(this.velocity.getX(), 0);
+            this.velocity = new Translation2d(this.velocity.getX(), -this.velocity.getY());
         }
         this.position = new Translation2d(newX, newY);
     }

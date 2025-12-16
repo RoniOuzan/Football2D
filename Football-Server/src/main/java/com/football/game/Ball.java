@@ -8,14 +8,13 @@ import com.football.util.math.interpolation.TimeInterpolatableBuffer;
 
 public class Ball {
 
-    private static final Translation2d OFFSET_FROM_PLAYER = new Translation2d(1, 0);
+    private static final double OFFSET_FROM_PLAYER = 0.75;
 
     // --- Physics constants ---
     public static final double FRICTION_ACCEL = -6.0;      // m/s², slows the ball
     private static final double MIN_SPEED = 0.05;    // below this -> stop completely
     private static final double BOUNCE_DAMPING = 0.7; // energy loss on wall bounce
 
-    private static final double PICK_UP_BALL_THRESHOLD = 1;
     private static final long CARRY_COOLDOWN_MS = 300;
 
     private static final double RADIUS = 0.35;
@@ -84,7 +83,7 @@ public class Ball {
     public boolean shouldBePickedUpBy(Player player) {
         if (System.currentTimeMillis() - this.timeReleased < CARRY_COOLDOWN_MS)
             return false;
-        return this.position.getDistance(player.getPosition()) < PICK_UP_BALL_THRESHOLD;
+        return this.position.getDistance(player.getPosition()) < OFFSET_FROM_PLAYER;
     }
 
     public void kick(Translation2d velocity) {
@@ -126,12 +125,11 @@ public class Ball {
         this.position = this.position.plus(this.velocity.times(GameManager.PERIOD));
 
         if (this.carrier != null) {
-            // Ball follows player slightly in front of their facing direction
             this.velocity = this.carrier.getVelocity();
             this.position = this.carrier.getPosition()
-                    .plus(OFFSET_FROM_PLAYER.rotateBy(this.carrier.getDirection()));
+                    .plus(new Translation2d(OFFSET_FROM_PLAYER, this.carrier.getDirection()));
         } else {
-            if (!goalPostCollision()) {
+            if (!goalPostCollision()) { 
                 wallCollision();
             }
             rollingDeceleration();
@@ -162,6 +160,8 @@ public class Ball {
             this.position = new Translation2d(x, y);
             return;
         }
+
+        if (insideGoalWidth) return;
 
         if (x - RADIUS < -Game.MAX_X) { // Left wall
             wallBounce(-Game.MAX_X + RADIUS, y, new Translation2d(1, 0)); // normal points right

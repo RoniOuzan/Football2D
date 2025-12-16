@@ -1,9 +1,17 @@
 export const pitchWidthUnits = 100;
 export const pitchHeightUnits = 64;
+export const maxX = pitchWidthUnits / 2;
+export const maxY = pitchHeightUnits / 2;
 
 export interface Translation2d {
   x: number;
   y: number;
+}
+
+export interface Translation3d {
+  x: number;
+  y: number;
+  z: number;
 }
 
 export interface JsonData {
@@ -26,10 +34,8 @@ export interface Team {
 
 export interface Player {
   position: Translation2d;
-  originalPosition: Translation2d;
   direction: Direction;
   velocity: Translation2d;
-  targetVelocity: Translation2d;
 }
 
 export interface Direction {
@@ -43,6 +49,5 @@ export interface TeamStrategy {
     key: Translation2d;
     value: number;
   }[];
-  defenseLine: number;
   chosenPlayerIndex: number;
 }

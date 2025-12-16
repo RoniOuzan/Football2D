@@ -1,4 +1,3 @@
-import { DeviceInput } from "./InputController";
 import { JsonData } from "./types";
 
 export default class Client {
