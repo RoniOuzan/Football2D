@@ -3,7 +3,8 @@ package com.football.game.strategy;
 import com.football.client.inputs.InputHandler;
 import com.football.game.Ball;
 import com.football.game.Game;
-import com.football.game.Team;
+import com.football.game.team.CameraPosition;
+import com.football.game.team.Team;
 import com.football.game.players.Player;
 import com.football.util.math.geometry.Translation2d;
 
@@ -29,6 +30,8 @@ public class TeamStrategy {
     private transient final DefensiveLineCalculator defensiveLineCalculator;
     private transient final PlayersMovementHandle playersMovementHandle;
 
+    private CameraPosition cameraPosition;
+
     public TeamStrategy(Game game, Team team, int inputSlot) {
         this.team = team;
         this.inputSlot = inputSlot;
@@ -42,6 +45,8 @@ public class TeamStrategy {
         this.offsideCalculator = new OffsideCalculator(this);
         this.defensiveLineCalculator = new DefensiveLineCalculator(this);
         this.playersMovementHandle = new PlayersMovementHandle(this);
+
+        this.cameraPosition = CameraPosition.BROADCAST;
     }
 
     /**
@@ -78,5 +83,13 @@ public class TeamStrategy {
 
     public void playerPassedTo(Player player) {
         this.playersMovementHandle.playerPassedTo(player);
+    }
+
+    public CameraPosition getCameraPosition() {
+        return this.cameraPosition;
+    }
+
+    public void setCameraPosition(CameraPosition cameraPosition) {
+        this.cameraPosition = cameraPosition;
     }
 }

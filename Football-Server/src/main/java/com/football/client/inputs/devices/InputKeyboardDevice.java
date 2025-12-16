@@ -12,6 +12,7 @@ import java.util.Map;
 public class InputKeyboardDevice extends InputDevice {
     private static final Map<Keybind, String> keybinds = Map.of(
             Keybind.SWITCH_PLAYER, "q",
+            Keybind.SWITCH_CAMERA, " ",
             Keybind.SPRINT, "shift",
             Keybind.PASS, "e",
             Keybind.CROSS, "t",

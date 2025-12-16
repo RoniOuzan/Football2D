@@ -25,7 +25,7 @@ public class GameServer {
         executor.scheduleAtFixedRate(() -> {
             try {
                 GameManager.getInstance().update();
-                broadcast(GameManager.getInstance().getJson());
+                broadcastGame();
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -63,6 +63,22 @@ public class GameServer {
             try {
                 if (s.isOpen()) {
                     s.getRemote().sendString(message);
+                } else {
+                    clients.remove(s);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                clients.remove(s);
+            }
+        }
+    }
+
+    private static void broadcastGame() {
+        for (Client client : clients.values()) {
+            Session s = client.getSession();
+            try {
+                if (s.isOpen()) {
+                    s.getRemote().sendString(GameManager.getInstance().getJson(client));
                 } else {
                     clients.remove(s);
                 }

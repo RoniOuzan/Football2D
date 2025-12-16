@@ -20,6 +20,13 @@ export interface JsonData {
   team2: Team;
   score1: number;
   score2: number;
+  client: number;
+}
+
+export function getTeam(data: JsonData): Team  {
+  if (data.client == 1) return data.team1;
+  if (data.client == 2) return data.team2;
+  return data.team1;
 }
 
 export interface Ball {
@@ -50,4 +57,5 @@ export interface TeamStrategy {
     value: number;
   }[];
   chosenPlayerIndex: number;
+  cameraPosition: "BROADCAST" | "THIRD_PERSON";
 }

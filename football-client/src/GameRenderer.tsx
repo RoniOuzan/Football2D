@@ -8,7 +8,9 @@ import {
   Translation2d,
   Translation3d,
   pitchWidthUnits,
-  pitchHeightUnits
+  pitchHeightUnits,
+  getTeam as getClientsTeam,
+  getTeam
 } from "./types";
 
 const ZOOM = 1.5;
@@ -149,16 +151,20 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
     const cameraX = Math.max(Math.min(data.ball.position.x, 50), -50) * 0.3;
     const cameraY = Math.max(Math.min(data.ball.position.y, 16), -16) * 0.1;
 
-    setCamera({ 
-      x: cameraX, 
-      y: -60 + cameraY, 
-      z: 30, 
-      pitch: radians(-30 + cameraY), 
-      yaw: radians(-cameraX / 2) 
-    });
-    // const chosenPlayer = data.team1.players[data.team1.teamStrategy.chosenPlayerIndex];
-    // const thirdPerson = {x: 6 * chosenPlayer.direction.cos, y: 6 * chosenPlayer.direction.sin}
-    // setCamera({x: chosenPlayer.position.x - thirdPerson.x, y: chosenPlayer.position.y - thirdPerson.y, z: 3, pitch: radians(-15), yaw: chosenPlayer.direction.value - Math.PI / 2})
+    const team = getClientsTeam(data);
+    if (team.teamStrategy.cameraPosition === "BROADCAST") {
+      setCamera({ 
+        x: cameraX, 
+        y: -60 + cameraY, 
+        z: 30, 
+        pitch: radians(-30 + cameraY), 
+        yaw: radians(-cameraX / 2) 
+      });
+    } else {
+      const chosenPlayer = getClientsTeam(data).players[getClientsTeam(data).teamStrategy.chosenPlayerIndex];
+      const thirdPerson = {x: 6 * chosenPlayer.direction.cos, y: 6 * chosenPlayer.direction.sin}
+      setCamera({x: chosenPlayer.position.x - thirdPerson.x, y: chosenPlayer.position.y - thirdPerson.y, z: 3, pitch: radians(-15), yaw: chosenPlayer.direction.value - Math.PI / 2})
+    }
 
     // setCamera({ x: 43, y: 0, z: 5, pitch: radians(-30), yaw: radians(-90)})
 

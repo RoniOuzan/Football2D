@@ -55,7 +55,7 @@ public class PlayersMovementHandle {
         }
 
         this.justPassed = false;
-        return input.getRequestedVelocity().times(velocity);
+        return input.getOrientedRequestedVelocity(this.teamStrategy.getCameraPosition(), player).times(velocity);
     }
 
     private Player choosePlayer() {

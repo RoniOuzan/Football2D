@@ -3,10 +3,9 @@ package com.football.client.keybinds.actions;
 import com.football.client.inputs.InputHandler;
 import com.football.client.keybinds.KeybindAction;
 import com.football.game.Game;
-import com.football.game.Team;
+import com.football.game.team.Team;
 import com.football.game.strategy.TeamStrategy;
 import com.football.game.players.Player;
-import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Rotation2d;
 import com.football.util.math.geometry.Translation2d;
 import com.football.util.math.geometry.Translation3d;
@@ -32,13 +31,13 @@ public class Shoot implements KeybindAction {
             return;
         }
 
-        Translation2d target = computeShotTarget(player, teamStrategy.getTeam(), teamStrategy.getInput(), holdTime);
+        Translation2d requestedDirection = teamStrategy.getInput().getOrientedRequestedVelocity(teamStrategy.getCameraPosition(), player);
+        Translation2d target = computeShotTarget(player, teamStrategy.getTeam(), requestedDirection, holdTime);
         player.shoot(new Translation3d(target, 2), finalVelocity);
     }
 
-    private Translation2d computeShotTarget(Player player, Team team, InputHandler input, double holdTime) {
+    private Translation2d computeShotTarget(Player player, Team team, Translation2d requestedDirection, double holdTime) {
         // ---- 1. Where the player is aiming (raw) ----
-        Translation2d requestedDirection = input.getRequestedVelocity();
         Rotation2d direction = requestedDirection.getNorm() < 1e-3 ? player.getDirection() : requestedDirection.getAngle();
 
         // Aim 40 meters forward

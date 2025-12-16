@@ -1,6 +1,8 @@
-package com.football.game;
+package com.football.game.team;
 
 import com.football.client.Client;
+import com.football.game.Formation;
+import com.football.game.Game;
 import com.football.game.players.*;
 import com.football.game.strategy.TeamStrategy;
 import com.football.util.math.geometry.Translation2d;
