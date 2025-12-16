@@ -26,7 +26,7 @@ public class PlayerTargetPosition {
      */
     public Translation2d getTargetPosition(Player player) {
         if (player.equals(this.ballChaser)) {
-            return this.teamStrategy.ball.getPosition(); // chase the ball position before 0.5 seconds, so it will have a bit of delay
+            return this.teamStrategy.ball.getPosition2d(); // chase the ball position before 0.5 seconds, so it will have a bit of delay
         }
 
         Optional<Map.Entry<Translation2d, Double>> bestEntry = this.teamStrategy.scores.entrySet().stream()

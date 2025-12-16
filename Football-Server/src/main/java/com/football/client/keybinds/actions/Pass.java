@@ -1,5 +1,6 @@
-package com.football.client.keybinds;
+package com.football.client.keybinds.actions;
 
+import com.football.client.keybinds.KeybindAction;
 import com.football.game.Team;
 import com.football.game.strategy.TeamStrategy;
 import com.football.game.players.Player;

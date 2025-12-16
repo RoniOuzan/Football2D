@@ -14,6 +14,7 @@ public class InputControllerDevice extends InputDevice {
             Keybind.SWITCH_PLAYER, "LB",
             Keybind.SPRINT, "RT",
             Keybind.PASS, "A",
+            Keybind.CROSS, "X",
             Keybind.THROUGH, "Y",
             Keybind.SHOOT, "B"
     );

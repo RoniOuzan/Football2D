@@ -14,6 +14,7 @@ public class InputKeyboardDevice extends InputDevice {
             Keybind.SWITCH_PLAYER, "q",
             Keybind.SPRINT, "shift",
             Keybind.PASS, "e",
+            Keybind.CROSS, "t",
             Keybind.THROUGH, "f",
             Keybind.SHOOT, "r"
     );

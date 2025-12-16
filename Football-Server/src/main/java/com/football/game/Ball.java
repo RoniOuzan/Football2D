@@ -4,6 +4,7 @@ import com.football.GameManager;
 import com.football.game.players.Player;
 import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Translation2d;
+import com.football.util.math.geometry.Translation3d;
 import com.football.util.math.interpolation.TimeInterpolatableBuffer;
 
 public class Ball {
@@ -15,45 +16,57 @@ public class Ball {
     private static final double MIN_SPEED = 0.05;    // below this -> stop completely
     private static final double BOUNCE_DAMPING = 0.7; // energy loss on wall bounce
 
+    public static final double GRAVITY = -9.81;      // m/s²
+    public static final double GROUND_RESTITUTION = 0.45; // vertical bounce
+    public static final double AIR_DRAG = 0.15;      // optional, mild damping
+
     private static final long CARRY_COOLDOWN_MS = 300;
 
-    private static final double RADIUS = 0.35;
+    private static final double RADIUS = 0.2;
 
     private transient final Game game;
 
-    private Translation2d position;
-    private Translation2d velocity;
+    private Translation3d position;
+    private Translation3d velocity;
     private transient Player carrier = null;
 
     private transient long timeReleased;
 
-    private transient final TimeInterpolatableBuffer<Translation2d> positions = TimeInterpolatableBuffer.createBuffer(1);
+    private transient final TimeInterpolatableBuffer<Translation3d> positions = TimeInterpolatableBuffer.createBuffer(1);
 
     public Ball(Game game) {
         this.game = game;
 
-        this.position = new Translation2d();
-        this.velocity = new Translation2d();
+        this.position = new Translation3d(0, 0, RADIUS);
+        this.velocity = new Translation3d();
 
         this.timeReleased = System.currentTimeMillis();
 
         this.positions.addSample(0, this.position);
     }
 
-    public Translation2d getPosition() {
-        return position;
+    public Translation3d getPosition() {
+        return this.position;
     }
 
-    public Translation2d getPosition(double lookBackTime) {
+    public Translation2d getPosition2d() {
+        return this.position.toTranslation2d();
+    }
+
+    public Translation3d getPosition(double lookBackTime) {
         return this.positions.getSample(this.game.getMatchTime() - lookBackTime).orElse(null);
     }
 
-    public Translation2d getPredictedPosition(double seconds) {
+    public Translation3d getPredictedPosition(double seconds) {
         return this.position.plus(this.velocity.times(seconds));
     }
 
-    public Translation2d getVelocity() {
-        return velocity;
+    public Translation3d getVelocity() {
+        return this.velocity;
+    }
+
+    public Translation2d getVelocity2d() {
+        return this.velocity.toTranslation2d();
     }
 
     public Player getCarrier() {
@@ -64,7 +77,7 @@ public class Ball {
         this.carrier = carrier;
 
         if (carrier != null) {
-            this.velocity = carrier.getVelocity(); // reset velocity while carried
+            this.velocity = new Translation3d(carrier.getVelocity()); // reset velocity while carried
         } else {
             this.timeReleased = System.currentTimeMillis();
         }
@@ -86,78 +99,138 @@ public class Ball {
         return this.position.getDistance(player.getPosition()) < OFFSET_FROM_PLAYER;
     }
 
-    public void kick(Translation2d velocity) {
+    public void kick(Translation3d velocity) {
         this.setCarrier(null);
         this.velocity = velocity;
     }
 
-    public void kick(Translation2d target, double finalVelocity) {
+    public void kick(Translation3d target, double finalVelocity) {
         this.setCarrier(null);
 
-        Translation2d diff = target.minus(this.position);
-
-        this.velocity = diff.normalized().times(calculateInitialVelocity(finalVelocity, diff.getNorm()));
+        Translation3d diff = target.minus(this.position);
+        this.velocity = diff.normalized().times(calculateInitialVelocity(finalVelocity, diff.toTranslation2d().getNorm()));
     }
 
     public int isAtGoal() {
-        if (Math.abs(this.position.getY()) > Game.GOAL_WIDTH / 2 - RADIUS) return 0;
+        if (this.position.getZ() > Game.CROSSBAR_HEIGHT - RADIUS)
+            return 0;
 
-        if (this.position.getX() > Game.MAX_X + RADIUS) {
+        if (Math.abs(this.position.getY()) > Game.GOAL_WIDTH / 2 - RADIUS)
+            return 0;
+
+        if (this.position.getX() > Game.MAX_X + RADIUS)
             return 1;
-        } else if (this.position.getX() < -(Game.MAX_X + RADIUS)) {
+        if (this.position.getX() < -(Game.MAX_X + RADIUS))
             return -1;
-        }
+
         return 0;
     }
 
+    private boolean isOnGround() {
+        return this.position.getZ() <= RADIUS + 1e-3;
+    }
+
     public void reset() {
-        this.position = new Translation2d();
-        this.velocity = new Translation2d();
+        this.position = new Translation3d(0, 0, RADIUS);
+        this.velocity = new Translation3d();
 
         this.carrier = null;
         this.timeReleased = System.currentTimeMillis();
     }
 
     public void update(Team team1, Team team2) {
+        // 1. Apply gravity / air physics
+        applyAirPhysics();
+
         this.updateCarrier(team1);
         this.updateCarrier(team2);
 
         this.position = this.position.plus(this.velocity.times(GameManager.PERIOD));
 
         if (this.carrier != null) {
-            this.velocity = this.carrier.getVelocity();
-            this.position = this.carrier.getPosition()
-                    .plus(new Translation2d(OFFSET_FROM_PLAYER, this.carrier.getDirection()));
+            this.velocity = new Translation3d(this.carrier.getVelocity());
+            this.position = new Translation3d(
+                    this.carrier.getPosition()
+                            .plus(new Translation2d(OFFSET_FROM_PLAYER, this.carrier.getDirection())),
+                    RADIUS
+            );
         } else {
-            if (!goalPostCollision()) { 
+            // 3. Ground collision
+            groundCollision();
+
+            // 4. Goal / wall collisions (planar)
+            if (!goalPostCollision()) {
                 wallCollision();
             }
+
+            // 5. Rolling friction (ground only)
             rollingDeceleration();
         }
+    }
 
-        this.positions.addSample(this.game.getMatchTime(), this.position);
+    private void applyAirPhysics() {
+        if (this.carrier != null) return;
+
+        // Gravity affects Z velocity
+        this.velocity = new Translation3d(
+                this.velocity.getX(),
+                this.velocity.getY(),
+                this.velocity.getZ() + GRAVITY * GameManager.PERIOD
+        );
+
+        // air drag (small)
+        this.velocity = this.velocity.times(1.0 - AIR_DRAG * GameManager.PERIOD);
+    }
+
+    private void groundCollision() {
+        if (this.isOnGround()) {
+            this.position = new Translation3d(
+                    this.position.getX(),
+                    this.position.getY(),
+                    RADIUS
+            );
+
+            // Bounce only if falling
+            if (this.velocity.getZ() < 0) {
+                this.velocity = new Translation3d(
+                        this.velocity.getX(),
+                        this.velocity.getY(),
+                        -this.velocity.getZ() * GROUND_RESTITUTION
+                );
+
+                // Kill tiny bounces
+                if (Math.abs(this.velocity.getZ()) < 0.5) {
+                    this.velocity = new Translation3d(
+                            this.velocity.getX(),
+                            this.velocity.getY(),
+                            0
+                    );
+                }
+            }
+        }
     }
 
     private void wallCollision() {
         double x = this.position.getX();
         double y = this.position.getY();
+        double z = this.position.getZ();
 
-        // Skip bounce inside goal area (you already handle this)
+        // Skip bounce inside goal area
         boolean behindGoalLine = Math.abs(x) > Game.MAX_X + RADIUS;
         boolean insideGoalWidth = Math.abs(y) <= Game.GOAL_WIDTH / 2 + RADIUS;
         if (behindGoalLine && insideGoalWidth) {
             // If hitting the side net
             if (Math.abs(y) > Game.GOAL_WIDTH / 2 - RADIUS) {
                 y = MathUtil.clamp(y, -(Game.GOAL_WIDTH / 2 - RADIUS), (Game.GOAL_WIDTH / 2 - RADIUS));
-                this.velocity = new Translation2d(this.velocity.getX(), 0);
+                this.velocity = new Translation3d(this.velocity.getX(), 0, this.velocity.getZ());
             }
             // If hitting back of the net
             if (Math.abs(x) > Game.MAX_X + Game.GOAL_DEPTH - RADIUS) {
                 x = MathUtil.clamp(x, -(Game.MAX_X + Game.GOAL_DEPTH - RADIUS), (Game.MAX_X + Game.GOAL_DEPTH - RADIUS));
-                this.velocity = new Translation2d(); // Stop in the net
+                this.velocity = new Translation3d(); // Stop in the net
             }
 
-            this.position = new Translation2d(x, y);
+            this.position = new Translation3d(x, y, z);
             return;
         }
 
@@ -175,14 +248,19 @@ public class Ball {
     }
 
     private void wallBounce(double newX, double newY, Translation2d normal) {
-        this.position = new Translation2d(newX, newY);
+        this.position = new Translation3d(newX, newY, RADIUS);
         this.velocity = reflect(this.velocity, normal).times(BOUNCE_DAMPING);
     }
 
     /** Reflect vector v across a given surface normal (must be normalized). */
-    private Translation2d reflect(Translation2d v, Translation2d normal) {
-        double dot = v.dot(normal); // projection length
-        return v.minus(normal.times(2 * dot));
+    private Translation3d reflect(Translation3d v, Translation2d normal) {
+        double dot = v.toTranslation2d().dot(normal); // projection length
+        Translation2d velocity = v.toTranslation2d().minus(normal.times(2 * dot));
+        return new Translation3d(
+                velocity.getX(),
+                velocity.getY(),
+                this.velocity.getZ()
+        );
     }
 
     private boolean goalPostCollision() {
@@ -190,7 +268,9 @@ public class Ball {
     }
 
     private boolean handlePost(Translation2d post) {
-        Translation2d diff = this.position.minus(post);
+        if (this.position.getZ() > Game.CROSSBAR_HEIGHT + RADIUS) return false;
+
+        Translation2d diff = this.position.toTranslation2d().minus(post);
         double dist = diff.getNorm();
         double minDist = Game.POST_RADIUS + RADIUS;
 
@@ -201,7 +281,7 @@ public class Ball {
         Translation2d normal = diff.normalized();
 
         // push ball out of the post
-        this.position = this.position.plus(normal.times(penetration));
+        this.position = this.position.plus(new Translation3d(normal.times(penetration)));
 
         // --- Step 2: reflect velocity using circle normal ---
         this.velocity = reflect(this.velocity, normal).times(BOUNCE_DAMPING);
@@ -209,13 +289,23 @@ public class Ball {
     }
 
     private void rollingDeceleration() {
-        if (this.velocity.getNorm() > 0) {
-            double newSpeed = Math.max(this.velocity.getNorm() + (FRICTION_ACCEL * GameManager.PERIOD), 0);
-            if (newSpeed < MIN_SPEED)
-                newSpeed = 0;
+        if (!isOnGround()) return;
 
-            this.velocity = this.velocity.normalized().times(newSpeed);
-        }
+        Translation2d planarVel = this.velocity.toTranslation2d();
+
+        double speed = planarVel.getNorm();
+        if (speed <= 0) return;
+
+        double newSpeed = Math.max(speed + (FRICTION_ACCEL * GameManager.PERIOD), 0);
+        if (newSpeed < MIN_SPEED) newSpeed = 0;
+
+        Translation2d newPlanar = planarVel.normalized().times(newSpeed);
+
+        this.velocity = new Translation3d(
+                newPlanar.getX(),
+                newPlanar.getY(),
+                this.velocity.getZ()
+        );
     }
 
     public static double calculateInitialVelocity(double finalVelocity, double distance) {

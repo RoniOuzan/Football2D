@@ -1,5 +1,6 @@
 package com.football.client.keybinds;
 
+import com.football.client.keybinds.actions.*;
 import com.football.game.strategy.TeamStrategy;
 import com.football.game.players.Player;
 
@@ -7,6 +8,7 @@ public enum Keybind implements KeybindAction {
     SWITCH_PLAYER(),
     SPRINT(),
     PASS(new Pass()),
+    CROSS(new Cross()),
     THROUGH(new Through()),
     SHOOT(new Shoot()),
     ;

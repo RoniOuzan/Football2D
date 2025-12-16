@@ -50,7 +50,7 @@ public class PlayersMovementHandle {
         double velocity = input.isHolding(Keybind.SPRINT) ? Player.SPRINT_VELOCITY : Player.WALK_VELOCITY;
 
         if ((player.equals(this.playerTargetPosition.getBallChaser()) || this.justPassed) && this.teamStrategy.ball.getCarrier() == null) {
-            return player.getVelocityToPosition(this.teamStrategy.ball.getPredictedPosition(0.5),
+            return player.getVelocityToPosition(this.teamStrategy.ball.getPredictedPosition(0.5).toTranslation2d(),
                     this.justPassed ? 0.8 : 1);
         }
 
@@ -73,7 +73,7 @@ public class PlayersMovementHandle {
 
     private Player chooseBallChaser() {
         return this.teamStrategy.players.stream()
-                .min(Comparator.comparingDouble(p -> p.getPosition().getDistance(this.teamStrategy.ball.getPosition(BALL_CHASE_LATENCY))))
+                .min(Comparator.comparingDouble(p -> p.getPosition().getDistance(this.teamStrategy.ball.getPosition(BALL_CHASE_LATENCY).toTranslation2d())))
                 .orElse(null);
     }
 

@@ -20,13 +20,13 @@ public class Goalkeeper extends Player {
     public void handleTarget(TeamStrategy strategy) {
         Team team = strategy.getTeam();
         Translation2d goalCenter = team.getOwnGoalPosition();
-        Translation2d predictedBall = this.ball.getPredictedPosition(0.3);
+        Translation2d predictedBall = this.ball.getPredictedPosition(0.3).toTranslation2d();
 
         double ballDistanceToGoal = this.ball.getPosition().getDistance(goalCenter);
 
         if (this.ball.getCarrier() == null && this.ball.getVelocity().getNorm() > 4.0) {
-            Translation2d ballVel = this.ball.getVelocity().normalized();
-            Translation2d dirToGoal = goalCenter.minus(this.ball.getPosition()).normalized();
+            Translation2d ballVel = this.ball.getVelocity2d().normalized();
+            Translation2d dirToGoal = goalCenter.minus(this.ball.getPosition2d()).normalized();
 
             // dot > 0.8 → angle < ~36 degrees → toward goal
             if (ballVel.dot(dirToGoal) > 0.8) {
@@ -48,7 +48,7 @@ public class Goalkeeper extends Player {
         }
 
         if (ballDistanceToGoal < 20 && team.getOpponent().hasBall() &&
-                team.getPlayers().stream().noneMatch(p -> p.getPosition().getDistance(this.ball.getPosition()) < ballDistanceToGoal)) {
+                team.getPlayers().stream().noneMatch(p -> p.getPosition().getDistance(this.ball.getPosition2d()) < ballDistanceToGoal)) {
             this.moveTowards(predictedBall, 1); // charge the ball
             return;
         }

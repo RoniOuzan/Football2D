@@ -1,6 +1,7 @@
-package com.football.client.keybinds;
+package com.football.client.keybinds.actions;
 
 import com.football.client.inputs.InputHandler;
+import com.football.client.keybinds.KeybindAction;
 import com.football.game.Game;
 import com.football.game.Team;
 import com.football.game.strategy.TeamStrategy;
@@ -8,6 +9,7 @@ import com.football.game.players.Player;
 import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Rotation2d;
 import com.football.util.math.geometry.Translation2d;
+import com.football.util.math.geometry.Translation3d;
 
 public class Shoot implements KeybindAction {
     @Override
@@ -22,13 +24,16 @@ public class Shoot implements KeybindAction {
 
         double finalVelocity = computeHoldTime(holdTime, 1.3, 15, 35);
         if (player.getPosition().getX() * teamStrategy.getTeam().getSideMultiplier() < 10) {
-            player.shoot(new Translation2d(finalVelocity, player.getWantedDirection()));
+            player.shoot(new Translation3d(
+                    finalVelocity,
+                    player.getWantedDirection(),
+                    holdTime * 3
+            ));
             return;
         }
 
         Translation2d target = computeShotTarget(player, teamStrategy.getTeam(), teamStrategy.getInput(), holdTime);
-
-        player.shoot(target, finalVelocity);
+        player.shoot(new Translation3d(target, holdTime * 3), finalVelocity);
     }
 
     private Translation2d computeShotTarget(Player player, Team team, InputHandler input, double holdTime) {

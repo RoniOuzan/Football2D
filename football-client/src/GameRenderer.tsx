@@ -190,7 +190,7 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
 
     draws.push({
       depth: getDistanceToCamera(data.ball.position, camera),
-      draw: () => drawBall(ctx, canvas, camera, { ...data.ball.position, z: 0.2 }, 0.2)
+      draw: () => drawBall(ctx, canvas, camera, data.ball.position, 0.2)
     });
 
     data.team1.players.forEach((p, i) =>

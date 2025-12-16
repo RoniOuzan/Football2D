@@ -23,8 +23,8 @@ export interface JsonData {
 }
 
 export interface Ball {
-  position: Translation2d;
-  velocity: Translation2d;
+  position: Translation3d;
+  velocity: Translation3d;
 }
 
 export interface Team {

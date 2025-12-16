@@ -8,6 +8,7 @@ import com.football.game.strategy.TeamStrategy;
 import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Rotation2d;
 import com.football.util.math.geometry.Translation2d;
+import com.football.util.math.geometry.Translation3d;
 
 public abstract class Player {
 
@@ -131,7 +132,13 @@ public abstract class Player {
     public void pass(Player targetPlayer, double finalVelocity) {
         Translation2d target = targetPlayer.getPosition()
                 .plus(targetPlayer.getVelocity().times(0.5));
-        this.ball.kick(target, finalVelocity);
+        this.ball.kick(new Translation3d(target), finalVelocity);
+    }
+
+    public void cross(Player targetPlayer, double finalVelocity) {
+        Translation2d target = targetPlayer.getPosition()
+                .plus(targetPlayer.getVelocity().times(0.5));
+        this.ball.kick(new Translation3d(target, 20), finalVelocity);
     }
 
 
@@ -140,14 +147,14 @@ public abstract class Player {
         double time = times.length == 1 ? times[0] : (times[0] > 0 ? times[0] : times[1]);
 
         Translation2d futurePos = targetPlayer.getPosition().plus(targetPlayer.getVelocity().times(time));
-        this.ball.kick(futurePos, finalVelocity);
+        this.ball.kick(new Translation3d(futurePos), finalVelocity);
     }
 
-    public void shoot(Translation2d target, double finalVelocity) {
+    public void shoot(Translation3d target, double finalVelocity) {
         this.ball.kick(target, finalVelocity);
     }
 
-    public void shoot(Translation2d velocity) {
+    public void shoot(Translation3d velocity) {
         this.ball.kick(velocity);
     }
 

@@ -21,6 +21,7 @@ public class Game {
 
     public static final double GOAL_WIDTH = 7.3;
     public static final double POST_RADIUS = 0.35;
+    public static final double CROSSBAR_HEIGHT = 2.44;
     public static final List<Translation2d> POSTS = Arrays.asList(
             new Translation2d(-Game.MAX_X,  Game.GOAL_WIDTH / 2),
             new Translation2d(-Game.MAX_X, -Game.GOAL_WIDTH / 2),
