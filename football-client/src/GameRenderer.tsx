@@ -122,14 +122,6 @@ function radians(a: number) {
   return a * (Math.PI / 180);
 }
 
-let draws: {
-  depth: number;
-  draw: (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => void;
-}[] = [];
-
-// =====================
-// MAIN COMPONENT
-// =====================
 const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [camera, setCamera] = useState<Camera>({
@@ -189,20 +181,33 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
     drawCircleWorld(ctx, canvas, camera, { x: maxX - 11, y: 0 }, 9.15, "white", 0.25, 128, 232);
     drawCircleWorld(ctx, canvas, camera, { x: -maxX + 11, y: 0 }, 9.15, "white", 0.25, -52, 52);
 
-    drawBall(ctx, canvas, camera, { ...data.ball.position, z: 0.2 }, 0.2);
+    drawGoals3D(ctx, canvas, camera);
+
+    const draws: {
+      depth: number;
+      draw: (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => void;
+    }[] = [];
+
+    draws.push({
+      depth: getDistanceToCamera(data.ball.position, camera),
+      draw: () => drawBall(ctx, canvas, camera, { ...data.ball.position, z: 0.2 }, 0.2)
+    });
 
     data.team1.players.forEach((p, i) =>
-      drawPlayer(ctx, canvas, p, i, data.team1.teamStrategy.chosenPlayerIndex, "red", camera)
+      draws.push({
+        depth: getDistanceToCamera(p.position, camera),
+        draw: () => drawPlayer(ctx, canvas, p, i, data.team1.teamStrategy.chosenPlayerIndex, "red", camera)
+      })
     );
     data.team2.players.forEach((p, i) =>
-      drawPlayer(ctx, canvas, p, i, data.team2.teamStrategy.chosenPlayerIndex, "blue", camera)
+      draws.push({
+        depth: getDistanceToCamera(p.position, camera),
+        draw: () => drawPlayer(ctx, canvas, p, i, data.team2.teamStrategy.chosenPlayerIndex, "blue", camera)
+      })
     );
-
-    drawGoals3D(ctx, canvas, camera);
 
     draws.sort((a, b) => b.depth - a.depth);
     draws.forEach(d => d.draw(ctx, canvas));
-    draws = [];
   }, [data]);
 
   return <canvas ref={canvasRef} style={{ backgroundColor: "#006400" }} />;
@@ -704,23 +709,15 @@ function drawGoals3D(
     const backCloseUp = {x: goal.backX, y: -goalWidth / 2, z: goalBackHeight};
 
     const postsColor = "#E0E0E0";
-    ctx.strokeStyle = postsColor;
-
-    // NET
     const netColor = "#e3e3e390";
-    draws.push({
-      depth: getDistanceToCamera(frontFarUp, camera),
-      draw: () => {
-        fillPoly(ctx, canvas, [frontFarUp, frontCloseUp, backCloseUp, backFarUp], camera, netColor);
-        strokePoly3d(ctx, canvas, [frontFarUp, frontCloseUp, backCloseUp, backFarUp], camera, postsColor, postThickness);
-        fillPoly(ctx, canvas, [frontFarUp, frontFarDown, backFarDown, backFarUp], camera, netColor);
-        strokePoly3d(ctx, canvas, [frontFarUp, frontFarDown, backFarDown, backFarUp], camera, postsColor, postThickness);
-        fillPoly(ctx, canvas, [backFarUp, backFarDown, backCloseDown, backCloseUp], camera, netColor);
-        strokePoly3d(ctx, canvas, [backFarUp, backFarDown, backCloseDown, backCloseUp], camera, postsColor, postThickness);
-        fillPoly(ctx, canvas, [frontCloseUp, frontCloseDown, backCloseDown, backCloseUp], camera, netColor);
-        strokePoly3d(ctx, canvas, [frontCloseUp, frontCloseDown, backCloseDown, backCloseUp], camera, postsColor, postThickness);
-      }
-    })
+    fillPoly(ctx, canvas, [frontFarUp, frontCloseUp, backCloseUp, backFarUp], camera, netColor);
+    strokePoly3d(ctx, canvas, [frontFarUp, frontCloseUp, backCloseUp, backFarUp], camera, postsColor, postThickness);
+    fillPoly(ctx, canvas, [frontFarUp, frontFarDown, backFarDown, backFarUp], camera, netColor);
+    strokePoly3d(ctx, canvas, [frontFarUp, frontFarDown, backFarDown, backFarUp], camera, postsColor, postThickness);
+    fillPoly(ctx, canvas, [backFarUp, backFarDown, backCloseDown, backCloseUp], camera, netColor);
+    strokePoly3d(ctx, canvas, [backFarUp, backFarDown, backCloseDown, backCloseUp], camera, postsColor, postThickness);
+    fillPoly(ctx, canvas, [frontCloseUp, frontCloseDown, backCloseDown, backCloseUp], camera, netColor);
+    strokePoly3d(ctx, canvas, [frontCloseUp, frontCloseDown, backCloseDown, backCloseUp], camera, postsColor, postThickness);
   });
 }
 

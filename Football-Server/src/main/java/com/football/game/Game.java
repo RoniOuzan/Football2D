@@ -27,7 +27,7 @@ public class Game {
             new Translation2d(Game.MAX_X,  Game.GOAL_WIDTH / 2),
             new Translation2d(Game.MAX_X, -Game.GOAL_WIDTH / 2)
     );
-    public static final double GOAL_DEPTH = 3;
+    public static final double GOAL_DEPTH = 2.3;
 
     public static final int TEAM_1 = 1;
     public static final int TEAM_2 = -1;
