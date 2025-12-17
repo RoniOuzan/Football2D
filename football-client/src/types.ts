@@ -1,7 +1,7 @@
-export const pitchWidthUnits = 100;
-export const pitchHeightUnits = 64;
-export const maxX = pitchWidthUnits / 2;
-export const maxY = pitchHeightUnits / 2;
+export const pitchWidth = 100;
+export const pitchHeight = 64;
+export const maxX = pitchWidth / 2;
+export const maxY = pitchHeight / 2;
 
 export interface Translation2d {
   x: number;
@@ -23,7 +23,7 @@ export interface JsonData {
   client: number;
 }
 
-export function getTeam(data: JsonData): Team  {
+export function getClientsTeam(data: JsonData): Team {
   if (data.client == 1) return data.team1;
   if (data.client == 2) return data.team2;
   return data.team1;

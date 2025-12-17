@@ -31,7 +31,7 @@ public class Shoot implements KeybindAction {
             return;
         }
 
-        Translation2d requestedDirection = teamStrategy.getInput().getOrientedRequestedVelocity(teamStrategy.getCameraPosition(), player);
+        Translation2d requestedDirection = teamStrategy.getRequestedVelocity(teamStrategy.getInput());
         Translation2d target = computeShotTarget(player, teamStrategy.getTeam(), requestedDirection, holdTime);
         player.shoot(new Translation3d(target, 2), finalVelocity);
     }

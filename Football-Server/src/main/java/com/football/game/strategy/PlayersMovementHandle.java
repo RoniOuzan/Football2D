@@ -4,6 +4,8 @@ import com.football.client.inputs.InputHandler;
 import com.football.client.keybinds.Keybind;
 import com.football.game.players.Goalkeeper;
 import com.football.game.players.Player;
+import com.football.game.team.CameraPosition;
+import com.football.util.math.geometry.Rotation2d;
 import com.football.util.math.geometry.Translation2d;
 
 import java.util.Comparator;
@@ -27,7 +29,7 @@ public class PlayersMovementHandle {
         this.playerTargetPosition.setBallChaser(chooseBallChaser());
         this.chosenPlayer = choosePlayer();
 
-        this.handleControlledMovement(this.chosenPlayer, this.teamStrategy.team.getClient().getInput(this.teamStrategy.inputSlot));
+        this.handleControlledMovement(this.chosenPlayer, this.teamStrategy.getInput());
         for (Player player : this.teamStrategy.players) {
             if (!player.equals(this.chosenPlayer)) {
                 if (player instanceof Goalkeeper gk) {
@@ -55,7 +57,7 @@ public class PlayersMovementHandle {
         }
 
         this.justPassed = false;
-        return input.getOrientedRequestedVelocity(this.teamStrategy.getCameraPosition(), player).times(velocity);
+        return this.teamStrategy.getRequestedVelocity(input).times(velocity);
     }
 
     private Player choosePlayer() {

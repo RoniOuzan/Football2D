@@ -6,6 +6,7 @@ import com.football.game.Game;
 import com.football.game.team.CameraPosition;
 import com.football.game.team.Team;
 import com.football.game.players.Player;
+import com.football.util.math.geometry.Rotation2d;
 import com.football.util.math.geometry.Translation2d;
 
 import java.util.HashMap;
@@ -91,5 +92,11 @@ public class TeamStrategy {
 
     public void setCameraPosition(CameraPosition cameraPosition) {
         this.cameraPosition = cameraPosition;
+    }
+
+    public Translation2d getRequestedVelocity(InputHandler input) {
+        Rotation2d orientation = this.getCameraPosition() == CameraPosition.BROADCAST ? Rotation2d.kZero :
+                this.ball.getPosition2d().minus(this.playersMovementHandle.getChosenPlayer().getPosition()).getAngle().plus(Rotation2d.kCW_Pi_2);
+        return input.getRequestedVelocity().rotateBy(orientation    );
     }
 }

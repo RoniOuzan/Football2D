@@ -18,6 +18,7 @@ public abstract class Player {
     public static final double SPRINT_VELOCITY = 10;
     public static final double WALK_VELOCITY = 4;
     public static final double MAX_SKID_ACCELERATION = 10;
+    public static final double MAX_OMEGA = Math.PI * 4;
     public static final double CARRYING_BALL_MAX_VELOCITY = 7;
 
     protected transient final Ball ball;
@@ -109,7 +110,9 @@ public abstract class Player {
         this.velocity = this.velocity.plus(deltaSpeed);
 
         if (this.velocity.getNorm() > 0) {
-            this.direction = this.velocity.getAngle();
+            double omega = this.velocity.getAngle().minus(this.direction).getRadians() / GameManager.PERIOD;
+            this.direction = this.direction
+                    .plus(new Rotation2d(MathUtil.clamp(omega, -MAX_OMEGA, MAX_OMEGA) * GameManager.PERIOD));
         }
     }
 
@@ -145,7 +148,6 @@ public abstract class Player {
     }
 
     public void cross(Player targetPlayer, double finalVelocity) {
-        // Crosses are lofted + predictive
         Translation2d target = targetPlayer.getPosition()
                 .plus(targetPlayer.getVelocity().times(0.5));
 
