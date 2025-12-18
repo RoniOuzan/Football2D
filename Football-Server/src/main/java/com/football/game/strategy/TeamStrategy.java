@@ -94,9 +94,9 @@ public class TeamStrategy {
         this.cameraPosition = cameraPosition;
     }
 
-    public Translation2d getRequestedVelocity(InputHandler input) {
+    public Translation2d getRequestedVelocity() {
         Rotation2d orientation = this.getCameraPosition() == CameraPosition.BROADCAST ? Rotation2d.kZero :
                 this.ball.getPosition2d().minus(this.playersMovementHandle.getChosenPlayer().getPosition()).getAngle().plus(Rotation2d.kCW_Pi_2);
-        return input.getRequestedVelocity().rotateBy(orientation    );
+        return getInput().getRequestedVelocity().rotateBy(orientation    );
     }
 }

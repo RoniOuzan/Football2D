@@ -6,6 +6,7 @@ import com.football.client.keybinds.Keybind;
 import com.football.util.math.geometry.Translation2d;
 import lombok.ToString;
 
+import java.security.Key;
 import java.util.Map;
 
 @ToString
@@ -17,7 +18,11 @@ public class InputKeyboardDevice extends InputDevice {
             Keybind.PASS, "e",
             Keybind.CROSS, "t",
             Keybind.THROUGH, "f",
-            Keybind.SHOOT, "r"
+            Keybind.SHOOT, "r",
+
+            Keybind.CHIP, "v",
+            Keybind.FINESSE, "c",
+            Keybind.TRIVELA, "b"
     );
 
     public InputKeyboardDevice(InputPacket.DevicePacket devicePacket) {

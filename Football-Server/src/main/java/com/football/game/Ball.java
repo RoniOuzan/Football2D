@@ -4,6 +4,7 @@ import com.football.GameManager;
 import com.football.game.players.Player;
 import com.football.game.team.Team;
 import com.football.util.math.MathUtil;
+import com.football.util.math.geometry.Rotation2d;
 import com.football.util.math.geometry.Translation2d;
 import com.football.util.math.geometry.Translation3d;
 import com.football.util.math.interpolation.TimeInterpolatableBuffer;
@@ -20,6 +21,7 @@ public class Ball {
     // --- Air ---
     private static final double GRAVITY = -9.81;        // slightly stronger than Earth
     private static final double AIR_DRAG = 0.5 * 1.225 * 0.25 * 0.11 * 0.11 * Math.PI;        // very important for FIFA feel
+    private static final double SPIN_DRAG = 0.5 * 1.225 * 0.4 * 0.11 * 0.11 * Math.PI * 0.11;        // very important for FIFA feel
     private static final double MASS = 0.43; // kg
 
     // --- Collisions ---
@@ -34,6 +36,7 @@ public class Ball {
 
     private Translation3d position;
     private Translation3d velocity;
+    private Translation3d spin;
     private transient Player carrier = null;
 
     private transient long timeReleased;
@@ -45,6 +48,7 @@ public class Ball {
 
         this.position = new Translation3d(0, 0, RADIUS);
         this.velocity = new Translation3d();
+        this.spin = new Translation3d();
 
         this.timeReleased = System.currentTimeMillis();
 
@@ -102,7 +106,7 @@ public class Ball {
     public boolean shouldBePickedUpBy(Player player) {
         if (System.currentTimeMillis() - this.timeReleased < CARRY_COOLDOWN_MS)
             return false;
-        return this.position.getDistance(player.getPosition()) < OFFSET_FROM_PLAYER;
+        return this.getPosition2d().getDistance(player.getPosition()) < OFFSET_FROM_PLAYER && this.position.getZ() <= Player.PLAYER_HEIGHT;
     }
 
     public void kick(Translation3d velocity) {
@@ -111,30 +115,43 @@ public class Ball {
     }
 
     public void kick(Translation2d target, double finalPlanarVelocity, double heightScale) {
-        kick(new Translation3d(target, RADIUS), finalPlanarVelocity, heightScale);
+        kick(new Translation3d(target, RADIUS), finalPlanarVelocity, heightScale, new Translation3d());
     }
 
-    public void kick(Translation3d target, double finalPlanarVelocity, double heightScale) {
+    public void kick(Translation3d target, double finalPlanarVelocity, double heightScale, Translation3d spin) {
         this.setCarrier(null);
 
+        // --- Vector to target ---
         Translation3d diff = target.minus(this.position);
-        Translation2d planar = diff.toTranslation2d();
-        double distance = planar.getNorm();
-        Translation2d dir = planar.normalized();
+        Translation2d dir = diff.toTranslation2d().normalized();
+        double planarDistance = diff.toTranslation2d().getNorm();
+        double dz = diff.getZ();
 
-        // Compute vertical speed to reach desired height
-        double initialVelocity = calculateInitialVelocity(distance, finalPlanarVelocity, heightScale);
-        double estimateTime = distance / ((initialVelocity + finalPlanarVelocity) / 2);
+        // --- Set spin ---
+        this.spin = spin;
 
-        // Kinematic equation to calculate v0
+        // --- Estimate flight time (planar approximation) ---
+        double initialVelocity = calculateInitialVelocity(planarDistance, finalPlanarVelocity, heightScale);
+        double estimateTime = planarDistance / ((initialVelocity + finalPlanarVelocity) * 0.5);
         double effectiveTime = estimateTime * heightScale;
-        double dz = target.getZ() - this.position.getZ();
-        double verticalSpeed = (dz / effectiveTime) - (0.5 * FRICTION_ACCEL * effectiveTime);
 
-        // Set velocity
+        // --- Predict lateral displacement from sidespin ---
+        double lateralAccel = SPIN_DRAG * finalPlanarVelocity * Math.abs(spin.getZ()) / MASS;
+        double sideDisplacement = 0.5 * lateralAccel * effectiveTime * effectiveTime;
+
+        // --- Convert displacement to angle offset ---
+        double angleOffsetRad = Math.atan2(sideDisplacement, planarDistance);
+
+        // Apply opposite the spin to pre-compensate
+        Translation2d shootDir = dir.rotateBy(Rotation2d.fromRadians(-Math.signum(spin.getZ()) * angleOffsetRad));
+
+        // --- Compute vertical velocity ---
+        double verticalSpeed = (dz / effectiveTime) - (0.5 * GRAVITY * effectiveTime);
+
+        // --- Set initial velocity ---
         this.velocity = new Translation3d(
-                dir.getX() * initialVelocity,
-                dir.getY() * initialVelocity,
+                shootDir.getX() * initialVelocity,
+                shootDir.getY() * initialVelocity,
                 verticalSpeed
         );
     }
@@ -172,41 +189,56 @@ public class Ball {
         this.updateCarrier(team1);
         this.updateCarrier(team2);
 
-        this.position = this.position.plus(this.velocity.times(GameManager.PERIOD));
-
         if (this.carrier != null) {
-            this.velocity = new Translation3d(this.carrier.getVelocity());
+            this.velocity = new Translation3d(this.carrier.getVelocity(), this.velocity.getZ());
+            this.spin = new Translation3d();
             this.position = new Translation3d(
                     this.carrier.getPosition()
                             .plus(new Translation2d(OFFSET_FROM_PLAYER, this.carrier.getDirection())),
-                    RADIUS
+                    this.position.getZ()
             );
-        } else {
-            if (!goalPostCollision()) {
-                wallCollision();
-            }
+        }
+        this.position = this.position.plus(this.velocity.times(GameManager.PERIOD));
 
-            if (this.isOnGround()) {
-                groundCollision();
-                rollingDeceleration();
-            }
+        if (!goalPostCollision()) {
+            wallCollision();
+        }
+
+        if (this.isOnGround()) {
+            groundCollision();
+            rollingDeceleration();
         }
     }
 
     private void applyAirPhysics() {
-        if (this.carrier != null || this.isOnGround() || this.velocity.getNorm() < 1e-6) return;
+        double velocity = this.velocity.getNorm();
 
         // Gravity affects Z velocity
-        this.velocity = new Translation3d(
-                this.velocity.getX(),
-                this.velocity.getY(),
-                this.velocity.getZ() + GRAVITY * GameManager.PERIOD
-        );
+        Translation3d acceleration = new Translation3d(0, 0, GRAVITY);
+        if (velocity > 0.1) {
+            // air drag (small)
+            Translation3d dragAccel = this.velocity.times(-AIR_DRAG * velocity).div(MASS); // Needs to be times v^2 and then divided by v, so it canceled to just times v
+            acceleration = acceleration.plus(dragAccel);
 
-        // air drag (small)
-        double velocity = this.velocity.getNorm();
-        Translation3d dragAccel = this.velocity.times(-AIR_DRAG * velocity * velocity).div(velocity * MASS);
-        this.velocity = this.velocity.plus(dragAccel.times(GameManager.PERIOD));
+            // Magnus effect (spin-induced force)
+            Translation3d magnusDir = getWorldRelativeSpin().crossProduct(this.velocity);
+            if (magnusDir.getNorm() > 0) {
+                Translation3d magnusAccel = magnusDir.normalized().times(SPIN_DRAG * velocity * this.spin.getNorm()).div(MASS);
+                acceleration = acceleration.plus(magnusAccel);
+            }
+        }
+        this.velocity = this.velocity.plus(acceleration.times(GameManager.PERIOD));
+    }
+
+    private Translation3d getWorldRelativeSpin() {
+        Translation3d forward = this.velocity.normalized();
+        Translation3d right = new Translation3d(0,0,1).crossProduct(forward).normalized();
+        Translation3d up = forward.crossProduct(right); // guaranteed orthogonal
+
+        // Convert ball-relative spin to world spin
+        return right.times(this.spin.getY())  // sidespin
+                .plus(forward.times(this.spin.getX()))  // topspin/backspin
+                .plus(up.times(this.spin.getZ()));
     }
 
     private void groundCollision() {
@@ -218,14 +250,28 @@ public class Ball {
 
         // Bounce only if falling
         if (this.velocity.getZ() < 0) {
+
+            double restitution = GROUND_RESTITUTION;
+
+            // --- SPIN EFFECT ON BOUNCE ---
+            double spinX = this.spin.getX();
+
+            if (spinX > 0) {
+                // topspin → kill bounce (driven shots)
+                restitution *= MathUtil.clamp(1.0 - spinX * 0.015, 0.1, 1.0);
+            } else if (spinX < 0) {
+                // backspin → higher bounce (chips)
+                restitution *= MathUtil.clamp(1.0 - spinX * 0.01, 1.0, 1.6);
+            }
+
             this.velocity = new Translation3d(
                     this.velocity.getX(),
                     this.velocity.getY(),
-                    -this.velocity.getZ() * GROUND_RESTITUTION
+                    -this.velocity.getZ() * restitution
             );
 
             // Kill tiny bounces
-            if (Math.abs(this.velocity.getZ()) < 0.5) {
+            if (Math.abs(this.velocity.getZ()) < 0.4) {
                 this.velocity = new Translation3d(
                         this.velocity.getX(),
                         this.velocity.getY(),

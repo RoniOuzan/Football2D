@@ -204,6 +204,14 @@ public class Translation3d implements Interpolatable<Translation3d> {
         return new Translation3d(x / scalar, y / scalar, z / scalar);
     }
 
+    public Translation3d crossProduct(Translation3d other) {
+        return new Translation3d(
+                this.y * other.z - this.z * other.y,
+                this.z * other.x - this.x * other.z,
+                this.x * other.y - this.y * other.x
+        );
+    }
+
     @Override
     public String toString() {
         return String.format("Translation3d(X: %.2f, Y: %.2f, Z: %.2f)", x, y, z);

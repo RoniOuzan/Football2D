@@ -13,10 +13,13 @@ import com.football.util.math.geometry.Translation3d;
 public abstract class Player {
 
     public static final double PLAYER_RADIUS = 0.5;
+    public static final double PLAYER_HEIGHT = 1.8;
+
     public static final double MAX_ACCELERATION = 8;
     public static final double MAX_DECELERATION = 10;
     public static final double SPRINT_VELOCITY = 10;
     public static final double WALK_VELOCITY = 4;
+
     public static final double MAX_SKID_ACCELERATION = 10;
     public static final double MAX_OMEGA = Math.PI * 4;
     public static final double CARRYING_BALL_MAX_VELOCITY = 7;
@@ -154,8 +157,8 @@ public abstract class Player {
         this.ball.kick(target, finalVelocity, 1);
     }
 
-    public void shoot(Translation3d target, double finalVelocity) {
-        this.ball.kick(target, finalVelocity, 1);
+    public void shoot(Translation3d target, double finalVelocity, double heightScale, Translation3d spin) {
+        this.ball.kick(target, finalVelocity, heightScale, spin);
     }
 
     public void shoot(Translation3d velocity) {

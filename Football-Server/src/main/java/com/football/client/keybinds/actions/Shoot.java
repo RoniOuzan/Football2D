@@ -1,16 +1,19 @@
 package com.football.client.keybinds.actions;
 
-import com.football.client.inputs.InputHandler;
+import com.football.client.keybinds.Keybind;
 import com.football.client.keybinds.KeybindAction;
 import com.football.game.Game;
-import com.football.game.team.Team;
-import com.football.game.strategy.TeamStrategy;
 import com.football.game.players.Player;
+import com.football.game.strategy.TeamStrategy;
+import com.football.game.team.Team;
 import com.football.util.math.geometry.Rotation2d;
 import com.football.util.math.geometry.Translation2d;
 import com.football.util.math.geometry.Translation3d;
 
+import java.util.*;
+
 public class Shoot implements KeybindAction {
+
     @Override
     public void justPressed(TeamStrategy teamStrategy, Player player) {}
 
@@ -18,22 +21,35 @@ public class Shoot implements KeybindAction {
     public void holding(TeamStrategy teamStrategy, Player player) {}
 
     @Override
-    public void justReleased(TeamStrategy teamStrategy, Player player, double holdTime) {
+    public void justReleased(TeamStrategy teamStrategy, Player player, Set<Keybind> kickTypes, double holdTime) {
         if (!player.hasBall()) return;
 
         double finalVelocity = computeHoldTime(holdTime, 1.3, 15, 35);
-        if (player.getPosition().getX() * teamStrategy.getTeam().getSideMultiplier() < 10) {
-            player.shoot(new Translation3d(
-                    finalVelocity,
-                    player.getWantedDirection(),
-                    3
-            ));
-            return;
+        Translation2d requestedDirection = teamStrategy.getRequestedVelocity();
+//        if (player.getPosition().getX() * teamStrategy.getTeam().getSideMultiplier() < 10) {
+//            player.shoot(new Translation3d(
+//                    finalVelocity,
+//                    requestedDirection.getAngle(),
+//                    3
+//            ));
+//            return;
+//        }
+
+        Translation3d spin = new Translation3d();
+        double targetZ = 1;
+        double heightScale = 0.5;
+        if (kickTypes.contains(Keybind.CHIP)) {
+            finalVelocity /= 4;
+            targetZ = 1.5;
+            heightScale = 1;
+        } else if (kickTypes.contains(Keybind.FINESSE)) {
+            targetZ = 2.2;
+            heightScale = 0.8;
+            spin = new Translation3d(0, 0, 100);
         }
 
-        Translation2d requestedDirection = teamStrategy.getRequestedVelocity(teamStrategy.getInput());
         Translation2d target = computeShotTarget(player, teamStrategy.getTeam(), requestedDirection, holdTime);
-        player.shoot(new Translation3d(target, 2), finalVelocity);
+        player.shoot(new Translation3d(target, targetZ), finalVelocity, heightScale, spin);
     }
 
     private Translation2d computeShotTarget(Player player, Team team, Translation2d requestedDirection, double holdTime) {

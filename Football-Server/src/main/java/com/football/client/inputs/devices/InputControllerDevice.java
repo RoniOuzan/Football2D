@@ -17,7 +17,11 @@ public class InputControllerDevice extends InputDevice {
             Keybind.PASS, "A",
             Keybind.CROSS, "X",
             Keybind.THROUGH, "Y",
-            Keybind.SHOOT, "B"
+            Keybind.SHOOT, "B",
+
+            Keybind.CHIP, "LB",
+            Keybind.FINESSE, "RB",
+            Keybind.TRIVELA, "LT"
     );
 
     public double leftX = 0;

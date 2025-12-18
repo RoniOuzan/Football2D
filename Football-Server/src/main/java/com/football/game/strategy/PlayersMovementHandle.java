@@ -57,7 +57,7 @@ public class PlayersMovementHandle {
         }
 
         this.justPassed = false;
-        return this.teamStrategy.getRequestedVelocity(input).times(velocity);
+        return this.teamStrategy.getRequestedVelocity().times(velocity);
     }
 
     private Player choosePlayer() {
