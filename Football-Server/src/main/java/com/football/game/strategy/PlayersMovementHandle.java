@@ -4,8 +4,6 @@ import com.football.client.inputs.InputHandler;
 import com.football.client.keybinds.Keybind;
 import com.football.game.players.Goalkeeper;
 import com.football.game.players.Player;
-import com.football.game.team.CameraPosition;
-import com.football.util.math.geometry.Rotation2d;
 import com.football.util.math.geometry.Translation2d;
 
 import java.util.Comparator;

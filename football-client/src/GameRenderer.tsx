@@ -10,18 +10,11 @@ import {
   pitchWidth,
   pitchHeight,
   getClientsTeam,
+  Camera,
 } from "./types";
 
 const ZOOM = 1.5;
 const NEAR = 0.05;
-
-interface Camera {
-  x: number;
-  y: number;
-  z: number;
-  pitch: number;
-  yaw: number;
-}
 
 interface GameRendererProps {
   data: JsonData;
@@ -41,19 +34,19 @@ function worldToCamera(
   position: Translation3d | Translation2d,
   camera: Camera
 ): CamPoint {
-  const dx = position.x - camera.x;
-  const dy = position.y - camera.y;
-  const dz = ("z" in position ? position.z : 0) - camera.z;
+  const dx = position.x - camera.translation.x;
+  const dy = position.y - camera.translation.y;
+  const dz = ("z" in position ? position.z : 0) - camera.translation.z;
 
-  const cy = Math.cos(-camera.yaw);
-  const sy = Math.sin(-camera.yaw);
+  const cy = Math.cos(-camera.yaw.value);
+  const sy = Math.sin(-camera.yaw.value);
 
   const xYaw = dx * cy - dy * sy;
   const yYaw = dx * sy + dy * cy;
   const zYaw = dz;
 
-  const cp = Math.cos(-camera.pitch);
-  const sp = Math.sin(-camera.pitch);
+  const cp = Math.cos(-camera.pitch.value);
+  const sp = Math.sin(-camera.pitch.value);
 
   return {
     x: xYaw,
@@ -128,11 +121,9 @@ function radians(a: number) {
 const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [camera, setCamera] = useState<Camera>({
-    x: 0,
-    y: 0,
-    z: 0,
-    pitch: 0,
-    yaw: 0,
+    translation: { x: 0, y: 0, z: 0 },
+    yaw: { value: 0, cos: 0, sin: 0 },
+    pitch: { value: 0, cos: 0, sin: 0 },
   });
 
   useEffect(() => {
@@ -144,39 +135,8 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const cameraX = Math.max(Math.min(data.ball.position.x, 50), -50) * 0.3;
-    const cameraY = Math.max(Math.min(data.ball.position.y, 16), -16) * 0.1;
-
     const team = getClientsTeam(data);
-    if (team.teamStrategy.cameraPosition === "BROADCAST") {
-      setCamera({
-        x: cameraX,
-        y: -60 + cameraY,
-        z: 30,
-        pitch: radians(-30 + cameraY),
-        yaw: radians(-cameraX / 2),
-      });
-    } else {
-      const chosenPlayer =
-        getClientsTeam(data).players[
-          getClientsTeam(data).teamStrategy.chosenPlayerIndex
-        ];
-      let diff = {
-        x: data.ball.position.x - chosenPlayer.position.x,
-        y: data.ball.position.y - chosenPlayer.position.y,
-      };
-      const len = Math.hypot(diff.x, diff.y);
-      diff = { x: diff.x / len, y: diff.y / len };
-
-      const thirdPerson = { x: 6 * diff.x, y: 6 * diff.y };
-      setCamera({
-        x: chosenPlayer.position.x - thirdPerson.x,
-        y: chosenPlayer.position.y - thirdPerson.y,
-        z: 3,
-        pitch: radians(-15),
-        yaw: Math.atan2(diff.y, diff.x) - Math.PI / 2,
-      });
-    }
+    setCamera(team.teamStrategy.cameraManager.position);
 
     // setCamera({ x: 43, y: 0, z: 5, pitch: radians(-30), yaw: radians(-90)})
 
@@ -302,9 +262,9 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
 // DRAW HELPERS (SAFE)
 // =====================
 function getDistanceToCamera(p: Translation3d | Translation2d, c: Camera) {
-  const dx = p.x - c.x;
-  const dy = p.y - c.y;
-  const dz = ("z" in p ? p.z : 0) - c.z;
+  const dx = p.x - c.translation.x;
+  const dy = p.y - c.translation.y;
+  const dz = ("z" in p ? p.z : 0) - c.translation.z;
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
@@ -360,9 +320,9 @@ function drawLine3d(
   };
 
   const dirFromCamera = {
-    x: p2.x - camera.x,
-    y: p2.y - camera.y,
-    z: p2z - camera.z,
+    x: p2.x - camera.translation.x,
+    y: p2.y - camera.translation.y,
+    z: p2z - camera.translation.z,
   };
 
   const perp = getPerpVector(dir, dirFromCamera);
@@ -583,15 +543,10 @@ function drawSphere(
   const center = worldToScreen(canvas, position, camera);
   if (!center) return;
 
-  // Compute camera axes
-  const cy = Math.cos(camera.yaw);
-  const sy = Math.sin(camera.yaw);
-  // const cp = Math.cos(camera.pitch), sp = Math.sin(camera.pitch);
-
   // Camera right vector (local X axis in world space)
   const rightOffset: Translation3d = {
-    x: position.x + radius * cy,
-    y: position.y + radius * sy,
+    x: position.x + radius * camera.yaw.cos,
+    y: position.y + radius * camera.yaw.sin,
     z: position.z,
   };
 
@@ -751,17 +706,15 @@ function drawCylinder(
   if (!screenBottom || !screenTop) return;
 
   // Camera right vector at bottom
-  const cy = Math.cos(camera.yaw),
-    sy = Math.sin(camera.yaw);
   const rightBottom: Translation3d = {
-    x: bottom.x + radius * cy,
-    y: bottom.y + radius * sy,
+    x: bottom.x + radius * camera.yaw.cos,
+    y: bottom.y + radius * camera.yaw.sin,
     z: bottom.z,
   };
 
   const rightTop: Translation3d = {
-    x: top.x + radius * cy,
-    y: top.y + radius * sy,
+    x: top.x + radius * camera.yaw.cos,
+    y: top.y + radius * camera.yaw.sin,
     z: top.z,
   };
 

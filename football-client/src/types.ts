@@ -41,11 +41,11 @@ export interface Team {
 
 export interface Player {
   position: Translation2d;
-  direction: Direction;
+  direction: Rotation2d;
   velocity: Translation2d;
 }
 
-export interface Direction {
+export interface Rotation2d {
   value: number;
   cos: number;
   sin: number;
@@ -57,5 +57,16 @@ export interface TeamStrategy {
     value: number;
   }[];
   chosenPlayerIndex: number;
-  cameraPosition: "BROADCAST" | "THIRD_PERSON";
+  cameraManager: CameraManager;
+}
+
+export interface CameraManager {
+  position: Camera;
+  positionType: "BROADCAST" | "THIRD_PERSON";
+}
+
+export interface Camera {
+  translation: Translation3d;
+  pitch: Rotation2d;
+  yaw: Rotation2d;
 }

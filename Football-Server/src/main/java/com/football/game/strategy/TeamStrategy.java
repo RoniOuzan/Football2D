@@ -3,7 +3,6 @@ package com.football.game.strategy;
 import com.football.client.inputs.InputHandler;
 import com.football.game.Ball;
 import com.football.game.Game;
-import com.football.game.team.CameraPosition;
 import com.football.game.team.Team;
 import com.football.game.players.Player;
 import com.football.util.math.geometry.Rotation2d;
@@ -29,9 +28,8 @@ public class TeamStrategy {
     private transient final HeatmapGenerator heatmapGenerator;
     private transient final OffsideCalculator offsideCalculator;
     private transient final DefensiveLineCalculator defensiveLineCalculator;
+    private final CameraManager cameraManager;
     private transient final PlayersMovementHandle playersMovementHandle;
-
-    private CameraPosition cameraPosition;
 
     public TeamStrategy(Game game, Team team, int inputSlot) {
         this.team = team;
@@ -45,9 +43,8 @@ public class TeamStrategy {
         this.heatmapGenerator = new HeatmapGenerator(this);
         this.offsideCalculator = new OffsideCalculator(this);
         this.defensiveLineCalculator = new DefensiveLineCalculator(this);
+        this.cameraManager = new CameraManager(this);
         this.playersMovementHandle = new PlayersMovementHandle(this);
-
-        this.cameraPosition = CameraPosition.BROADCAST;
     }
 
     /**
@@ -58,6 +55,7 @@ public class TeamStrategy {
         this.offsideCalculator.update();
         this.heatmapGenerator.update();
 
+        this.cameraManager.update();
         this.playersMovementHandle.update();
         this.chosenPlayerIndex = this.players.indexOf(this.playersMovementHandle.getChosenPlayer());
     }
@@ -86,17 +84,17 @@ public class TeamStrategy {
         this.playersMovementHandle.playerPassedTo(player);
     }
 
-    public CameraPosition getCameraPosition() {
-        return this.cameraPosition;
+    public Player getChosenPlayer() {
+        return this.playersMovementHandle.getChosenPlayer();
     }
 
-    public void setCameraPosition(CameraPosition cameraPosition) {
-        this.cameraPosition = cameraPosition;
+    public CameraManager getCameraManager() {
+        return this.cameraManager;
     }
 
     public Translation2d getRequestedVelocity() {
-        Rotation2d orientation = this.getCameraPosition() == CameraPosition.BROADCAST ? Rotation2d.kZero :
-                this.ball.getPosition2d().minus(this.playersMovementHandle.getChosenPlayer().getPosition()).getAngle().plus(Rotation2d.kCW_Pi_2);
-        return getInput().getRequestedVelocity().rotateBy(orientation    );
+        Rotation2d orientation = this.cameraManager.getPosition().getTranslation().toTranslation2d()
+                .minus(this.getChosenPlayer().getPosition()).getAngle().plus(Rotation2d.kCCW_Pi_2);
+        return getInput().getRequestedVelocity().rotateBy(orientation);
     }
 }

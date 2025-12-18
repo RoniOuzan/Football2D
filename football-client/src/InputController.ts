@@ -43,7 +43,7 @@ export default class InputController {
       devices.push(this.mapController(gp));
     }
 
-    this.client.sendJSON({ devices: devices });
+    this.client.sendJSON("input", { devices: devices });
   }
 
   private mapController(gp: Gamepad): DeviceInput {

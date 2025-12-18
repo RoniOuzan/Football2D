@@ -113,14 +113,39 @@ public abstract class Player {
         this.velocity = this.velocity.plus(deltaSpeed);
 
         if (this.velocity.getNorm() > 0) {
-            double omega = this.velocity.getAngle().minus(this.direction).getRadians() / GameManager.PERIOD;
-            this.direction = this.direction
-                    .plus(new Rotation2d(MathUtil.clamp(omega, -MAX_OMEGA, MAX_OMEGA) * GameManager.PERIOD));
+            updateDirection();
         }
     }
 
-    public Rotation2d getWantedDirection() {
-        return this.targetVelocity.getAngle();
+    private void updateDirection() {
+        // Choose movement direction (target or current velocity)
+        Translation2d movementDirection = this.targetVelocity.getNorm() > 0 ? this.targetVelocity : this.velocity;
+
+        if (movementDirection.getNorm() < 0.01) {
+            // Not moving
+            return;
+        }
+
+        // Determine if moving backward relative to current facing
+        boolean movingBackward = movementDirection.dot(this.direction.toTranslation()) < 0;
+
+        // Desired direction
+        Rotation2d desiredDirection;
+        if (movingBackward) {
+            // Walk backward: keep current facing for now
+            desiredDirection = this.direction;
+        } else {
+            // Forward or sideways: face movement direction
+            desiredDirection = movementDirection.getAngle();
+        }
+
+        // Smoothly rotate toward movement direction over time
+        // When moving backward, we allow a small rotation toward movement gradually
+        double omega = movementDirection.getAngle().minus(this.direction).getRadians() / GameManager.PERIOD;
+        double maxOmega = movingBackward ? MAX_OMEGA * 0.2 : MAX_OMEGA; // slower rotation while walking backward
+        omega = MathUtil.clamp(omega, -maxOmega, maxOmega);
+
+        this.direction = this.direction.plus(new Rotation2d(omega * GameManager.PERIOD));
     }
 
     public Translation2d getVelocityToPosition(Translation2d targetPosition, double speedPercent) {

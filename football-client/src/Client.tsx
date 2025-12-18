@@ -17,8 +17,8 @@ export default class Client {
     };
   }
 
-  sendJSON(data: any) {
+  sendJSON(type: string, data: any) {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return;
-    this.socket.send(JSON.stringify({ type: "input", data }));
+    this.socket.send(JSON.stringify({ type, data }));
   }
 }

@@ -14,7 +14,7 @@ public enum Keybind implements KeybindAction {
     CROSS(new Cross()),
     THROUGH(new Through()),
     SHOOT(new Shoot()),
-    SWITCH_CAMERA((t, p) -> t.setCameraPosition(t.getCameraPosition().getOther())),
+    SWITCH_CAMERA((t, p) -> t.getCameraManager().setPositionType(t.getCameraManager().getPositionType().getOther())),
 
     CHIP(true),
     FINESSE(true),

@@ -96,7 +96,7 @@ public abstract class InputDevice implements InputHandler {
             }
 
             if (this.isReleased(keybind)) {
-                keybind.justReleased(teamStrategy, player, this.kickTypes.get(keybind), getLastHoldTime(keybind));
+                keybind.justReleased(teamStrategy, player, this.kickTypes.getOrDefault(keybind, new HashSet<>()), getLastHoldTime(keybind));
 
                 if (this.kickTypes.containsKey(keybind))
                     this.kickTypes.get(keybind).clear();
