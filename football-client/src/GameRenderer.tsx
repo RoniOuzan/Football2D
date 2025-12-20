@@ -142,6 +142,8 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    drawStadium(ctx, canvas, camera);
+
     drawPitch(ctx, canvas, camera);
     drawLineFlat(
       ctx,
@@ -255,7 +257,7 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
     draws.forEach((d) => d.draw(ctx, canvas));
   }, [data]);
 
-  return <canvas ref={canvasRef} style={{ backgroundColor: "#006400" }} />;
+  return <canvas ref={canvasRef} style={{ backgroundColor: "#00a6ffff" }} />;
 };
 
 // =====================
@@ -629,9 +631,6 @@ function drawPlayer(
   const torsoBottom = { x: pos.x, y: pos.y, z: legsHeight };
   const torsoTop = { x: pos.x, y: pos.y, z: legsHeight + bodyHeight };
 
-  drawCircleWorld(ctx, canvas, camera, torsoBottom, bodyRadius, color, 0);
-  drawCircleWorld(ctx, canvas, camera, torsoTop, bodyRadius, color, 0);
-
   drawCylinder(
     ctx,
     canvas,
@@ -698,7 +697,7 @@ function drawCylinder(
   top: Translation3d,
   radius: number,
   fillColor: string,
-  stroke: boolean = true
+  stroke: boolean = false
 ) {
   // Project center points
   const screenBottom = worldToScreen(canvas, bottom, camera);
@@ -764,6 +763,9 @@ function drawCylinder(
   ctx.closePath();
   ctx.fillStyle = fillColor;
   ctx.fill();
+
+  drawCircleWorld(ctx, canvas, camera, bottom, radius, fillColor, 0);
+  drawCircleWorld(ctx, canvas, camera, top, radius, fillColor, 0);
 
   if (stroke) {
     ctx.strokeStyle = "#00000055";
@@ -924,5 +926,234 @@ function scoreToColor(value: number, min: number, max: number): string {
   const b = Math.floor(255 * (1 - t));
   return `rgb(${r}, ${g}, ${b})`;
 }
+
+
+function drawStadium(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  camera: Camera
+) {
+  const wallHeight = 7;
+  const standDepth = 12;
+
+  const tiers = 16;
+  const tierHeight = 0.7;
+  const tierDepth = 1.4;
+
+  const seatWidth = 0.8;
+  const seatGap = 0.3;
+  const seatHeight = 0.6;
+
+  const wallColor = "#555555";
+  const standColor = "#888888";
+
+  const seatColors = ["#d32f2f", "#1976d2", "#388e3c", "#7b1fa2"];
+  const crowdColors = ["#ffcc99", "#f4a460", "#ffd700", "#ffb6c1"];
+
+  // =====================
+  // MATCH LIGHTING CONFIG
+  // =====================
+  const isNightMatch = false;
+  const sunDir = { x: -0.6, y: 0.8 }; // directional sunlight
+  const sunStrength = isNightMatch ? 0 : 50; // visible gradient
+
+  function shadeColor(hex: string, amount: number) {
+    const num = parseInt(hex.slice(1), 16);
+    const r = Math.max(40, Math.min(255, (num >> 16) + amount));
+    const g = Math.max(40, Math.min(255, ((num >> 8) & 0xff) + amount));
+    const b = Math.max(40, Math.min(255, (num & 0xff) + amount));
+    return `rgb(${r},${g},${b})`;
+  }
+
+  // =====================
+  // WALLS
+  // =====================
+  const stadiumCorners = [
+    { x: maxX + standDepth, y: maxY + standDepth, z: 0 },
+    { x: maxX + standDepth, y: -(maxY + standDepth), z: 0 },
+    { x: -(maxX + standDepth), y: -(maxY + standDepth), z: 0 },
+    { x: -(maxX + standDepth), y: maxY + standDepth, z: 0 },
+  ];
+
+  fillPoly(
+    ctx,
+    canvas,
+    stadiumCorners,
+    camera,
+    isNightMatch ? "#1b3a2a" : "#2e7d32"
+  );
+
+  // =====================
+  // WALLS with 3D vertical shading
+  // =====================
+  for (let i = 0; i < stadiumCorners.length; i++) {
+    const c1 = stadiumCorners[i];
+    const c2 = stadiumCorners[(i + 1) % stadiumCorners.length];
+
+    // Compute wall normal in XY plane
+    const dx = c2.x - c1.x;
+    const dy = c2.y - c1.y;
+    const length = Math.hypot(dx, dy);
+    const nx = -dy / length; // perpendicular x
+    const ny = dx / length;  // perpendicular y
+
+    // Dot with sun direction for horizontal shading
+    const dot = Math.max(0, nx * sunDir.x + ny * sunDir.y);
+    const baseShade = Math.floor(dot * sunStrength) - 20; // horizontal light/dark
+
+    const steps = 10; // number of vertical steps for shading
+    const stepHeight = wallHeight / steps;
+
+    for (let s = 0; s < steps; s++) {
+      const zBottom = s * stepHeight;
+      const zTop = (s + 1) * stepHeight;
+
+      // Linear vertical gradient: darker at bottom, lighter at top
+      const verticalOffset = Math.floor((s / steps) * 30); // tweak 30 for stronger vertical contrast
+      const color = shadeColor(wallColor, baseShade + verticalOffset);
+
+      fillPoly(
+        ctx,
+        canvas,
+        [
+          { ...c1, z: zBottom },
+          { ...c2, z: zBottom },
+          { ...c2, z: zTop },
+          { ...c1, z: zTop },
+        ],
+        camera,
+        color
+      );
+    }
+
+    // Optional: thin top highlight
+    fillPoly(
+      ctx,
+      canvas,
+      [
+        { ...c1, z: wallHeight },
+        { ...c2, z: wallHeight },
+        { ...c2, z: wallHeight + 0.2 },
+        { ...c1, z: wallHeight + 0.2 },
+      ],
+      camera,
+      shadeColor("#ffffff", 20)
+    );
+  }
+
+  // =====================
+  // STANDS
+  // =====================
+  const sides = [
+    { start: { x: -(maxX + standDepth), y: maxY }, end: { x: maxX + standDepth, y: maxY }, dir: { x: 0, y: 1 }, home: true },
+    { start: { x: -(maxX + standDepth), y: -maxY }, end: { x: maxX + standDepth, y: -maxY }, dir: { x: 0, y: -1 }, home: false },
+    { start: { x: -maxX, y: -(maxY + standDepth) }, end: { x: -maxX, y: maxY + standDepth }, dir: { x: -1, y: 0 }, home: true },
+    { start: { x: maxX, y: -(maxY + standDepth) }, end: { x: maxX, y: maxY + standDepth }, dir: { x: 1, y: 0 }, home: false },
+  ];
+
+  sides.forEach((side) => {
+    const dx = side.end.x - side.start.x;
+    const dy = side.end.y - side.start.y;
+    const length = Math.hypot(dx, dy);
+    const seatsPerRow = Math.floor(length / (seatWidth + seatGap));
+    const tangent = { x: dx / length, y: dy / length };
+
+    // Draw stand floor
+    fillPoly(
+      ctx,
+      canvas,
+      [
+        { x: side.start.x + side.dir.x * standDepth, y: side.start.y + side.dir.y * standDepth, z: wallHeight },
+        { x: side.end.x + side.dir.x * standDepth, y: side.end.y + side.dir.y * standDepth, z: wallHeight },
+        { x: side.end.x + side.dir.x * (standDepth + tiers * tierDepth), y: side.end.y + side.dir.y * (standDepth + tiers * tierDepth), z: wallHeight + tiers * tierHeight },
+        { x: side.start.x + side.dir.x * (standDepth + tiers * tierDepth), y: side.start.y + side.dir.y * (standDepth + tiers * tierDepth), z: wallHeight + tiers * tierHeight },
+      ],
+      camera,
+      shadeColor(standColor, (isNightMatch ? -40 : -25))
+    );
+
+    for (let tier = 0; tier < tiers; tier++) {
+      const z = wallHeight + tier * tierHeight;
+      const depthOffset = standDepth + tier * tierDepth;
+
+      // Vertical tier darkening
+      const tierOffset = -tier * 3;
+
+      for (let i = 1; i < seatsPerRow; i++) {
+        const t = i / seatsPerRow;
+        const baseX = side.start.x + dx * t + side.dir.x * depthOffset;
+        const baseY = side.start.y + dy * t + side.dir.y * depthOffset;
+
+        const baseSeatColor = seatColors[(i + tier * 2) % seatColors.length];
+        const sectionBoost = side.home ? 8 : -6;
+
+        // =====================
+        // Calculate combined gradient for this seat
+        // =====================
+        const seatLength = Math.hypot(baseX, baseY);
+        const seatDir = { x: baseX / seatLength, y: baseY / seatLength };
+        const sunDot = seatDir.x * sunDir.x + seatDir.y * sunDir.y;
+        const sunOffset = Math.floor(sunDot * sunStrength);
+
+        // Radial gradient from pitch center (closer seats are brighter)
+        const distanceFromPitch = Math.hypot(baseX, baseY);
+        const maxDistance = maxX + standDepth + tiers * tierDepth;
+        const radialFactor = Math.max(0, 1 - distanceFromPitch / maxDistance); // 0..1
+        const radialOffset = Math.floor(radialFactor * 20); // adjust intensity
+
+        // Total combined offset
+        const totalOffset = tierOffset + sectionBoost + sunOffset + radialOffset;
+
+        const seatBase = shadeColor(baseSeatColor, totalOffset);
+        const seatFront = shadeColor(baseSeatColor, tierOffset - 12 + sunOffset + radialOffset);
+
+        const halfW = seatWidth * 0.5;
+        const manW = seatWidth * 0.25;
+        const depth = seatWidth * 0.8;
+
+        const seatPoly: Translation3d[] = [
+          { x: baseX - tangent.x * halfW, y: baseY - tangent.y * halfW, z },
+          { x: baseX + tangent.x * halfW, y: baseY + tangent.y * halfW, z },
+          { x: baseX + tangent.x * halfW + side.dir.x * depth, y: baseY + tangent.y * halfW + side.dir.y * depth, z },
+          { x: baseX - tangent.x * halfW + side.dir.x * depth, y: baseY - tangent.y * halfW + side.dir.y * depth, z },
+        ];
+
+        fillPoly(ctx, canvas, seatPoly, camera, seatBase);
+        fillPoly(
+          ctx,
+          canvas,
+          [
+            seatPoly[2],
+            seatPoly[3],
+            { ...seatPoly[3], z: z + seatHeight },
+            { ...seatPoly[2], z: z + seatHeight },
+          ],
+          camera,
+          seatFront
+        );
+
+        const crowdZ = z + 0.3 + Math.abs(Math.sin(performance.now() / 200 + tier)) * 0.3;
+
+        const crowdTierFactor = tier / tiers;
+        const crowdTierOffset = Math.floor(crowdTierFactor * 15);
+        const crowdTotalOffset = totalOffset + crowdTierOffset;
+
+        fillPoly(
+          ctx,
+          canvas,
+          [
+            { x: baseX + tangent.x * manW + side.dir.x * depth, y: baseY + tangent.y * manW + side.dir.y * depth, z },
+            { x: baseX - tangent.x * manW + side.dir.x * depth, y: baseY - tangent.y * manW + side.dir.y * depth, z },
+            { x: baseX - tangent.x * manW + side.dir.x * depth, y: baseY - tangent.y * manW + side.dir.y * depth, z: crowdZ },
+            { x: baseX + tangent.x * manW + side.dir.x * depth, y: baseY + tangent.y * manW + side.dir.y * depth, z: crowdZ },
+          ],
+          camera,
+          shadeColor(crowdColors[(i + tier) % crowdColors.length], (isNightMatch ? 10 : 0) + crowdTotalOffset)
+        );
+      }
+    }
+  });
+}
+
 
 export default GameRenderer3D;
