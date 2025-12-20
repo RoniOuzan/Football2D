@@ -984,33 +984,45 @@ function drawStadium(
   );
 
   // =====================
-  // WALLS with 3D vertical shading
+  // WALLS with 3D shading + ambient occlusion
   // =====================
   for (let i = 0; i < stadiumCorners.length; i++) {
     const c1 = stadiumCorners[i];
     const c2 = stadiumCorners[(i + 1) % stadiumCorners.length];
 
-    // Compute wall normal in XY plane
+    // Wall vector in XY
     const dx = c2.x - c1.x;
     const dy = c2.y - c1.y;
     const length = Math.hypot(dx, dy);
-    const nx = -dy / length; // perpendicular x
-    const ny = dx / length;  // perpendicular y
 
-    // Dot with sun direction for horizontal shading
+    // Normal vector pointing outward in XY plane
+    const nx = -dy / length;
+    const ny = dx / length;
+
+    // Horizontal shading based on sun angle
     const dot = Math.max(0, nx * sunDir.x + ny * sunDir.y);
-    const baseShade = Math.floor(dot * sunStrength) - 20; // horizontal light/dark
+    const horizontalShade = Math.floor(dot * sunStrength) - 20;
 
-    const steps = 10; // number of vertical steps for shading
+    // Vertical gradient
+    const steps = 10;
     const stepHeight = wallHeight / steps;
 
     for (let s = 0; s < steps; s++) {
       const zBottom = s * stepHeight;
       const zTop = (s + 1) * stepHeight;
 
-      // Linear vertical gradient: darker at bottom, lighter at top
-      const verticalOffset = Math.floor((s / steps) * 30); // tweak 30 for stronger vertical contrast
-      const color = shadeColor(wallColor, baseShade + verticalOffset);
+      // Vertical shading (darker at bottom)
+      const verticalOffset = Math.floor((s / steps) * 30);
+
+      // -----------------------------
+      // Ambient Occlusion
+      // -----------------------------
+      // Closer to corners? Darken a bit
+      const aoStart = Math.min(1, 2 / (Math.hypot(c1.x, c1.y) + 0.1));
+      const aoEnd = Math.min(1, 2 / (Math.hypot(c2.x, c2.y) + 0.1));
+      const ao = Math.floor(((aoStart + aoEnd) / 2) * -25); // negative = darker
+
+      const color = shadeColor(wallColor, horizontalShade + verticalOffset + ao);
 
       fillPoly(
         ctx,
@@ -1026,7 +1038,7 @@ function drawStadium(
       );
     }
 
-    // Optional: thin top highlight
+    // Optional: top highlight for extra depth
     fillPoly(
       ctx,
       canvas,
@@ -1046,8 +1058,8 @@ function drawStadium(
   // =====================
   const sides = [
     { start: { x: -(maxX + standDepth), y: maxY }, end: { x: maxX + standDepth, y: maxY }, dir: { x: 0, y: 1 }, home: true },
-    { start: { x: -(maxX + standDepth), y: -maxY }, end: { x: maxX + standDepth, y: -maxY }, dir: { x: 0, y: -1 }, home: false },
     { start: { x: -maxX, y: -(maxY + standDepth) }, end: { x: -maxX, y: maxY + standDepth }, dir: { x: -1, y: 0 }, home: true },
+    { start: { x: -(maxX + standDepth), y: -maxY }, end: { x: maxX + standDepth, y: -maxY }, dir: { x: 0, y: -1 }, home: false },
     { start: { x: maxX, y: -(maxY + standDepth) }, end: { x: maxX, y: maxY + standDepth }, dir: { x: 1, y: 0 }, home: false },
   ];
 
