@@ -2,7 +2,7 @@ import { Camera, maxX, maxY } from "../types";
 import { isOnScreen, worldToScreen } from "./CameraUtil";
 import { fillPoly } from "./RendererUtil";
 
-const sunWorld = { x: 200, y: 200, z: 100 };
+const sunWorld = { x: 200, y: 200, z: 80 };
 
 const wallHeight = 1.5;
 const standDepth = 20;
