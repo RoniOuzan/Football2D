@@ -15,7 +15,7 @@ public enum CameraPositionType {
         double cameraY = MathUtil.clamp(t.ball.getPosition().getY(), -16, 16) * 0.1;
         return new CameraPose(
                 new Translation3d(cameraX, -60 + cameraY, 30),
-                Rotation2d.fromDegrees(-27.5 + cameraY),
+                Rotation2d.fromDegrees(-15.5 + cameraY),
                 Rotation2d.fromDegrees(-cameraX / 2)
         );
     }),
@@ -34,7 +34,7 @@ public enum CameraPositionType {
         Translation3d targetPos = new Translation3d(playerPos.plus(offset2d), 2.5);
 
         // Camera pitch (slightly looking down)
-        Rotation2d targetPitch = Rotation2d.fromDegrees(-10);
+        Rotation2d targetPitch = Rotation2d.fromDegrees(10);
         Rotation2d targetYaw = offset2d.getAngle().plus(Rotation2d.kCCW_Pi_2);
 
         // Smoothly interpolate from previous camera (lerp) if available
