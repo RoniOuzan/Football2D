@@ -138,7 +138,13 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
     const team = getClientsTeam(data);
     setCamera(team.teamStrategy.cameraManager.position);
 
-    // setCamera({ x: 43, y: 0, z: 5, pitch: radians(-30), yaw: radians(-90)})
+    // const pitch = radians(-30);
+    // const yaw = radians(0);
+    // setCamera({
+    //   translation: { x: 0, y: 30, z: 20 },
+    //   yaw: { value: yaw, cos: Math.cos(yaw), sin: Math.sin(yaw) },
+    //   pitch: { value: pitch, cos: Math.cos(pitch), sin: Math.sin(pitch) },
+    // })
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -927,14 +933,13 @@ function scoreToColor(value: number, min: number, max: number): string {
   return `rgb(${r}, ${g}, ${b})`;
 }
 
-
 function drawStadium(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   camera: Camera
 ) {
   const wallHeight = 7;
-  const standDepth = 12;
+  const standDepth = 18;
 
   const tiers = 16;
   const tierHeight = 0.7;
@@ -951,11 +956,11 @@ function drawStadium(
   const crowdColors = ["#ffcc99", "#f4a460", "#ffd700", "#ffb6c1"];
 
   // =====================
-  // MATCH LIGHTING CONFIG
+  // LIGHTING
   // =====================
   const isNightMatch = false;
-  const sunDir = { x: -0.6, y: 0.8 }; // directional sunlight
-  const sunStrength = isNightMatch ? 0 : 50; // visible gradient
+  const sunDir = { x: -0.6, y: 0.8 };
+  const sunStrength = isNightMatch ? 0 : 30;
 
   function shadeColor(hex: string, amount: number) {
     const num = parseInt(hex.slice(1), 16);
@@ -966,206 +971,240 @@ function drawStadium(
   }
 
   // =====================
-  // WALLS
+  // ELLIPSE HELPERS
   // =====================
-  const stadiumCorners = [
-    { x: maxX + standDepth, y: maxY + standDepth, z: 0 },
-    { x: maxX + standDepth, y: -(maxY + standDepth), z: 0 },
-    { x: -(maxX + standDepth), y: -(maxY + standDepth), z: 0 },
-    { x: -(maxX + standDepth), y: maxY + standDepth, z: 0 },
-  ];
+  const baseA = maxX + standDepth;
+  const baseB = maxY + standDepth;
 
+  function ellipsePoints(a: number, b: number, z: number, steps = 64) {
+    const pts = [];
+    for (let i = 0; i < steps; i++) {
+      const t = (i / steps) * Math.PI * 2;
+      pts.push({
+        x: a * Math.cos(t),
+        y: b * Math.sin(t),
+        z,
+      });
+    }
+    return pts;
+  }
+
+  function ellipseAtTier(tier: number) {
+    const r = tier * tierDepth;
+    return {
+      a: baseA + r,
+      b: baseB + r,
+    };
+  }
+
+  function ellipsePerimeter(a: number, b: number): number {
+    const h = Math.pow(a - b, 2) / Math.pow(a + b, 2);
+    return Math.PI * (a + b) * (1 + (3 * h) / (10 + Math.sqrt(4 - 3 * h)));
+  }
+
+  // =====================
+  // PITCH / BASE
+  // =====================
   fillPoly(
     ctx,
     canvas,
-    stadiumCorners,
+    ellipsePoints(baseA, baseB, 0),
     camera,
     isNightMatch ? "#1b3a2a" : "#2e7d32"
   );
 
   // =====================
-  // WALLS with 3D shading + ambient occlusion
+  // STAND FLOOR (GRAY RING)
   // =====================
-  for (let i = 0; i < stadiumCorners.length; i++) {
-    const c1 = stadiumCorners[i];
-    const c2 = stadiumCorners[(i + 1) % stadiumCorners.length];
+  const floorSteps = 16;
+  const aInner = baseA;
+  const bInner = baseB;
+  const aOuter = baseA + tiers * tierDepth;
+  const bOuter = baseB + tiers * tierDepth;
 
-    // Wall vector in XY
-    const dx = c2.x - c1.x;
-    const dy = c2.y - c1.y;
-    const length = Math.hypot(dx, dy);
+  const inner = ellipsePoints(aInner, bInner, wallHeight - 0.5, floorSteps);
+  const outer = ellipsePoints(aOuter, bOuter, wallHeight - 0.5, floorSteps);
 
-    // Normal vector pointing outward in XY plane
-    const nx = -dy / length;
-    const ny = dx / length;
+  for (let i = 0; i < floorSteps; i++) {
+    const i2 = (i + 1) % floorSteps;
 
-    // Horizontal shading based on sun angle
-    const dot = Math.max(0, nx * sunDir.x + ny * sunDir.y);
+    const zOuter = wallHeight + tiers * tierHeight; // gentle ramp
+
+    const nLen = Math.hypot(inner[i].x, inner[i].y);
+    const normal = { x: inner[i].x / nLen, y: inner[i].y / nLen };
+    const dot = normal.x * sunDir.x + normal.y * sunDir.y;
+
+    const shade = Math.floor(dot * sunStrength) - 30;
+
+    fillPoly(
+      ctx,
+      canvas,
+      [
+        inner[i],
+        inner[i2],
+        { ...outer[i2], z: zOuter },
+        { ...outer[i],  z: zOuter },
+      ],
+      camera,
+      shadeColor(standColor, shade)
+    );
+  }
+
+  // =====================
+  // WALLS (ELLIPSE EXTRUSION)
+  // =====================
+  const wallBase = ellipsePoints(baseA, baseB, 0);
+
+  for (let i = 0; i < wallBase.length; i++) {
+    const c1 = wallBase[i];
+    const c2 = wallBase[(i + 1) % wallBase.length];
+
+    const nx = c1.x;
+    const ny = c1.y;
+    const nLen = Math.hypot(nx, ny);
+    const normal = { x: nx / nLen, y: ny / nLen };
+
+    const dot = Math.max(0, normal.x * sunDir.x + normal.y * sunDir.y);
     const horizontalShade = Math.floor(dot * sunStrength) - 20;
 
-    // Vertical gradient
     const steps = 10;
     const stepHeight = wallHeight / steps;
 
     for (let s = 0; s < steps; s++) {
-      const zBottom = s * stepHeight;
-      const zTop = (s + 1) * stepHeight;
-
-      // Vertical shading (darker at bottom)
       const verticalOffset = Math.floor((s / steps) * 30);
 
-      // -----------------------------
-      // Ambient Occlusion
-      // -----------------------------
-      // Closer to corners? Darken a bit
-      const aoStart = Math.min(1, 2 / (Math.hypot(c1.x, c1.y) + 0.1));
-      const aoEnd = Math.min(1, 2 / (Math.hypot(c2.x, c2.y) + 0.1));
-      const ao = Math.floor(((aoStart + aoEnd) / 2) * -25); // negative = darker
+      const overlap = 0.3;
 
-      const color = shadeColor(wallColor, horizontalShade + verticalOffset + ao);
+      const z0 = s * stepHeight;
+      const z1 = (s + 1) * stepHeight + overlap;
+
+      const nx1 = c1.x / Math.hypot(c1.x, c1.y);
+      const ny1 = c1.y / Math.hypot(c1.x, c1.y);
+
+      const p3 = { x: c2.x - nx1 * overlap, y: c2.y - ny1 * overlap, z: z1 };
+      const p4 = { x: c1.x - nx1 * overlap, y: c1.y - ny1 * overlap, z: z1 };
+
+      const p1 = { x: c1.x, y: c1.y, z: z0 };
+      const p2 = { x: c2.x, y: c2.y, z: z0 };
+
+      fillPoly(ctx, canvas, [p1, p2, p3, p4], camera, shadeColor(wallColor, horizontalShade + verticalOffset));
+    }
+  }
+
+  // =====================
+  // STANDS + SEATS (ELLIPSE)
+  // =====================
+  for (let tier = 0; tier < tiers; tier++) {
+    const z = wallHeight + 0.2 + tier * tierHeight;
+    const { a, b } = ellipseAtTier(tier);
+    const perimeter = ellipsePerimeter(a, b);
+
+    const angularSeats = perimeter / (seatWidth + seatGap)
+    for (let i = 0; i < angularSeats; i++) {
+      const t = (i / angularSeats) * Math.PI * 2;
+
+      const baseX = a * Math.cos(t);
+      const baseY = b * Math.sin(t);
+
+      // Tangent
+      const tx = -a * Math.sin(t);
+      const ty =  b * Math.cos(t);
+      const tLen = Math.hypot(tx, ty);
+      const tangent = { x: tx / tLen, y: ty / tLen };
+
+      // Normal
+      const nLen = Math.hypot(baseX, baseY);
+      const normal = { x: baseX / nLen, y: baseY / nLen };
+
+      // Lighting
+      const sunDot = normal.x * sunDir.x + normal.y * sunDir.y;
+      const sunOffset = Math.floor(sunDot * sunStrength);
+      const tierOffset = -tier * 3;
+
+      const distanceFromPitch = Math.hypot(baseX, baseY);
+      const maxDistance = baseA + tiers * tierDepth;
+      const radialOffset = Math.floor(
+        Math.max(0, 1 - distanceFromPitch / maxDistance) * 20
+      );
+
+      const totalOffset = sunOffset + tierOffset + radialOffset;
+
+      const seatColor = seatColors[(i + tier * 2) % seatColors.length];
+      const seatBase = shadeColor(seatColor, totalOffset);
+      const seatFront = shadeColor(seatColor, totalOffset - 12);
+
+      const manW = seatWidth * 0.3;
+      const halfW = seatWidth * 0.5;
+      const depth = seatWidth * 0.8;
+
+      const seatPoly = [
+        { x: baseX - tangent.x * halfW, y: baseY - tangent.y * halfW, z },
+        { x: baseX + tangent.x * halfW, y: baseY + tangent.y * halfW, z },
+        {
+          x: baseX + tangent.x * halfW + normal.x * depth,
+          y: baseY + tangent.y * halfW + normal.y * depth,
+          z,
+        },
+        {
+          x: baseX - tangent.x * halfW + normal.x * depth,
+          y: baseY - tangent.y * halfW + normal.y * depth,
+          z,
+        },
+      ];
+
+      fillPoly(ctx, canvas, seatPoly, camera, seatBase);
 
       fillPoly(
         ctx,
         canvas,
         [
-          { ...c1, z: zBottom },
-          { ...c2, z: zBottom },
-          { ...c2, z: zTop },
-          { ...c1, z: zTop },
+          seatPoly[2],
+          seatPoly[3],
+          { ...seatPoly[3], z: z + seatHeight },
+          { ...seatPoly[2], z: z + seatHeight },
         ],
         camera,
-        color
+        seatFront
+      );
+
+      // =====================
+      // CROWD
+      // =====================
+      const crowdZ = z + 0.3 + Math.abs(Math.sin(performance.now() / 200 + tier)) * 0.3;
+
+      fillPoly(
+        ctx,
+        canvas,
+        [
+          { 
+            x: baseX - tangent.x * manW + normal.x * depth * 0.5,
+            y: baseY - tangent.y * manW + normal.y * depth * 0.5,
+            z,
+          },
+          { 
+            x: baseX + tangent.x * manW + normal.x * depth * 0.5,
+            y: baseY + tangent.y * manW + normal.y * depth * 0.5,
+            z,
+          },
+          { 
+            x: baseX + tangent.x * manW + normal.x * depth * 0.5,
+            y: baseY + tangent.y * manW + normal.y * depth * 0.5,
+            z: crowdZ,
+          },
+          { 
+            x: baseX - tangent.x * manW + normal.x * depth * 0.5,
+            y: baseY - tangent.y * manW + normal.y * depth * 0.5,
+            z: crowdZ,
+          },
+        ],
+        camera,
+        shadeColor(
+          crowdColors[(i + tier) % crowdColors.length],
+          totalOffset + (isNightMatch ? 10 : 0)
+        )
       );
     }
-
-    // Optional: top highlight for extra depth
-    fillPoly(
-      ctx,
-      canvas,
-      [
-        { ...c1, z: wallHeight },
-        { ...c2, z: wallHeight },
-        { ...c2, z: wallHeight + 0.2 },
-        { ...c1, z: wallHeight + 0.2 },
-      ],
-      camera,
-      shadeColor("#ffffff", 20)
-    );
   }
-
-  // =====================
-  // STANDS
-  // =====================
-  const sides = [
-    { start: { x: -(maxX + standDepth), y: maxY }, end: { x: maxX + standDepth, y: maxY }, dir: { x: 0, y: 1 }, home: true },
-    { start: { x: -maxX, y: -(maxY + standDepth) }, end: { x: -maxX, y: maxY + standDepth }, dir: { x: -1, y: 0 }, home: true },
-    { start: { x: -(maxX + standDepth), y: -maxY }, end: { x: maxX + standDepth, y: -maxY }, dir: { x: 0, y: -1 }, home: false },
-    { start: { x: maxX, y: -(maxY + standDepth) }, end: { x: maxX, y: maxY + standDepth }, dir: { x: 1, y: 0 }, home: false },
-  ];
-
-  sides.forEach((side) => {
-    const dx = side.end.x - side.start.x;
-    const dy = side.end.y - side.start.y;
-    const length = Math.hypot(dx, dy);
-    const seatsPerRow = Math.floor(length / (seatWidth + seatGap));
-    const tangent = { x: dx / length, y: dy / length };
-
-    // Draw stand floor
-    fillPoly(
-      ctx,
-      canvas,
-      [
-        { x: side.start.x + side.dir.x * standDepth, y: side.start.y + side.dir.y * standDepth, z: wallHeight },
-        { x: side.end.x + side.dir.x * standDepth, y: side.end.y + side.dir.y * standDepth, z: wallHeight },
-        { x: side.end.x + side.dir.x * (standDepth + tiers * tierDepth), y: side.end.y + side.dir.y * (standDepth + tiers * tierDepth), z: wallHeight + tiers * tierHeight },
-        { x: side.start.x + side.dir.x * (standDepth + tiers * tierDepth), y: side.start.y + side.dir.y * (standDepth + tiers * tierDepth), z: wallHeight + tiers * tierHeight },
-      ],
-      camera,
-      shadeColor(standColor, (isNightMatch ? -40 : -25))
-    );
-
-    for (let tier = 0; tier < tiers; tier++) {
-      const z = wallHeight + tier * tierHeight;
-      const depthOffset = standDepth + tier * tierDepth;
-
-      // Vertical tier darkening
-      const tierOffset = -tier * 3;
-
-      for (let i = 1; i < seatsPerRow; i++) {
-        const t = i / seatsPerRow;
-        const baseX = side.start.x + dx * t + side.dir.x * depthOffset;
-        const baseY = side.start.y + dy * t + side.dir.y * depthOffset;
-
-        const baseSeatColor = seatColors[(i + tier * 2) % seatColors.length];
-        const sectionBoost = side.home ? 8 : -6;
-
-        // =====================
-        // Calculate combined gradient for this seat
-        // =====================
-        const seatLength = Math.hypot(baseX, baseY);
-        const seatDir = { x: baseX / seatLength, y: baseY / seatLength };
-        const sunDot = seatDir.x * sunDir.x + seatDir.y * sunDir.y;
-        const sunOffset = Math.floor(sunDot * sunStrength);
-
-        // Radial gradient from pitch center (closer seats are brighter)
-        const distanceFromPitch = Math.hypot(baseX, baseY);
-        const maxDistance = maxX + standDepth + tiers * tierDepth;
-        const radialFactor = Math.max(0, 1 - distanceFromPitch / maxDistance); // 0..1
-        const radialOffset = Math.floor(radialFactor * 20); // adjust intensity
-
-        // Total combined offset
-        const totalOffset = tierOffset + sectionBoost + sunOffset + radialOffset;
-
-        const seatBase = shadeColor(baseSeatColor, totalOffset);
-        const seatFront = shadeColor(baseSeatColor, tierOffset - 12 + sunOffset + radialOffset);
-
-        const halfW = seatWidth * 0.5;
-        const manW = seatWidth * 0.25;
-        const depth = seatWidth * 0.8;
-
-        const seatPoly: Translation3d[] = [
-          { x: baseX - tangent.x * halfW, y: baseY - tangent.y * halfW, z },
-          { x: baseX + tangent.x * halfW, y: baseY + tangent.y * halfW, z },
-          { x: baseX + tangent.x * halfW + side.dir.x * depth, y: baseY + tangent.y * halfW + side.dir.y * depth, z },
-          { x: baseX - tangent.x * halfW + side.dir.x * depth, y: baseY - tangent.y * halfW + side.dir.y * depth, z },
-        ];
-
-        fillPoly(ctx, canvas, seatPoly, camera, seatBase);
-        fillPoly(
-          ctx,
-          canvas,
-          [
-            seatPoly[2],
-            seatPoly[3],
-            { ...seatPoly[3], z: z + seatHeight },
-            { ...seatPoly[2], z: z + seatHeight },
-          ],
-          camera,
-          seatFront
-        );
-
-        const crowdZ = z + 0.3 + Math.abs(Math.sin(performance.now() / 200 + tier)) * 0.3;
-
-        const crowdTierFactor = tier / tiers;
-        const crowdTierOffset = Math.floor(crowdTierFactor * 15);
-        const crowdTotalOffset = totalOffset + crowdTierOffset;
-
-        fillPoly(
-          ctx,
-          canvas,
-          [
-            { x: baseX + tangent.x * manW + side.dir.x * depth, y: baseY + tangent.y * manW + side.dir.y * depth, z },
-            { x: baseX - tangent.x * manW + side.dir.x * depth, y: baseY - tangent.y * manW + side.dir.y * depth, z },
-            { x: baseX - tangent.x * manW + side.dir.x * depth, y: baseY - tangent.y * manW + side.dir.y * depth, z: crowdZ },
-            { x: baseX + tangent.x * manW + side.dir.x * depth, y: baseY + tangent.y * manW + side.dir.y * depth, z: crowdZ },
-          ],
-          camera,
-          shadeColor(crowdColors[(i + tier) % crowdColors.length], (isNightMatch ? 10 : 0) + crowdTotalOffset)
-        );
-      }
-    }
-  });
 }
-
 
 export default GameRenderer3D;
