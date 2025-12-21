@@ -32,8 +32,9 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [camera, setCamera] = useState<Camera>({
     translation: { x: 0, y: 0, z: 0 },
-    yaw: { value: 0, cos: 0, sin: 0 },
-    pitch: { value: 0, cos: 0, sin: 0 },
+    yaw: { value: 0, cos: 1, sin: 0 },
+    pitch: { value: 0, cos: 1, sin: 0 },
+    fov: { value: 90, cos: 1, sin: 0 },
   });
 
   useEffect(() => {
@@ -48,10 +49,10 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
     const team = getClientsTeam(data);
     setCamera(team.teamStrategy.cameraManager.position);
 
-    // const pitch = radians(-30);
+    // const pitch = radians(-90);
     // const yaw = radians(0);
     // setCamera({
-    //   translation: { x: 0, y: 30, z: 20 },
+    //   translation: { x: 0, y: 0, z: 150 },
     //   yaw: { value: yaw, cos: Math.cos(yaw), sin: Math.sin(yaw) },
     //   pitch: { value: pitch, cos: Math.cos(pitch), sin: Math.sin(pitch) },
     // })

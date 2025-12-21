@@ -9,11 +9,13 @@ public class CameraPose {
     private final Translation3d translation;
     private final Rotation2d pitch;
     private final Rotation2d yaw;
+    private final Rotation2d fov;
 
-    public CameraPose(Translation3d position, Rotation2d pitch, Rotation2d yaw) {
+    public CameraPose(Translation3d position, Rotation2d pitch, Rotation2d yaw, Rotation2d fov) {
         this.translation = position;
         this.pitch = pitch;
         this.yaw = yaw;
+        this.fov = fov;
     }
 
     public Translation3d getTranslation() {
@@ -28,6 +30,10 @@ public class CameraPose {
         return this.yaw;
     }
 
+    public Rotation2d getFov() {
+        return this.fov;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (obj == this) return true;
@@ -35,12 +41,13 @@ public class CameraPose {
         var that = (CameraPose) obj;
         return Objects.equals(this.translation, that.translation) &&
                 Objects.equals(this.yaw, that.yaw) &&
-                Objects.equals(this.pitch, that.pitch);
+                Objects.equals(this.pitch, that.pitch) &&
+                Objects.equals(this.fov, that.fov);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(translation, yaw, pitch);
+        return Objects.hash(translation, yaw, pitch, fov);
     }
 
     @Override

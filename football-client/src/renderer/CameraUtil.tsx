@@ -1,10 +1,9 @@
 import { Translation3d, Translation2d, Camera } from "../types";
-import { radians } from "./GameRenderer";
 
-const ZOOM = 1.5;
+const ZOOM = 1;
 const NEAR = 0.05;
 
-type CamPoint = { x: number; y: number; z: number };
+type CamPoint = { x: number; y: number; z: number, fov: number };
 
 // =====================
 // CAMERA SPACE
@@ -26,17 +25,17 @@ export function worldToCamera(
 
   const cp = Math.cos(-camera.pitch.value);
   const sp = Math.sin(-camera.pitch.value);
-
+  
   return {
     x: xYaw,
     y: yYaw * cp - zYaw * sp,
     z: yYaw * sp + zYaw * cp,
+    fov: camera.fov.value
   };
 }
 
 export function cameraToScreen(canvas: HTMLCanvasElement, p: CamPoint): Translation2d {
-  const fov = radians(55);
-  const focal = 1 / Math.tan(fov / 2);
+  const focal = 1 / Math.tan(p.fov / 2);
   const aspect = canvas.width / canvas.height;
 
   const x = (((p.x / p.y) * focal) / aspect) * ZOOM;
@@ -70,6 +69,7 @@ export function intersect(A: CamPoint, B: CamPoint): CamPoint {
     x: A.x + t * (B.x - A.x),
     z: A.z + t * (B.z - A.z),
     y: NEAR,
+    fov: A.fov
   };
 }
 
@@ -90,4 +90,11 @@ export function clipNearPlane(points: CamPoint[]): CamPoint[] {
     }
   }
   return out;
+}
+
+export function isOnScreen(canvas: HTMLCanvasElement, camera: Camera, pos: Translation3d) {
+  const screen = worldToScreen(canvas, pos, camera);
+  if (!screen) return false;
+  const margin = canvas.width * 0.05;
+  return screen.x >= -margin && screen.x <= canvas.width + margin && screen.y >= -margin && screen.y <= canvas.height + margin;
 }

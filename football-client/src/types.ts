@@ -69,4 +69,5 @@ export interface Camera {
   translation: Translation3d;
   pitch: Rotation2d;
   yaw: Rotation2d;
+  fov: Rotation2d;
 }
