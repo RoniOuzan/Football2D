@@ -186,8 +186,8 @@ public abstract class Player {
         this.ball.kick(target, finalVelocity, heightScale, spin);
     }
 
-    public void shoot(Translation3d velocity) {
-        this.ball.kick(velocity);
+    public void shoot(Translation3d velocity, Translation3d spin) {
+        this.ball.kick(velocity, spin);
     }
 
     public double getTargetScore(Player player, Translation2d target, TeamStrategy strategy) {

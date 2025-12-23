@@ -23,6 +23,8 @@ public class Ball {
     private static final double AIR_DRAG = 0.5 * 1.225 * 0.25 * 0.11 * 0.11 * Math.PI;        // very important for FIFA feel
     private static final double SPIN_DRAG = 0.5 * 1.225 * 0.4 * 0.11 * 0.11 * Math.PI * 0.11;        // very important for FIFA feel
     private static final double MASS = 0.43; // kg
+    private static final double SPIN_LOSS_PER_SECOND = 0.8;
+    private static final double SPIN_LOSS_PER_ITERATION = Math.pow(SPIN_LOSS_PER_SECOND, GameManager.PERIOD);
 
     // --- Collisions ---
     private static final double BOUNCE_DAMPING = 0.55; // walls & posts
@@ -109,9 +111,10 @@ public class Ball {
         return this.getPosition2d().getDistance(player.getPosition()) < OFFSET_FROM_PLAYER && this.position.getZ() <= Player.PLAYER_HEIGHT;
     }
 
-    public void kick(Translation3d velocity) {
+    public void kick(Translation3d velocity, Translation3d spin) {
         this.setCarrier(null);
         this.velocity = velocity;
+        this.spin = spin;
     }
 
     public void kick(Translation2d target, double finalPlanarVelocity, double heightScale) {
@@ -227,6 +230,7 @@ public class Ball {
                 acceleration = acceleration.plus(magnusAccel);
             }
         }
+        this.spin.times(SPIN_LOSS_PER_ITERATION);
         this.velocity = this.velocity.plus(acceleration.times(GameManager.PERIOD));
     }
 
@@ -236,7 +240,7 @@ public class Ball {
         Translation3d up = forward.crossProduct(right); // guaranteed orthogonal
 
         // Convert ball-relative spin to world spin
-        return right.times(this.spin.getY())  // sidespin
+        return right.times(this.spin.getY())
                 .plus(forward.times(this.spin.getX()))  // topspin/backspin
                 .plus(up.times(this.spin.getZ()));
     }
@@ -321,7 +325,7 @@ public class Ball {
     }
 
     private void wallBounce(double newX, double newY, Translation2d normal) {
-        this.position = new Translation3d(newX, newY, RADIUS);
+        this.position = new Translation3d(newX, newY, this.position.getZ());
         this.velocity = reflect(this.velocity, normal).times(BOUNCE_DAMPING);
     }
 
@@ -367,7 +371,11 @@ public class Ball {
         double speed = planarVel.getNorm();
         if (speed <= 0) return;
 
-        double newSpeed = speed + (FRICTION_ACCEL * GameManager.PERIOD);
+        double friction = FRICTION_ACCEL;
+        if (this.spin.getY() > 10) { // top-spin
+            friction *= 1 - (this.spin.getY() / 100);
+        }
+        double newSpeed = speed + (friction * GameManager.PERIOD);
         if (newSpeed < MIN_SPEED)
             newSpeed = 0;
 

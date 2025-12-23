@@ -26,26 +26,37 @@ public class Shoot implements KeybindAction {
 
         double finalVelocity = computeHoldTime(holdTime, 1.3, 15, 35);
         Translation2d requestedDirection = teamStrategy.getRequestedVelocity();
-//        if (player.getPosition().getX() * teamStrategy.getTeam().getSideMultiplier() < 10) {
-//            player.shoot(new Translation3d(
-//                    finalVelocity,
-//                    requestedDirection.getAngle(),
-//                    3
-//            ));
-//            return;
-//        }
 
         Translation3d spin = new Translation3d();
         double targetZ = 1;
         double heightScale = 0.5;
-        if (kickTypes.contains(Keybind.CHIP)) {
+        if (kickTypes.contains(Keybind.FINESSE)) {
+            targetZ = 2.2;
+            heightScale = 0.8;
+            spin = new Translation3d(0, 5, 80);
+        } else if (kickTypes.contains(Keybind.TRIVELA)) {
+            targetZ = 2.2;
+            heightScale = 0.8;
+            spin = new Translation3d(0, 5, -80);
+        } else if (kickTypes.contains(Keybind.CHIP)) {
             finalVelocity /= 4;
             targetZ = 1.5;
             heightScale = 1;
-        } else if (kickTypes.contains(Keybind.FINESSE)) {
-            targetZ = 2.2;
-            heightScale = 0.8;
-            spin = new Translation3d(0, 0, 100);
+            spin = new Translation3d(0, -10, 0);
+        } else if (kickTypes.contains(Keybind.DRIVEN)) {
+            finalVelocity /= 4;
+            targetZ = 0.5;
+            heightScale = 0.1;
+            spin = new Translation3d(0, 20, 0);
+        }
+
+        if (player.getPosition().getX() * teamStrategy.getTeam().getSideMultiplier() < 10) {
+            player.shoot(new Translation3d(
+                    finalVelocity,
+                    requestedDirection.getAngle(),
+                    targetZ * heightScale
+            ), spin);
+            return;
         }
 
         Translation2d target = computeShotTarget(player, teamStrategy.getTeam(), requestedDirection, holdTime);
