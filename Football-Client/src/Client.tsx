@@ -1,4 +1,4 @@
-import { JsonData } from "./types";
+import type { JsonData } from "./types";
 
 export default class Client {
   private socket?: WebSocket;

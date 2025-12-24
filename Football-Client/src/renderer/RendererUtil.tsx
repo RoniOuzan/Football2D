@@ -1,4 +1,5 @@
-import { Camera, Translation3d, Translation2d, maxX, maxY, pitchWidth, Player } from "../types";
+import type { Camera, Translation3d, Translation2d } from "../types";
+import { maxX, maxY, pitchWidth } from "../types";
 import { worldToCamera, clipNearPlane, cameraToScreen, worldToScreen } from "./CameraUtil";
 import { radians } from "./GameRenderer";
 

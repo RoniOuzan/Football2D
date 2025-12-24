@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import Client from "./Client";
 import InputController from "./InputController";
-import { JsonData } from "./types";
+import type { JsonData } from "./types";
 import GameRenderer3D from "./renderer/GameRenderer";
 
 export const FPS = 30;
