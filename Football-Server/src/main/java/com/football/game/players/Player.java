@@ -33,6 +33,8 @@ public abstract class Player {
     protected Translation2d velocity;
     protected transient Translation2d targetVelocity;
 
+    private transient Runnable ballAction = null;
+
     protected transient final Translation2d initialPosition;
     protected transient final Translation2d formationPosition;
 
@@ -47,10 +49,6 @@ public abstract class Player {
 
         this.velocity = new Translation2d();
         this.targetVelocity = new Translation2d();
-    }
-
-    public Team getTeam() {
-        return this.team;
     }
 
     public Translation2d getPosition() {
@@ -85,6 +83,110 @@ public abstract class Player {
             targetVelocity = targetVelocity.limitNorm(CARRYING_BALL_MAX_VELOCITY);
         }
         this.targetVelocity = targetVelocity;
+    }
+
+    public Translation2d getVelocityToPosition(Translation2d targetPosition, double speedPercent) {
+        Translation2d delta = targetPosition.minus(this.position);
+        if (delta.getNorm() < 5) {
+            speedPercent = Math.min(speedPercent, delta.getNorm() / 5);
+        }
+        return delta.normalized().times(SPRINT_VELOCITY * speedPercent);
+    }
+
+    public void moveTowards(Translation2d targetPosition, double speedPercent) {
+        setTargetVelocity(getVelocityToPosition(targetPosition, speedPercent));
+    }
+
+    public void addBallAction(Runnable ballAction) {
+        this.ballAction = ballAction;
+    }
+
+    public void pass(Player targetPlayer, double finalVelocity) {
+        this.addBallAction(() -> {
+            Translation2d target = targetPlayer.getPosition()
+                    .plus(targetPlayer.getVelocity().times(0.5));
+
+            this.ball.kick(target, finalVelocity, 0.03);
+        });
+    }
+
+    public void through(Player targetPlayer, double finalVelocity) {
+        this.addBallAction(() -> {
+            double[] times = MathUtil.quadraticSolver(-0.5 * Ball.FRICTION_ACCEL, finalVelocity, -this.position.getDistance(targetPlayer.getPosition()));
+            double time = times.length == 1 ? times[0] : (times[0] > 0 ? times[0] : times[1]);
+
+            Translation2d futurePos = targetPlayer.getPosition().plus(targetPlayer.getVelocity().times(time));
+            this.ball.kick(futurePos, finalVelocity, 0.06);
+        });
+    }
+
+    public void cross(Player targetPlayer, double finalVelocity) {
+        this.addBallAction(() -> {
+            Translation2d target = targetPlayer.getPosition()
+                    .plus(targetPlayer.getVelocity().times(0.5));
+
+            this.ball.kick(target, finalVelocity, 1);
+        });
+    }
+
+    public void shoot(Translation3d target, double finalVelocity, double heightScale, Translation3d spin) {
+        this.addBallAction(() -> this.ball.kick(target, finalVelocity, heightScale, spin));
+    }
+
+    public void shoot(Translation3d velocity, Translation3d spin) {
+        this.addBallAction(() -> this.ball.kick(velocity, spin));
+    }
+
+    public double getTargetScore(Player player, Translation2d target, TeamStrategy strategy) {
+        return 0;
+    }
+
+    private boolean isNearBall() {
+        return this.position.getDistance(this.ball.getPosition2d()) <= 0.75;
+    }
+
+    public void update(Team team) {
+        updateVelocity();
+        this.position = this.position.plus(this.velocity.times(GameManager.PERIOD));
+
+        if (this.ballAction != null && this.isNearBall()) {
+            this.ballAction.run();
+            this.ballAction = null;
+        }
+
+        // Collision check with all players
+        for (Player p : team.getPlayers()) {
+            if (p == this) continue;
+            resolveCollision(p);
+        }
+        for (Player p : team.getOpponent().getPlayers()) {
+            resolveCollision(p);
+        }
+
+        keepInsideField();
+    }
+
+    //----------------- Movement ----------------
+
+    public void updateHasBall(Translation2d wantedVelocity) {
+        if (this.isNearBall() && wantedVelocity.getNorm() > 0.5) {
+            double velocity = this.velocity.dot(wantedVelocity.normalized());
+            velocity = Math.max(velocity, 0);
+            velocity = velocity * 0.5 + wantedVelocity.getNorm() * 0.5;
+
+            Translation3d kick = new Translation3d(velocity, wantedVelocity.getAngle(), 0.2);
+            this.ball.dribble(kick, new Translation3d(0, velocity, 0));
+        }
+
+        double targetVel = wantedVelocity.getNorm();
+        Translation2d targetPos = this.ball.getPredictedPosition(0.3).toTranslation2d();
+
+        if (!this.isNearBall()) {
+            targetVel = Math.max(targetVel, getVelocityToPosition(targetPos, 1).getNorm());
+        }
+
+        Translation2d delta = new Translation2d(targetVel, targetPos.minus(this.position).getAngle());
+        this.setTargetVelocity(delta);
     }
 
     private void updateVelocity() {
@@ -141,87 +243,7 @@ public abstract class Player {
         this.direction = this.direction.plus(new Rotation2d(omega * GameManager.PERIOD));
     }
 
-    public Translation2d getVelocityToPosition(Translation2d targetPosition, double speedPercent) {
-        Translation2d delta = targetPosition.minus(this.position);
-        if (delta.getNorm() < 5) {
-            speedPercent = Math.min(speedPercent, delta.getNorm() / 5);
-        }
-        return delta.normalized().times(SPRINT_VELOCITY * speedPercent);
-    }
-
-    public void moveTowards(Translation2d targetPosition, double speedPercent) {
-        setTargetVelocity(getVelocityToPosition(targetPosition, speedPercent));
-    }
-
-    public void pass(Player targetPlayer, double finalVelocity) {
-        Translation2d target = targetPlayer.getPosition()
-                .plus(targetPlayer.getVelocity().times(0.5));
-
-        this.ball.kick(target, finalVelocity, 0.03);
-    }
-
-    public void through(Player targetPlayer, double finalVelocity) {
-        double[] times = MathUtil.quadraticSolver(-0.5 * Ball.FRICTION_ACCEL, finalVelocity, -this.position.getDistance(targetPlayer.getPosition()));
-        double time = times.length == 1 ? times[0] : (times[0] > 0 ? times[0] : times[1]);
-
-        Translation2d futurePos = targetPlayer.getPosition().plus(targetPlayer.getVelocity().times(time));
-        this.ball.kick(futurePos, finalVelocity, 0.06);
-    }
-
-    public void cross(Player targetPlayer, double finalVelocity) {
-        Translation2d target = targetPlayer.getPosition()
-                .plus(targetPlayer.getVelocity().times(0.5));
-
-        this.ball.kick(target, finalVelocity, 1);
-    }
-
-    public void shoot(Translation3d target, double finalVelocity, double heightScale, Translation3d spin) {
-        this.ball.kick(target, finalVelocity, heightScale, spin);
-    }
-
-    public void shoot(Translation3d velocity, Translation3d spin) {
-        this.ball.kick(velocity, spin);
-    }
-
-    public double getTargetScore(Player player, Translation2d target, TeamStrategy strategy) {
-        return 0;
-    };
-
-    public void updateHasBall(Translation2d wantedVelocity) {
-        if (this.position.getDistance(this.ball.getPosition2d()) <= 0.75 && wantedVelocity.getNorm() > 0.5) {
-            double velocity = this.velocity.dot(wantedVelocity.normalized());
-            velocity = Math.max(velocity, 0);
-            velocity = velocity * 0.5 + wantedVelocity.getNorm() * 0.5;
-
-            Translation3d kick = new Translation3d(velocity, wantedVelocity.getAngle(), 0.1);
-            this.ball.dribble(kick, new Translation3d(0, velocity, 0));
-        }
-
-        double target = wantedVelocity.getNorm();
-        if (this.position.getDistance(this.ball.getPosition2d()) > 0.75) {
-            target = Math.max(target, 3);
-        }
-        Translation2d delta = this.ball.getPredictedPosition(0.3).toTranslation2d().minus(this.position)
-                .normalized()
-                .times(target);
-        this.setTargetVelocity(delta);
-    }
-
-    public void update(Team team) {
-        updateVelocity();
-        this.position = this.position.plus(this.velocity.times(GameManager.PERIOD));
-
-        // Collision check with all players
-        for (Player p : team.getPlayers()) {
-            if (p == this) continue;
-            resolveCollision(p);
-        }
-        for (Player p : team.getOpponent().getPlayers()) {
-            resolveCollision(p);
-        }
-
-        keepInsideField();
-    }
+    //----------------- Physics ----------------
 
     private void resolveCollision(Player other) {
         double minDist = PLAYER_RADIUS * 2;
