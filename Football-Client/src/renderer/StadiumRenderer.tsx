@@ -1,4 +1,5 @@
-import { Camera, maxX, maxY } from "../types";
+import type { Camera } from "../types";
+import { maxX, maxY } from "../types";
 import { isOnScreen, worldToScreen } from "./CameraUtil";
 import { fillPoly } from "./RendererUtil";
 

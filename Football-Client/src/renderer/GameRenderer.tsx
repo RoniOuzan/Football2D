@@ -1,19 +1,8 @@
 import React, { useRef, useEffect, useState } from "react";
-import {
-  JsonData,
-  maxX,
-  maxY,
-  Player,
-  Team,
-  Translation2d,
-  Translation3d,
-  pitchWidth,
-  pitchHeight,
-  getClientsTeam,
-  Camera,
-} from "../types";
 import { drawPitch, drawLineFlat, drawCircleWorld, drawRectWorld, drawSphere, drawCylinder, fillPoly, strokePoly3d } from "./RendererUtil";
 import { drawStadium } from "./StadiumRenderer";
+import type { JsonData, Translation3d, Translation2d, Camera, Player, Team } from "../types";
+import { getClientsTeam, maxX, maxY, pitchWidth, pitchHeight } from "../types";
 
 interface GameRendererProps {
   data: JsonData;

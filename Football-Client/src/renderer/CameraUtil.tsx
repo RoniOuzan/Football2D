@@ -1,4 +1,4 @@
-import { Translation3d, Translation2d, Camera } from "../types";
+import type { Translation3d, Translation2d, Camera } from "../types";
 
 const ZOOM = 1;
 const NEAR = 0.05;
