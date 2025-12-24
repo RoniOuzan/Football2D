@@ -9,11 +9,24 @@ export default class Client {
   }
 
   connect() {
-    this.socket = new WebSocket("ws://localhost:9090/game");
+    const host = window.location.hostname;
+    this.socket = new WebSocket(`ws://${host}:9090/game`);
+
+    this.socket.onopen = () => {
+      console.log("WS connected");
+    };
 
     this.socket.onmessage = (ev) => {
       if (!ev.data) return;
       this.setData(JSON.parse(ev.data));
+    };
+
+    this.socket.onerror = (e) => {
+      console.error("WS error", e);
+    };
+
+    this.socket.onclose = (e) => {
+      console.log("WS closed", e.code, e.reason);
     };
   }
 

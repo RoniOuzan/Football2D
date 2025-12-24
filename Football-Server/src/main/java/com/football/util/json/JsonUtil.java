@@ -15,6 +15,7 @@ public class JsonUtil {
             .registerTypeAdapter(
                     new TypeToken<Map<Translation2d, Double>>(){}.getType(),
                     new MapSerializer())
+            .serializeSpecialFloatingPointValues()
             .create();
 
     public static String toJson(Object object) {

@@ -20,8 +20,15 @@ export default function Game() {
       setData(gameState);
     });
 
-    client.current.connect();
+    setTimeout(() => {
+      client.current?.connect();
+    }, 0);
+
     input.current = new InputController(client.current);
+
+    return () => {
+      // optional cleanup later
+    };
   }, []);
 
   return (

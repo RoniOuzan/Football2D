@@ -41,7 +41,11 @@ public class PlayersMovementHandle {
     }
 
     public void handleControlledMovement(Player player, InputHandler input) {
-        player.setVelocity(getTargetVelocity(player, input));
+        if (player.hasBall()) {
+            player.updateHasBall(getTargetVelocity(player, input));
+        } else {
+            player.setTargetVelocity(getTargetVelocity(player, input));
+        }
 
         this.teamStrategy.getInput().runInputs(this.teamStrategy, player);
     }

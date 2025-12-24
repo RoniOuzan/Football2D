@@ -14,7 +14,7 @@ public class Goalkeeper extends Player {
     }
 
     public void jumpTo(Translation2d position) {
-        setVelocity(getVelocityToPosition(position, 2), 30, 30, 30);
+        setTargetVelocity(getVelocityToPosition(position, 2)); // 30, 30, 30
     }
 
     public void handleTarget(TeamStrategy strategy) {

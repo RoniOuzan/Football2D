@@ -31,6 +31,7 @@ public class Ball {
     private static final double GROUND_RESTITUTION = 0.32; // low bounces
 
     private static final long CARRY_COOLDOWN_MS = 300;
+    private static final long DRIBBLE_COOLDOWN_MS = 200;
 
     private static final double RADIUS = 0.2;
 
@@ -42,6 +43,7 @@ public class Ball {
     private transient Player carrier = null;
 
     private transient long timeReleased;
+    private transient long timeDribbled;
 
     private transient final TimeInterpolatableBuffer<Translation3d> positions = TimeInterpolatableBuffer.createBuffer(1);
 
@@ -111,10 +113,14 @@ public class Ball {
         return this.getPosition2d().getDistance(player.getPosition()) < OFFSET_FROM_PLAYER && this.position.getZ() <= Player.PLAYER_HEIGHT;
     }
 
-    public void kick(Translation3d velocity, Translation3d spin) {
-        this.setCarrier(null);
+    public void dribble(Translation3d velocity, Translation3d spin) {
         this.velocity = velocity;
         this.spin = spin;
+    }
+
+    public void kick(Translation3d velocity, Translation3d spin) {
+        this.setCarrier(null);
+        this.dribble(velocity, spin);
     }
 
     public void kick(Translation2d target, double finalPlanarVelocity, double heightScale) {
@@ -149,7 +155,7 @@ public class Ball {
         Translation2d shootDir = dir.rotateBy(Rotation2d.fromRadians(-Math.signum(spin.getZ()) * angleOffsetRad));
 
         // --- Compute vertical velocity ---
-        double verticalSpeed = (dz / effectiveTime) - (0.5 * GRAVITY * effectiveTime);
+        double verticalSpeed = heightScale > 0 ? (dz / effectiveTime) - (0.5 * GRAVITY * effectiveTime) : 0;
 
         // --- Set initial velocity ---
         this.velocity = new Translation3d(
@@ -193,13 +199,7 @@ public class Ball {
         this.updateCarrier(team2);
 
         if (this.carrier != null) {
-            this.velocity = new Translation3d(this.carrier.getVelocity(), this.velocity.getZ());
-            this.spin = new Translation3d();
-            this.position = new Translation3d(
-                    this.carrier.getPosition()
-                            .plus(new Translation2d(OFFSET_FROM_PLAYER, this.carrier.getDirection())),
-                    this.position.getZ()
-            );
+            this.spin.times(SPIN_LOSS_PER_ITERATION); // Reduce spin 2 times faster when with player
         }
         this.position = this.position.plus(this.velocity.times(GameManager.PERIOD));
 
@@ -254,18 +254,16 @@ public class Ball {
 
         // Bounce only if falling
         if (this.velocity.getZ() < 0) {
-
             double restitution = GROUND_RESTITUTION;
 
             // --- SPIN EFFECT ON BOUNCE ---
-            double spinX = this.spin.getX();
-
-            if (spinX > 0) {
+            double topSpin = this.spin.getY();
+            if (topSpin > 0) {
                 // topspin → kill bounce (driven shots)
-                restitution *= MathUtil.clamp(1.0 - spinX * 0.015, 0.1, 1.0);
-            } else if (spinX < 0) {
+                restitution *= MathUtil.clamp(1 - (topSpin / 30), 0.1, 1.0);
+            } else if (topSpin < 0) {
                 // backspin → higher bounce (chips)
-                restitution *= MathUtil.clamp(1.0 - spinX * 0.01, 1.0, 1.6);
+                restitution *= MathUtil.clamp(1 - (topSpin / 50), 1.0, 1.6);
             }
 
             this.velocity = new Translation3d(
@@ -275,7 +273,7 @@ public class Ball {
             );
 
             // Kill tiny bounces
-            if (Math.abs(this.velocity.getZ()) < 0.4) {
+            if (Math.abs(this.velocity.getZ()) < MIN_SPEED) {
                 this.velocity = new Translation3d(
                         this.velocity.getX(),
                         this.velocity.getY(),
@@ -372,9 +370,7 @@ public class Ball {
         if (speed <= 0) return;
 
         double friction = FRICTION_ACCEL;
-        if (this.spin.getY() > 10) { // top-spin
-            friction *= 1 - (this.spin.getY() / 100);
-        }
+        friction *= 1 - MathUtil.clamp(this.spin.getY() / 100, 0, 0.5);
         double newSpeed = speed + (friction * GameManager.PERIOD);
         if (newSpeed < MIN_SPEED)
             newSpeed = 0;

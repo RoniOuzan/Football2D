@@ -55,6 +55,10 @@ public class Team {
         return players;
     }
 
+    public TeamStrategy getTeamStrategy() {
+        return this.teamStrategy;
+    }
+
     public int getSideMultiplier() {
         return sideMultiplier;
     }

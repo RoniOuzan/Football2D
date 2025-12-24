@@ -24,6 +24,7 @@ public abstract class Player {
     public static final double MAX_OMEGA = Math.PI * 4;
     public static final double CARRYING_BALL_MAX_VELOCITY = 7;
 
+    protected transient final Team team;
     protected transient final Ball ball;
 
     protected Translation2d position;
@@ -36,6 +37,7 @@ public abstract class Player {
     protected transient final Translation2d formationPosition;
 
     protected Player(Team team, Ball ball, Translation2d position) {
+        this.team = team;
         this.ball = ball;
 
         this.position = position;
@@ -45,6 +47,10 @@ public abstract class Player {
 
         this.velocity = new Translation2d();
         this.targetVelocity = new Translation2d();
+    }
+
+    public Team getTeam() {
+        return this.team;
     }
 
     public Translation2d getPosition() {
@@ -74,25 +80,22 @@ public abstract class Player {
         this.direction = new Rotation2d();
     }
 
-    public void setVelocity(Translation2d targetVelocity) {
-        setVelocity(targetVelocity, MAX_ACCELERATION, MAX_DECELERATION, MAX_SKID_ACCELERATION);
-    }
-
-    public void setVelocity(Translation2d targetVelocity, double maxAcceleration, double maxDeceleration, double maxSkidAcceleration) {
+    public void setTargetVelocity(Translation2d targetVelocity) {
         if (this.hasBall()) {
             targetVelocity = targetVelocity.limitNorm(CARRYING_BALL_MAX_VELOCITY);
         }
-
         this.targetVelocity = targetVelocity;
+    }
 
+    private void updateVelocity() {
         double currentSpeed = this.velocity.getNorm();
         double targetSpeed = this.targetVelocity.getNorm();
 
         double acceleration = (targetSpeed - currentSpeed) / GameManager.PERIOD;
-        double maxAccel = maxAcceleration * (1 - (this.velocity.getNorm() / SPRINT_VELOCITY));
+        double maxAccel = MAX_ACCELERATION * (1 - (this.velocity.getNorm() / SPRINT_VELOCITY));
 
         // Clamp the rate of change
-        double accel = MathUtil.clamp(acceleration, -maxDeceleration, maxAccel);
+        double accel = MathUtil.clamp(acceleration, -MAX_DECELERATION, maxAccel);
 
         double newSpeed = currentSpeed + (accel * GameManager.PERIOD);
         newSpeed = Math.max(newSpeed, 0);
@@ -102,13 +105,13 @@ public abstract class Player {
 
         // Keep direction consistent with either target or current velocity
         Rotation2d direction = (targetSpeed > 0)
-                ? targetVelocity.getAngle()
+                ? this.targetVelocity.getAngle()
                 : (currentSpeed > 0 ? this.velocity.getAngle() : this.direction);
 
         Translation2d newVelocity = new Translation2d(newSpeed, direction);
 
         Translation2d deltaSpeed = newVelocity.minus(this.velocity);
-        deltaSpeed = deltaSpeed.limitNorm(maxSkidAcceleration * GameManager.PERIOD);
+        deltaSpeed = deltaSpeed.limitNorm(MAX_SKID_ACCELERATION * GameManager.PERIOD);
 
         this.velocity = this.velocity.plus(deltaSpeed);
 
@@ -129,20 +132,10 @@ public abstract class Player {
         // Determine if moving backward relative to current facing
         boolean movingBackward = movementDirection.dot(this.direction.toTranslation()) < 0;
 
-        // Desired direction
-        Rotation2d desiredDirection;
-        if (movingBackward) {
-            // Walk backward: keep current facing for now
-            desiredDirection = this.direction;
-        } else {
-            // Forward or sideways: face movement direction
-            desiredDirection = movementDirection.getAngle();
-        }
-
         // Smoothly rotate toward movement direction over time
         // When moving backward, we allow a small rotation toward movement gradually
         double omega = movementDirection.getAngle().minus(this.direction).getRadians() / GameManager.PERIOD;
-        double maxOmega = movingBackward ? MAX_OMEGA * 0.2 : MAX_OMEGA; // slower rotation while walking backward
+        double maxOmega = movingBackward ? MAX_OMEGA * 0.3 : MAX_OMEGA; // slower rotation while walking backward
         omega = MathUtil.clamp(omega, -maxOmega, maxOmega);
 
         this.direction = this.direction.plus(new Rotation2d(omega * GameManager.PERIOD));
@@ -157,7 +150,7 @@ public abstract class Player {
     }
 
     public void moveTowards(Translation2d targetPosition, double speedPercent) {
-        setVelocity(getVelocityToPosition(targetPosition, speedPercent));
+        setTargetVelocity(getVelocityToPosition(targetPosition, speedPercent));
     }
 
     public void pass(Player targetPlayer, double finalVelocity) {
@@ -194,7 +187,28 @@ public abstract class Player {
         return 0;
     };
 
+    public void updateHasBall(Translation2d wantedVelocity) {
+        if (this.position.getDistance(this.ball.getPosition2d()) <= 0.75 && wantedVelocity.getNorm() > 0.5) {
+            double velocity = this.velocity.dot(wantedVelocity.normalized());
+            velocity = Math.max(velocity, 0);
+            velocity = velocity * 0.5 + wantedVelocity.getNorm() * 0.5;
+
+            Translation3d kick = new Translation3d(velocity, wantedVelocity.getAngle(), 0.1);
+            this.ball.dribble(kick, new Translation3d(0, velocity, 0));
+        }
+
+        double target = wantedVelocity.getNorm();
+        if (this.position.getDistance(this.ball.getPosition2d()) > 0.75) {
+            target = Math.max(target, 3);
+        }
+        Translation2d delta = this.ball.getPredictedPosition(0.3).toTranslation2d().minus(this.position)
+                .normalized()
+                .times(target);
+        this.setTargetVelocity(delta);
+    }
+
     public void update(Team team) {
+        updateVelocity();
         this.position = this.position.plus(this.velocity.times(GameManager.PERIOD));
 
         // Collision check with all players
