@@ -37,7 +37,7 @@ public class InputMobileDevice extends InputDevice {
     @Override
     public Translation2d getRequestedVelocity() {
         Translation2d joy = new Translation2d(this.leftX, this.leftY);
-        return joy.getNorm() < 0.05 ? new Translation2d() : joy.normalized();
+        return joy.normalized().times(joy.getNorm());
     }
 
     @Override

@@ -22,9 +22,6 @@ export default function Game() {
       setData(gameState);
     });
 
-    const ua = navigator.userAgent;
-    setIsMobile(/Mobi|Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(ua));
-
     setTimeout(() => {
       client.current?.connect();
     }, 0);
@@ -35,6 +32,13 @@ export default function Game() {
       // optional cleanup later
     };
   }, []);
+
+  useEffect(() => {
+    const ua = navigator.userAgent;
+    const is = /Mobi|Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(ua);
+    setIsMobile(is);
+    input.current?.setIsMobile(is);
+  }, [navigator.userAgent]);
 
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative" }}>

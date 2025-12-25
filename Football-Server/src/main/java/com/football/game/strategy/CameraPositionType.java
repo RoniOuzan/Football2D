@@ -15,7 +15,7 @@ public enum CameraPositionType {
         double cameraY = MathUtil.clamp(t.ball.getPosition().getY(), -16, 16) * 0.1;
         return new CameraPose(
                 new Translation3d(cameraX, -60 + cameraY, 30),
-                Rotation2d.fromDegrees(-27.5 + cameraY),
+                Rotation2d.fromDegrees(-28 + cameraY),
                 Rotation2d.fromDegrees(-cameraX / 2),
                 Rotation2d.fromDegrees(37)
         );

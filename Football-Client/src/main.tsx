@@ -15,6 +15,5 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
 
 if (import.meta.env.PROD) {
-  console.log("asd");
   serviceWorkerRegistration.register();
 }

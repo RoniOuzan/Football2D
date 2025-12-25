@@ -23,9 +23,11 @@ export default class InputController {
   private client: Client;
   private mobileAxes: MobileJoystick = { x: 0, y: 0 };
   private mobileButtons = new Set<string>();
+  private isMobile: boolean;
 
   constructor(client: Client) {
     this.client = client;
+    this.isMobile = false;
 
     window.addEventListener("keydown", (e) =>
       this.kbKeys.add(e.key.toLowerCase())
@@ -47,19 +49,34 @@ export default class InputController {
       this.mobileButtons.add(button);
     else 
       this.mobileButtons.delete(button);
+  }
 
-    console.log(this.mobileButtons);
-    
+  setIsMobile(isMobile: boolean) {
+    this.isMobile = isMobile;
   }
 
   private sendAllInputs() {
     const devices: DeviceInput[] = [];
 
-    // keyboard always first
-    devices.push({
-      type: "keyboard",
-      buttons: Array.from(this.kbKeys),
-    });
+    if (this.isMobile) {
+      devices.push({
+        type: "mobile",
+        buttons: Array.from(this.mobileButtons),
+        axes: {
+          leftX: this.mobileAxes.x,
+          leftY: this.mobileAxes.y,
+          rightX: 0,
+          rightY: 0,
+          LT: 0,
+          RT: 0,
+        },
+      });
+    } else {
+      devices.push({
+        type: "keyboard",
+        buttons: Array.from(this.kbKeys),
+      });
+    }
 
     // controllers
     for (const gp of navigator.getGamepads()) {
@@ -72,19 +89,6 @@ export default class InputController {
         continue;
       devices.push(this.mapController(gp));
     }
-
-    devices.push({
-      type: "mobile",
-      buttons: Array.from(this.mobileButtons),
-      axes: {
-        leftX: this.mobileAxes.x,
-        leftY: this.mobileAxes.y,
-        rightX: 0,
-        rightY: 0,
-        LT: 0,
-        RT: 0,
-      },
-    });
 
     this.client.sendJSON("input", { devices: devices });
   }
