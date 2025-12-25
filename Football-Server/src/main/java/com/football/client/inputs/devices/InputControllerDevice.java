@@ -13,7 +13,7 @@ import java.util.Map;
 public class InputControllerDevice extends InputDevice {
     private static final Map<Keybind, String> keybinds = new HashMap<>();
     static {
-        keybinds.put(Keybind.SWITCH_PLAYER, "LB" );
+        keybinds.put(Keybind.SWITCH_PLAYER, "LB");
         keybinds.put(Keybind.SWITCH_CAMERA, "RS");
         keybinds.put(Keybind.SPRINT, "RT");
         keybinds.put(Keybind.PASS, "A");
@@ -40,7 +40,7 @@ public class InputControllerDevice extends InputDevice {
 
     @Override
     public Translation2d getRequestedVelocity() {
-        Translation2d joy = new Translation2d(this.leftX, -this.leftY);
+        Translation2d joy = new Translation2d(this.leftX, this.leftY);
         return joy.getNorm() < 0.05 ? new Translation2d() : joy.normalized();
     }
 
@@ -49,7 +49,7 @@ public class InputControllerDevice extends InputDevice {
         super.updateInput(devicePacket);
 
         this.leftX = devicePacket.axes.leftX;
-        this.leftY = devicePacket.axes.leftY;
+        this.leftY = -devicePacket.axes.leftY;
         this.rightX = devicePacket.axes.rightX;
         this.rightY = devicePacket.axes.rightY;
         this.LT = devicePacket.axes.LT;

@@ -1,14 +1,16 @@
 import { useRef, useEffect, useState } from "react";
-import Client from "./Client";
-import InputController from "./InputController";
-import type { JsonData } from "./types";
-import GameRenderer3D from "./renderer/GameRenderer";
+import Client from "../Client";
+import InputController from "../InputController";
+import type { JsonData } from "../types";
+import GameRenderer3D from "../renderer/GameRenderer";
+import MobileControls from "./MobileControls";
 
 export const FPS = 30;
 
 export default function Game() {
   const [score] = useState({ blue: 0, red: 0 });
   const [data, setData] = useState<JsonData | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   const client = useRef<Client | null>(null);
   const input = useRef<InputController | null>(null);
@@ -19,6 +21,9 @@ export default function Game() {
     client.current = new Client((gameState) => {
       setData(gameState);
     });
+
+    const ua = navigator.userAgent;
+    setIsMobile(/Mobi|Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(ua));
 
     setTimeout(() => {
       client.current?.connect();
@@ -33,6 +38,12 @@ export default function Game() {
 
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
+      {isMobile && <MobileControls
+        onMove={(x, y) => input.current?.setMobileJoystick(x, y)}
+        onStop={() => input.current?.setMobileJoystick(0, 0)}
+        onButtonChange={(b, p) => input.current?.setMobileButton(b, p)}
+      />}
+
       {/* Score overlay on the field */}
       <div
         style={{
