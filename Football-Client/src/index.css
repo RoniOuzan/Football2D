@@ -1,13 +1,37 @@
-body {
+html, body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #FF0000; /* Match your theme color to prevent black flicker */
+  overflow: hidden;
+  position: fixed; 
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+.app-root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  
+  /* REMOVE PADDING from here. 
+     Padding causes the 'black bars' look because it pushes the content 
+     away from the notch. */
+  padding: 0; 
+  margin: 0;
+  
+  background-color: #FF0000;
+  width: 100vw;
+  height: 100dvh;
 }

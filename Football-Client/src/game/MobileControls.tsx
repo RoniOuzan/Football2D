@@ -1,5 +1,4 @@
-import { Joystick } from "react-joystick-component";
-import { FPS } from "./Game";
+import Joystick from "./Joystick";
 
 interface MobileControlsProps {
   onMove: (x: number, y: number) => void;
@@ -8,85 +7,119 @@ interface MobileControlsProps {
 }
 
 export default function MobileControls({ onMove, onStop, onButtonChange }: MobileControlsProps) {
+  // button sizes
+  const bigSize = 100; // Sprint & Skill
+  const smallSize = 70; // other actions
+
+  // radius for surrounding buttons
+  const radius = 125;
+
+  // calculate positions around the central button
+  const surrounding = [
+    { action: "Shoot", angle: 90 },  // top-right
+    { action: "Through", angle: 45 }, // top-left
+    { action: "Pass", angle: 0 },   // bottom-left
+  ].map(({ action, angle }) => {
+    const rad = angle * Math.PI / 180;
+    return {
+      action,
+      x: radius * Math.cos(rad),
+      y: radius * Math.sin(rad),
+    };
+  });
+
   return (
     <>
       {/* Joystick */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 40,
-          left: 40,
-          zIndex: 999,
-          width: 120,
-          height: 120,
-          userSelect: "none"
-        }}
-      >
-        <Joystick
-          size={120}
-          stickSize={60}
-          baseColor="rgba(20, 20, 20, 0.46)"
-          stickColor="rgba(255, 255, 255, 1)"
-          throttle={1000 / FPS}
-          move={(stick) => {
-            if (!stick.x || !stick.y) return;
-            onMove(stick.x, stick.y);
-          }}
-          stop={() => onStop()}
-        />
-      </div>
+      <Joystick
+        onMove={onMove}
+        onStop={onStop}
+      />
 
-      {/* Action buttons */}
+      {/* Action buttons container */}
       <div
         style={{
           position: "fixed",
-          bottom: 20,
-          right: 15,
+          bottom: 12,
+          right: 12,
           zIndex: 999,
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 70px)",
-          gridTemplateRows: "repeat(3, 70px)",
-          gap: 0,
+          width: 200,
+          height: 200,
         }}
       >
-        {["", "Shoot", "", "Pass", "", "Cross", "", "Through", ""].map((action, index) => (
-          <button
-            key={index}
-            onPointerDown={() => action && onButtonChange(action.toLowerCase(), true)}
-            onPointerUp={() => action && onButtonChange(action.toLowerCase(), false)}
-            onPointerLeave={() => action && onButtonChange(action.toLowerCase(), false)}
+        {/* Big Sprint & Skill button in center */}
+        <ActionButton
+          action="Sprint"
+          onButtonChange={onButtonChange}
+          size={bigSize}
+          style={{
+            bottom: 0,
+            right: 0,
+          }}
+        />
+
+        {/* Surrounding buttons */}
+        {surrounding.map(({ action, x, y }) => (
+          <ActionButton
+            key={action}
+            action={action}
+            onButtonChange={onButtonChange}
+            size={smallSize}
             style={{
-              width: 70,
-              height: 70,
-              borderRadius: "50%",
-              backgroundColor: action ? "rgba(20, 20, 20, 0.46)" : "transparent",
-              color: "white",
-              fontWeight: "bold",
-              fontSize: 14,
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              textAlign: "center",
-              border: "none",
-              boxShadow: action ? "0 3px 16px rgba(0,0,0,0.5)" : "none",
-              pointerEvents: action ? "auto" : "none",
-              touchAction: "none",
-              transition: "transform 0.1s, background-color 0.1s",
-              userSelect: "none",
+              bottom: y,
+              right: x,
             }}
-            onPointerDownCapture={(e) => {
-              e.currentTarget.style.transform = "scale(0.9)";
-              e.currentTarget.style.backgroundColor = "rgba(20, 20, 20, 0.74)";
-            }}
-            onPointerUpCapture={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-              e.currentTarget.style.backgroundColor = "rgba(20, 20, 20, 0.46)";
-            }}
-          >
-            {action}
-          </button>
+          />
         ))}
       </div>
     </>
   );
 }
+
+interface ActionButtonProps {
+  action: string;
+  onButtonChange: (button: string, pressed: boolean) => void;
+  size: number;
+  style?: React.CSSProperties;
+}
+
+const ActionButton: React.FC<ActionButtonProps> = ({ action, onButtonChange, size, style }) => {
+  return (
+    <button
+      onPointerDown={() => action && onButtonChange(action.toLowerCase(), true)}
+      onPointerUp={() => action && onButtonChange(action.toLowerCase(), false)}
+      onPointerLeave={() => action && onButtonChange(action.toLowerCase(), false)}
+      style={{
+        width: size,
+        height: size,
+        position: "absolute",
+        borderRadius: "50%",
+        backgroundColor: "rgba(30,30,30,0.6)",
+        border: "1px solid rgba(255, 255, 255, 0.22)",
+        color: "white",
+        fontWeight: "bold",
+        fontSize: size / 5,
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        textAlign: "center",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+        pointerEvents: "auto",
+        touchAction: "none",
+        userSelect: "none",
+        transition: "transform 0.1s, background-color 0.1s",
+        ...style,
+      }}
+      onPointerDownCapture={(e) => {
+        e.currentTarget.style.transform = "scale(0.9)";
+        e.currentTarget.style.backgroundColor = "rgba(30,30,30,0.9)";
+      }}
+      onPointerUpCapture={(e) => {
+        e.currentTarget.style.transform = "scale(1)";
+        e.currentTarget.style.backgroundColor = "rgba(30,30,30,0.7)";
+      }}
+    >
+      {action}
+    </button>
+  );
+};

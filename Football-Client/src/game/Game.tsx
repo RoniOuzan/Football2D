@@ -4,13 +4,14 @@ import InputController from "../InputController";
 import type { JsonData } from "../types";
 import GameRenderer3D from "../renderer/GameRenderer";
 import MobileControls from "./MobileControls";
+import { isMobile } from "../App";
 
 export const FPS = 30;
 
 export default function Game() {
+  const viewport = useVisualViewport();
   const [score] = useState({ blue: 0, red: 0 });
   const [data, setData] = useState<JsonData | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
 
   const client = useRef<Client | null>(null);
   const input = useRef<InputController | null>(null);
@@ -33,15 +34,13 @@ export default function Game() {
     };
   }, []);
 
-  useEffect(() => {
-    const ua = navigator.userAgent;
-    const is = /Mobi|Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(ua);
-    setIsMobile(is);
-    input.current?.setIsMobile(is);
-  }, [navigator.userAgent]);
-
   return (
-    <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
+    <div style={{ 
+      width: `${viewport.width}px`, 
+      height: `${viewport.height}px`, 
+      position: "relative",
+      overflow: "hidden" 
+    }}>
       {isMobile && <MobileControls
         onMove={(x, y) => input.current?.setMobileJoystick(x, y)}
         onStop={() => input.current?.setMobileJoystick(0, 0)}
@@ -77,4 +76,30 @@ export default function Game() {
       {data && <GameRenderer3D data={data} />}
     </div>
   );
+}
+
+function useVisualViewport() {
+  const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.visualViewport) {
+        setSize({
+          width: window.visualViewport.width,
+          height: window.visualViewport.height,
+        });
+      }
+    };
+
+    window.visualViewport?.addEventListener("resize", handleResize);
+    // iOS landscape launch nudge
+    const timer = setTimeout(handleResize, 500); 
+
+    return () => {
+      window.visualViewport?.removeEventListener("resize", handleResize);
+      clearTimeout(timer);
+    };
+  }, []);
+
+  return size;
 }

@@ -1,3 +1,4 @@
+import { isMobile } from "./App";
 import Client from "./Client";
 import { FPS } from "./game/Game";
 
@@ -23,11 +24,9 @@ export default class InputController {
   private client: Client;
   private mobileAxes: MobileJoystick = { x: 0, y: 0 };
   private mobileButtons = new Set<string>();
-  private isMobile: boolean;
 
   constructor(client: Client) {
     this.client = client;
-    this.isMobile = false;
 
     window.addEventListener("keydown", (e) =>
       this.kbKeys.add(e.key.toLowerCase())
@@ -51,14 +50,10 @@ export default class InputController {
       this.mobileButtons.delete(button);
   }
 
-  setIsMobile(isMobile: boolean) {
-    this.isMobile = isMobile;
-  }
-
   private sendAllInputs() {
     const devices: DeviceInput[] = [];
 
-    if (this.isMobile) {
+    if (isMobile) {
       devices.push({
         type: "mobile",
         buttons: Array.from(this.mobileButtons),

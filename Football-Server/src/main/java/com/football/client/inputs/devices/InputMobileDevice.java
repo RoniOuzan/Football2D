@@ -15,9 +15,9 @@ public class InputMobileDevice extends InputDevice {
     static {
 //        keybinds.put(Keybind.SWITCH_PLAYER, "LB" );
 //        keybinds.put(Keybind.SWITCH_CAMERA, "RS");
-        keybinds.put(Keybind.SPRINT, "");
+        keybinds.put(Keybind.SPRINT, "sprint");
         keybinds.put(Keybind.PASS, "pass");
-        keybinds.put(Keybind.CROSS, "cross");
+//        keybinds.put(Keybind.CROSS, "cross");
         keybinds.put(Keybind.THROUGH, "through");
         keybinds.put(Keybind.SHOOT, "shoot");
 
@@ -45,6 +45,6 @@ public class InputMobileDevice extends InputDevice {
         super.updateInput(devicePacket);
 
         this.leftX = devicePacket.axes.leftX;
-        this.leftY = devicePacket.axes.leftY;
+        this.leftY = -devicePacket.axes.leftY;
     }
 }

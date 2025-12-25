@@ -1,10 +1,11 @@
 {
-  "short_name": "React App",
-  "name": "React App Sample",
-  "start_url": ".",
-  "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff",
+  "short_name": "Football 2D",
+  "name": "Football 2D Game",
+  "start_url": "/",
+  "display": "standalone", 
+  "orientation": "landscape",
+  "theme_color": "#FF0000",
+  "background_color": "#FF0000",
   "icons": [
     {
       "src": "logo192.png",
