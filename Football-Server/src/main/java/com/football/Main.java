@@ -20,7 +20,7 @@ public class Main {
 
         // Configure SSL with PKCS12 keystore
         SslContextFactory.Server sslContextFactory = new SslContextFactory.Server();
-        sslContextFactory.setKeyStorePath("../Football-Client/192.168.1.73+1.p12"); // your converted PKCS12 file
+        sslContextFactory.setKeyStorePath("../Football-Client/192.168.1.73.p12"); // your converted PKCS12 file
         sslContextFactory.setKeyStorePassword("1234");         // password used when exporting PKCS12
         sslContextFactory.setKeyStoreType("PKCS12");
 
