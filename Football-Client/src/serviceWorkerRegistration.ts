@@ -1,16 +1,10 @@
-// This is a simple service worker registration file for PWA
-
 export function register() {
-  if ('serviceWorker' in navigator) {
+  if ('serviceWorker' in navigator && import.meta.env.PROD) {
     window.addEventListener('load', () => {
       navigator.serviceWorker
         .register('/service-worker.js')
-        .then(registration => {
-          console.log('SW registered: ', registration);
-        })
-        .catch(registrationError => {
-          console.log('SW registration failed: ', registrationError);
-        });
+        .then(reg => console.log('SW registered:', reg))
+        .catch(err => console.error('SW registration failed:', err));
     });
   }
 }
@@ -18,7 +12,7 @@ export function register() {
 export function unregister() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.ready
-      .then(registration => registration.unregister())
+      .then(reg => reg.unregister())
       .catch(console.error);
   }
 }

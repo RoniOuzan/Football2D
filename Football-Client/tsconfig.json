@@ -5,6 +5,11 @@
     { "path": "./tsconfig.node.json" }
   ],
   "compilerOptions": {
-    "verbatimModuleSyntax": false
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "esModuleInterop": true,  // ✅ THIS enables default import
+    "strict": true,
+    "outDir": "dist"
   }
 }

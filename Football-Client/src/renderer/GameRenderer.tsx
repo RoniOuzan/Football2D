@@ -116,7 +116,9 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
       52
     );
 
-    // drawHeatmap(ctx, canvas, getClientsTeam(data), camera);
+    const num = 1;
+    if (num != 1)
+      drawHeatmap(ctx, canvas, getClientsTeam(data), camera);
 
     const draws: Draw[] = [];
 
