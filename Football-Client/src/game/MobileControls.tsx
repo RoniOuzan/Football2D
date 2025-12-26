@@ -1,4 +1,4 @@
-import Joystick from "./Joystick";
+import FixedJoystick from "./FixedJoystick";
 import "./MobileControls.css";
 
 interface MobileControlsProps {
@@ -7,7 +7,11 @@ interface MobileControlsProps {
   onButtonChange: (button: string, pressed: boolean) => void;
 }
 
-export default function MobileControls({ onMove, onStop, onButtonChange }: MobileControlsProps) {
+export default function MobileControls({
+  onMove,
+  onStop,
+  onButtonChange,
+}: MobileControlsProps) {
   // button sizes
   const bigSize = 100; // Sprint & Skill
   const smallSize = 70; // other actions
@@ -17,11 +21,11 @@ export default function MobileControls({ onMove, onStop, onButtonChange }: Mobil
 
   // calculate positions around the central button
   const surrounding = [
-    { action: "Shoot", angle: 90 },  // top-right
+    { action: "Shoot", angle: 90 }, // top-right
     { action: "Through", angle: 45 }, // top-left
-    { action: "Pass", angle: 0 },   // bottom-left
+    { action: "Pass", angle: 0 }, // bottom-left
   ].map(({ action, angle }) => {
-    const rad = angle * Math.PI / 180;
+    const rad = (angle * Math.PI) / 180;
     return {
       action,
       x: radius * Math.cos(rad),
@@ -32,10 +36,7 @@ export default function MobileControls({ onMove, onStop, onButtonChange }: Mobil
   return (
     <>
       {/* Joystick */}
-      <Joystick
-        onMove={onMove}
-        onStop={onStop}
-      />
+      <FixedJoystick onMove={onMove} onStop={onStop} />
 
       {/* Action buttons container */}
       <div
@@ -100,7 +101,9 @@ const ActionButton: React.FC<ActionButtonProps> = ({
       className="action-button"
       onPointerDown={() => action && onButtonChange(action.toLowerCase(), true)}
       onPointerUp={() => action && onButtonChange(action.toLowerCase(), false)}
-      onPointerLeave={() => action && onButtonChange(action.toLowerCase(), false)}
+      onPointerLeave={() =>
+        action && onButtonChange(action.toLowerCase(), false)
+      }
       style={{
         width: size,
         height: size,

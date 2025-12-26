@@ -19,7 +19,7 @@ public enum CameraPositionType {
                 Rotation2d.fromDegrees(-cameraX / 2),
                 Rotation2d.fromDegrees(37)
         );
-    }),
+    }, t -> Rotation2d.kZero),
     THIRD_PERSON(t -> {
         Player player = t.getChosenPlayer();
         Translation2d playerPos = player.getPosition();
@@ -57,17 +57,23 @@ public enum CameraPositionType {
         }
 
         return new CameraPose(cameraPos, pitch, yaw, Rotation2d.fromDegrees(45));
-    }),
+    }, t -> t.getCameraManager().getPosition().getYaw()),
     ;
 
     private final Function<TeamStrategy, CameraPose> cameraPose;
+    private final Function<TeamStrategy, Rotation2d> cameraOrientation;
 
-    CameraPositionType(Function<TeamStrategy, CameraPose> cameraPose) {
+    CameraPositionType(Function<TeamStrategy, CameraPose> cameraPose, Function<TeamStrategy, Rotation2d> cameraOrientation) {
         this.cameraPose = cameraPose;
+        this.cameraOrientation = cameraOrientation;
     }
 
     public CameraPose getCameraPose(TeamStrategy teamStrategy) {
         return this.cameraPose.apply(teamStrategy);
+    }
+
+    public Rotation2d getCameraOrientation(TeamStrategy teamStrategy) {
+        return this.cameraOrientation.apply(teamStrategy);
     }
 
     public CameraPositionType getOther() {

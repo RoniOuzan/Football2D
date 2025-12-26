@@ -6,13 +6,15 @@ interface JoystickProps {
   onStop: () => void;
 }
 
-export default function Joystick({ onMove, onStop }: JoystickProps) {
+export default function FixedJoystick({ onMove, onStop }: JoystickProps) {
   const maxRadius = 60; // max stick distance and size of the whole joystick
   const stickSizePercent = 0.4;
   const stickSize = maxRadius * 2 * stickSizePercent;
 
   const baseX = isPortrait ? maxRadius : 150;
-  const baseY = isPortrait ? window.innerWidth - maxRadius : window.innerHeight - 120;
+  const baseY = isPortrait
+    ? window.innerWidth - maxRadius
+    : window.innerHeight - 120;
 
   const [stickPos, setStickPos] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
@@ -24,8 +26,10 @@ export default function Joystick({ onMove, onStop }: JoystickProps) {
 
   const handleMove = (e: React.TouchEvent | Touch | React.MouseEvent) => {
     if (!dragging) return;
-    let clientX = "touches" in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-    let clientY = "touches" in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    let clientX =
+      "touches" in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    let clientY =
+      "touches" in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
 
     // if portrait, rotate coordinates to match container
     if (isPortrait) {

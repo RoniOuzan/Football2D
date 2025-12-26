@@ -32,7 +32,7 @@
         }
 
         public Translation2d getOrientedTranslation(Translation2d translation2d) {
-            Rotation2d orientation = this.getPosition().getTranslation().toTranslation2d()
+            Rotation2d orientation = this.position.getTranslation().toTranslation2d()
                     .minus(this.teamStrategy.getChosenPlayer().getPosition()).getAngle().plus(Rotation2d.kCCW_Pi_2);
             return translation2d.rotateBy(orientation);
         }
