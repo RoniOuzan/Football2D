@@ -1,0 +1,28 @@
+.action-button {
+    position: absolute;
+    width: 70px; /* default, can override per button with inline style if needed */
+    height: 70px;
+    border-radius: 50%;
+    background-color: rgba(30,30,30,0.6);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: white;
+    font-weight: bold;
+    font-size: 14px; /* default, override inline if needed */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    pointer-events: auto;
+    touch-action: none;
+    user-select: none;       /* prevents selection */
+    -webkit-user-select: none; /* Safari */
+    -moz-user-select: none;    /* Firefox */
+    -ms-user-select: none;     /* IE/Edge */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.8);
+    transition: all 0.3s ease;
+}
+
+.action-button:active {
+    transform: scale(0.9);
+    background-color: rgba(30,30,30,0.9);
+}

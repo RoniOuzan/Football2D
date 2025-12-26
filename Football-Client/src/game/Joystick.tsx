@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { isPortrait } from "../App";
 
 interface JoystickProps {
   onMove: (x: number, y: number) => void;
@@ -6,9 +7,12 @@ interface JoystickProps {
 }
 
 export default function Joystick({ onMove, onStop }: JoystickProps) {
-  const baseX = 100; // fixed base position X
-  const baseY = window.innerHeight - 100; // fixed base position Y (bottom-left)
   const maxRadius = 60; // max stick distance and size of the whole joystick
+  const stickSizePercent = 0.4;
+  const stickSize = maxRadius * 2 * stickSizePercent;
+
+  const baseX = isPortrait ? maxRadius : 150;
+  const baseY = isPortrait ? window.innerWidth - maxRadius : window.innerHeight - 120;
 
   const [stickPos, setStickPos] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
@@ -20,8 +24,16 @@ export default function Joystick({ onMove, onStop }: JoystickProps) {
 
   const handleMove = (e: React.TouchEvent | Touch | React.MouseEvent) => {
     if (!dragging) return;
-    const clientX = "touches" in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-    const clientY = "touches" in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    let clientX = "touches" in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    let clientY = "touches" in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+
+    // if portrait, rotate coordinates to match container
+    if (isPortrait) {
+      const rotatedX = clientY; // Y becomes X
+      const rotatedY = window.innerWidth - clientX; // mirrored X becomes Y
+      clientX = rotatedX;
+      clientY = rotatedY;
+    }
 
     let dx = clientX - baseX;
     let dy = clientY - baseY;
@@ -68,10 +80,10 @@ export default function Joystick({ onMove, onStop }: JoystickProps) {
       <div
         style={{
           position: "absolute",
-          left: maxRadius + stickPos.x - (maxRadius / 2),
-          top: maxRadius + stickPos.y - (maxRadius / 2),
-          width: maxRadius,
-          height: maxRadius,
+          left: stickSize + stickPos.x - stickSize / 4,
+          top: stickSize + stickPos.y - stickSize / 4,
+          width: stickSize,
+          height: stickSize,
           borderRadius: "50%",
           backgroundColor: "rgba(255,255,255,0.9)",
         }}

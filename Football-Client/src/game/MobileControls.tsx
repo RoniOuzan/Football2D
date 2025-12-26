@@ -1,4 +1,5 @@
 import Joystick from "./Joystick";
+import "./MobileControls.css";
 
 interface MobileControlsProps {
   onMove: (x: number, y: number) => void;
@@ -45,16 +46,19 @@ export default function MobileControls({ onMove, onStop, onButtonChange }: Mobil
           zIndex: 999,
           width: 200,
           height: 200,
+          pointerEvents: "none", // container itself should not block touches
         }}
       >
-        {/* Big Sprint & Skill button in center */}
+        {/* Big center button */}
         <ActionButton
           action="Sprint"
           onButtonChange={onButtonChange}
           size={bigSize}
           style={{
-            bottom: 0,
+            position: "absolute",
             right: 0,
+            bottom: 0,
+            pointerEvents: "auto",
           }}
         />
 
@@ -66,8 +70,10 @@ export default function MobileControls({ onMove, onStop, onButtonChange }: Mobil
             onButtonChange={onButtonChange}
             size={smallSize}
             style={{
+              position: "absolute",
               bottom: y,
               right: x,
+              pointerEvents: "auto",
             }}
           />
         ))}
@@ -83,40 +89,23 @@ interface ActionButtonProps {
   style?: React.CSSProperties;
 }
 
-const ActionButton: React.FC<ActionButtonProps> = ({ action, onButtonChange, size, style }) => {
+const ActionButton: React.FC<ActionButtonProps> = ({
+  action,
+  onButtonChange,
+  size,
+  style,
+}) => {
   return (
     <button
+      className="action-button"
       onPointerDown={() => action && onButtonChange(action.toLowerCase(), true)}
       onPointerUp={() => action && onButtonChange(action.toLowerCase(), false)}
       onPointerLeave={() => action && onButtonChange(action.toLowerCase(), false)}
       style={{
         width: size,
         height: size,
-        position: "absolute",
-        borderRadius: "50%",
-        backgroundColor: "rgba(30,30,30,0.6)",
-        border: "1px solid rgba(255, 255, 255, 0.22)",
-        color: "white",
-        fontWeight: "bold",
         fontSize: size / 5,
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        textAlign: "center",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
-        pointerEvents: "auto",
-        touchAction: "none",
-        userSelect: "none",
-        transition: "transform 0.1s, background-color 0.1s",
         ...style,
-      }}
-      onPointerDownCapture={(e) => {
-        e.currentTarget.style.transform = "scale(0.9)";
-        e.currentTarget.style.backgroundColor = "rgba(30,30,30,0.9)";
-      }}
-      onPointerUpCapture={(e) => {
-        e.currentTarget.style.transform = "scale(1)";
-        e.currentTarget.style.backgroundColor = "rgba(30,30,30,0.7)";
       }}
     >
       {action}

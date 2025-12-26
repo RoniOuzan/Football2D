@@ -9,7 +9,6 @@ import { isMobile } from "../App";
 export const FPS = 30;
 
 export default function Game() {
-  const viewport = useVisualViewport();
   const [score] = useState({ blue: 0, red: 0 });
   const [data, setData] = useState<JsonData | null>(null);
 
@@ -36,10 +35,13 @@ export default function Game() {
 
   return (
     <div style={{ 
-      width: `${viewport.width}px`, 
-      height: `${viewport.height}px`, 
-      position: "relative",
-      overflow: "hidden" 
+      margin: "0",
+      padding: "0",
+      width: "100%",
+      height: "100%",
+      position: "fixed", 
+      overflow: "hidden",
+      overscrollBehavior: "none", 
     }}>
       {isMobile && <MobileControls
         onMove={(x, y) => input.current?.setMobileJoystick(x, y)}
@@ -50,7 +52,7 @@ export default function Game() {
       {/* Score overlay on the field */}
       <div
         style={{
-          position: "absolute",
+          position: "fixed",
           top: "20px",
           left: "50%",
           transform: "translateX(-50%)",
@@ -65,6 +67,7 @@ export default function Game() {
           fontWeight: "bold",
           backgroundColor: "rgba(0,0,0,0.4)",
           boxShadow: "0 0 20px rgba(0,0,0,0.3)",
+          zIndex: 999
         }}
       >
         <span style={{ color: "blue" }}>{data ? data.score2 : score.blue}</span>
@@ -78,28 +81,3 @@ export default function Game() {
   );
 }
 
-function useVisualViewport() {
-  const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight });
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.visualViewport) {
-        setSize({
-          width: window.visualViewport.width,
-          height: window.visualViewport.height,
-        });
-      }
-    };
-
-    window.visualViewport?.addEventListener("resize", handleResize);
-    // iOS landscape launch nudge
-    const timer = setTimeout(handleResize, 500); 
-
-    return () => {
-      window.visualViewport?.removeEventListener("resize", handleResize);
-      clearTimeout(timer);
-    };
-  }, []);
-
-  return size;
-}
