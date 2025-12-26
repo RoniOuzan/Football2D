@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'logo192.png', 'logo512.png'], 
+      includeAssets: ['favicon.ico', 'logo.png', 'icon.png'], 
       devOptions: {
         enabled: true // This helps debug why it's not loading in dev mode
       },
@@ -21,8 +21,7 @@ export default defineConfig({
         orientation: "landscape",
         background_color: "#0000FF", // match your game background
         icons: [
-          { src: "logo192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-          { src: "logo512.png", sizes: "512x512", type: "image/png", purpose: "maskable" }
+          { src: "logo.png", sizes: "1024x1024", type: "image/png", purpose: "any" },
         ]
       }
     })

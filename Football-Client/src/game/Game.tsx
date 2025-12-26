@@ -50,6 +50,66 @@ export default function Game() {
     input.current.setClick(world);
   }
 
+  if (!data) {
+    return (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "radial-gradient(circle at center, #1b1b1b, #000)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "white",
+          fontFamily: "system-ui, sans-serif",
+          zIndex: 9999,
+        }}
+      >
+        <div
+          style={{
+            fontSize: "42px",
+            fontWeight: 800,
+            marginBottom: "16px",
+            letterSpacing: "1px",
+          }}
+        >
+          ⚠ No Connection
+        </div>
+
+        <div
+          style={{
+            fontSize: "18px",
+            opacity: 0.75,
+            marginBottom: "30px",
+          }}
+        >
+          Trying to reconnect to the server…
+        </div>
+
+        {/* Spinner */}
+        <div
+          style={{
+            width: "48px",
+            height: "48px",
+            borderRadius: "50%",
+            border: "4px solid rgba(255,255,255,0.2)",
+            borderTopColor: "#fff",
+            animation: "spin 0.9s ease infinite",
+          }}
+        />
+
+        <style>
+          {`
+            @keyframes spin {
+              to { transform: rotate(360deg); }
+            }
+          `}
+        </style>
+      </div>
+    );
+  }
+
   return (
     <div
       style={{

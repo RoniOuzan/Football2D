@@ -1,9 +1,12 @@
     package com.football.game.strategy;
 
+    import com.football.GameManager;
     import com.football.util.math.geometry.Rotation2d;
     import com.football.util.math.geometry.Translation2d;
 
     public class CameraManager {
+        private static final double MAX_LINEAR_VELOCITY = 8;
+
         private transient final TeamStrategy teamStrategy;
 
         private CameraPose position;
@@ -12,11 +15,14 @@
         protected CameraManager(TeamStrategy teamStrategy) {
             this.teamStrategy = teamStrategy;
             this.positionType = CameraPositionType.BROADCAST;
+
+            this.position = new CameraPose();
             this.update();
         }
 
         public void update() {
-            this.position = this.positionType.getCameraPose(this.teamStrategy);
+            CameraPose targetPose = this.positionType.getCameraPose(this.teamStrategy);
+            this.position = this.position.interpolate(targetPose, MAX_LINEAR_VELOCITY * GameManager.PERIOD);
         }
 
         public CameraPose getPosition() {

@@ -52,7 +52,6 @@ function App() {
             ? "translate(-50%, -50%) rotate(90deg)"
             : "translate(-50%, -50%)",
           transformOrigin: "center",
-          background: "blue",
         }}
       >
         <Game />
