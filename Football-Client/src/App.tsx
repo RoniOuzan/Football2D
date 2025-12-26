@@ -31,6 +31,14 @@ function App() {
     isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   }, []);
 
+  useEffect(() => {
+    const loader = document.getElementById("initial-loader");
+    if (!loader) return;
+
+    loader.classList.add("fade");
+    setTimeout(() => loader.remove(), 300);
+  }, []);
+
   return (
     <div
       style={{
