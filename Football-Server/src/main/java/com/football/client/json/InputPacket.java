@@ -1,6 +1,7 @@
 package com.football.client.json;
 
 import com.football.client.Client;
+import com.football.util.math.geometry.Translation2d;
 import lombok.AllArgsConstructor;
 import lombok.ToString;
 
@@ -17,15 +18,8 @@ public class InputPacket implements DataPacket {
     public static class DevicePacket {
         public String type; // "keyboard" or "controller"
         public Set<String> buttons;
-        public Axes axes;
-
-        @AllArgsConstructor
-        @ToString
-        public static class Axes {
-            public double leftX, leftY;
-            public double rightX, rightY;
-            public double LT, RT;
-        }
+        public double[] axes;
+        public Translation2d click;
     }
 
     @Override

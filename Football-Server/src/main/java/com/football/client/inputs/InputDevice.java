@@ -2,6 +2,7 @@ package com.football.client.inputs;
 
 import com.football.client.json.InputPacket;
 import com.football.client.keybinds.Keybind;
+import com.football.game.players.Goalkeeper;
 import com.football.game.strategy.TeamStrategy;
 import com.football.game.players.Player;
 import lombok.ToString;

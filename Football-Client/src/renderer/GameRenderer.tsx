@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import { drawPitch, drawLineFlat, drawCircleWorld, drawRectWorld, drawSphere, drawCylinder, fillPoly, strokePoly3d } from "./RendererUtil";
 import { drawStadium } from "./StadiumRenderer";
 import type { JsonData, Translation3d, Translation2d, Camera, Player, Team } from "../types";
@@ -18,7 +18,11 @@ export function radians(a: number) {
   return a * (Math.PI / 180);
 }
 
-const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
+export interface GameRenderer3DHandle {
+  getCanvas: () => HTMLCanvasElement | null;
+}
+
+const GameRenderer3D = forwardRef<GameRenderer3DHandle, GameRendererProps>(({ data }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [camera, setCamera] = useState<Camera>({
     translation: { x: 0, y: 0, z: 0 },
@@ -26,6 +30,10 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
     pitch: { value: 0, cos: 1, sin: 0 },
     fov: { value: 90, cos: 1, sin: 0 },
   });
+
+  useImperativeHandle(ref, () => ({
+    getCanvas: () => canvasRef.current
+  }));
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -188,19 +196,19 @@ const GameRenderer3D: React.FC<GameRendererProps> = ({ data }) => {
   }, [data]);
 
   return (
-  <canvas 
-    ref={canvasRef} 
-    style={{ 
-      width: "100%", 
-      height: "100%",
-      backgroundColor: "#00a6ffff",
-      position: "absolute",
-      top: 0,
-      left: 0
-    }} 
-  />
-);
-};
+    <canvas 
+      ref={canvasRef} 
+      style={{ 
+        width: "100%", 
+        height: "100%",
+        backgroundColor: "#00a6ffff",
+        position: "absolute",
+        top: 0,
+        left: 0
+      }} 
+    />
+  );
+});
 
 // =====================
 // DRAW HELPERS (SAFE)

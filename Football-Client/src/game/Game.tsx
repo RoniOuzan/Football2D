@@ -1,10 +1,11 @@
 import { useRef, useEffect, useState } from "react";
 import Client from "../Client";
 import InputController from "../InputController";
-import type { JsonData } from "../types";
-import GameRenderer3D from "../renderer/GameRenderer";
+import { getClientsTeam, type JsonData } from "../types";
+import GameRenderer3D, { type GameRenderer3DHandle } from "../renderer/GameRenderer";
 import MobileControls from "./MobileControls";
 import { isMobile } from "../App";
+import { screenToWorld } from "../renderer/CameraUtil";
 
 export const FPS = 30;
 
@@ -14,6 +15,7 @@ export default function Game() {
 
   const client = useRef<Client | null>(null);
   const input = useRef<InputController | null>(null);
+  const rendererRef = useRef<GameRenderer3DHandle>(null);
 
   useEffect(() => {
     if (client.current) return;
@@ -33,21 +35,54 @@ export default function Game() {
     };
   }, []);
 
+  function handleTap(e: React.MouseEvent, pressed: boolean) {
+    if (!data || !rendererRef.current || !input.current) return;
+
+    const canvas = rendererRef.current.getCanvas();
+    if (!canvas) return;
+
+    if (!pressed) {
+      input.current.setClick(null);
+      return;
+    }
+    const camera = getClientsTeam(data).teamStrategy.cameraManager.position;
+    const world = screenToWorld(canvas, {x: e.clientX, y: e.clientY}, camera);
+    input.current.setClick(world);
+  }
+
   return (
-    <div style={{ 
-      margin: "0",
-      padding: "0",
-      width: "100%",
-      height: "100%",
-      position: "fixed", 
-      overflow: "hidden",
-      overscrollBehavior: "none", 
-    }}>
-      {isMobile && <MobileControls
-        onMove={(x, y) => input.current?.setMobileJoystick(x, y)}
-        onStop={() => input.current?.setMobileJoystick(0, 0)}
-        onButtonChange={(b, p) => input.current?.setMobileButton(b, p)}
-      />}
+    <div
+      style={{
+        margin: "0",
+        padding: "0",
+        width: "100%",
+        height: "100%",
+        position: "fixed",
+        overflow: "hidden",
+        overscrollBehavior: "none",
+      }}
+    >
+      {isMobile && (
+        <MobileControls
+          onMove={(x, y) => input.current?.setJoystick(x, y)}
+          onStop={() => input.current?.setJoystick(0, 0)}
+          onButtonChange={(b, p) => input.current?.setMobileButton(b, p)}
+        />
+      )}
+
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          zIndex: 998, // below controls
+        }}
+        onPointerDown={(e) => handleTap(e, true)}
+        onPointerUp={(e) => handleTap(e, false)}
+        onPointerLeave={(e) => handleTap(e, false)}
+      />
 
       {/* Score overlay on the field */}
       <div
@@ -67,7 +102,7 @@ export default function Game() {
           fontWeight: "bold",
           backgroundColor: "rgba(0,0,0,0.4)",
           boxShadow: "0 0 20px rgba(0,0,0,0.3)",
-          zIndex: 999
+          zIndex: 997,
         }}
       >
         <span style={{ color: "blue" }}>{data ? data.score2 : score.blue}</span>
@@ -76,8 +111,7 @@ export default function Game() {
       </div>
 
       {/* Render the 3D pitch component full screen */}
-      {data && <GameRenderer3D data={data} />}
+      {data && <GameRenderer3D ref={rendererRef} data={data} />}
     </div>
   );
 }
-

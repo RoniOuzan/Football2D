@@ -1,29 +1,21 @@
 import { isMobile } from "./App";
 import Client from "./Client";
 import { FPS } from "./game/Game";
+import type { Translation2d } from "./types";
 
 export interface DeviceInput {
   type: "keyboard" | "controller" | "mobile";
   buttons: string[];
-  axes?: Axes;
-}
-
-type MobileJoystick = { x: number; y: number };
-
-interface Axes {
-  leftX: number;
-  leftY: number;
-  rightX: number;
-  rightY: number;
-  LT: number;
-  RT: number;
+  axes: number[];
+  click?: Translation2d | null;
 }
 
 export default class InputController {
   private kbKeys = new Set<string>();
   private client: Client;
-  private mobileAxes: MobileJoystick = { x: 0, y: 0 };
+  private axes: number[] = [0, 0];
   private mobileButtons = new Set<string>();
+  private click: Translation2d | null = null;
 
   constructor(client: Client) {
     this.client = client;
@@ -39,11 +31,19 @@ export default class InputController {
     setInterval(() => this.sendAllInputs(), 1000 / FPS);
   }
 
-  setMobileJoystick(x: number, y: number) {
-    this.mobileAxes = { x, y };
+  public setJoystick(x: number, y: number) {
+    this.axes = [x, y];
+  }
+  
+  public setClick(click: Translation2d | null) {
+    this.click = click;
   }
 
-  setMobileButton(button: string, pressed: boolean) {
+  public getAxes() {
+    return this.axes;
+  }
+
+  public setMobileButton(button: string, pressed: boolean) {
     if (pressed) 
       this.mobileButtons.add(button);
     else 
@@ -57,19 +57,15 @@ export default class InputController {
       devices.push({
         type: "mobile",
         buttons: Array.from(this.mobileButtons),
-        axes: {
-          leftX: this.mobileAxes.x,
-          leftY: this.mobileAxes.y,
-          rightX: 0,
-          rightY: 0,
-          LT: 0,
-          RT: 0,
-        },
+        axes: this.axes,
+        click: this.click
       });
     } else {
       devices.push({
         type: "keyboard",
         buttons: Array.from(this.kbKeys),
+        axes: this.axes,
+        click: this.click
       });
     }
 
@@ -90,14 +86,7 @@ export default class InputController {
 
   private mapController(gp: Gamepad): DeviceInput {
     const inputs = new Set<string>();
-    const axes: Axes = {
-      leftX: 0,
-      leftY: 0,
-      rightX: 0,
-      rightY: 0,
-      LT: 0,
-      RT: 0,
-    };
+    const axes: number[] = [0, 0, 0, 0, 0, 0];
 
     const name = gp.id.toLowerCase();
     const isPS =
@@ -143,8 +132,8 @@ export default class InputController {
     };
 
     gp.buttons.forEach((b, i) => {
-      if (i === 6) axes.LT = b.value;
-      else if (i === 7) axes.RT = b.value;
+      if (i === 6) axes[4] = b.value;
+      else if (i === 7) axes[5] = b.value;
 
       if (b.pressed) {
         const button = isPS ? MAP_PS[i] : MAP_X[i];
@@ -152,10 +141,10 @@ export default class InputController {
       }
     });
 
-    axes.leftX = gp.axes[0] || 0;
-    axes.leftY = gp.axes[1] || 0;
-    axes.rightX = gp.axes[2] || 0;
-    axes.rightY = gp.axes[3] || 0;
+    axes[0] = gp.axes[0] || 0;
+    axes[1] = gp.axes[1] || 0;
+    axes[2] = gp.axes[2] || 0;
+    axes[3] = gp.axes[3] || 0;
 
     return { type: "controller", buttons: Array.from(inputs), axes };
   }

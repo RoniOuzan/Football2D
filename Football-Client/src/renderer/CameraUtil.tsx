@@ -1,6 +1,7 @@
+import { isMobile } from "../App";
 import type { Translation3d, Translation2d, Camera } from "../types";
 
-const ZOOM = 1;
+const zoom = () => isMobile ? 1.2 : 1;
 const NEAR = 0.05;
 
 type CamPoint = { x: number; y: number; z: number, fov: number };
@@ -38,8 +39,8 @@ export function cameraToScreen(canvas: HTMLCanvasElement, p: CamPoint): Translat
   const focal = 1 / Math.tan(p.fov / 2);
   const aspect = canvas.width / canvas.height;
 
-  const x = (((p.x / p.y) * focal) / aspect) * ZOOM;
-  const y = (p.z / p.y) * focal * ZOOM;
+  const x = (((p.x / p.y) * focal) / aspect) * zoom();
+  const y = (p.z / p.y) * focal * zoom();
 
   return {
     x: canvas.width / 2 + x * (canvas.width / 2),
@@ -98,3 +99,59 @@ export function isOnScreen(canvas: HTMLCanvasElement, camera: Camera, pos: Trans
   const margin = canvas.width * 0.05;
   return screen.x >= -margin && screen.x <= canvas.width + margin && screen.y >= -margin && screen.y <= canvas.height + margin;
 }
+
+export function screenToWorld(
+  canvas: HTMLCanvasElement,
+  screen: Translation2d,
+  camera: Camera,
+  zWorld: number = 0 // world Z-coordinate input
+): Translation2d {
+  const focal = 1 / Math.tan(camera.fov.value / 2);
+  const aspect = canvas.width / canvas.height;
+
+  // 1. Normalize screen coordinates to Normalized Device Coordinates (NDC)
+  // Range: -1 to 1
+  const normX = (screen.x - canvas.width / 2) / (canvas.width / 2);
+  const normY = (canvas.height / 2 - screen.y) / (canvas.height / 2);
+
+  // 2. Convert NDC to Camera Space direction vector
+  // We use y=1 as the forward direction (matching your worldToCamera logic)
+  const camDirX = (normX * aspect) / (focal * zoom());
+  const camDirY = 1; 
+  const camDirZ = normY / (focal * zoom());
+
+  // 3. Reverse Pitch (around X axis)
+  const cp = Math.cos(camera.pitch.value); // Use positive pitch to reverse
+  const sp = Math.sin(camera.pitch.value);
+  
+  const yPitch = camDirY * cp - camDirZ * sp;
+  const zPitch = camDirY * sp + camDirZ * cp;
+  const xPitch = camDirX;
+
+  // 4. Reverse Yaw (around Z axis)
+  const cy = Math.cos(camera.yaw.value); // Use positive yaw to reverse
+  const sy = Math.sin(camera.yaw.value);
+
+  const worldDirX = xPitch * cy - yPitch * sy;
+  const worldDirY = xPitch * sy + yPitch * cy;
+  const worldDirZ = zPitch;
+
+  // 5. Intersection with the Z plane
+  // Equation: camera.translation.z + scale * worldDirZ = targetWorldZ
+  const dz = zWorld - camera.translation.z;
+  
+  // Prevent division by zero if the ray is parallel to the ground
+  if (Math.abs(worldDirZ) < 1e-6) {
+      return { x: camera.translation.x, y: camera.translation.y };
+  }
+
+  const scale = dz / worldDirZ;
+
+  return {
+    x: camera.translation.x + worldDirX * scale,
+    y: camera.translation.y + worldDirY * scale,
+  };
+}
+
+
+
