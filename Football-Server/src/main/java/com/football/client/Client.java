@@ -4,6 +4,7 @@ import com.football.PacketHandler;
 import com.football.client.inputs.*;
 import com.football.client.inputs.devices.InputControllerDevice;
 import com.football.client.inputs.devices.InputKeyboardDevice;
+import com.football.client.inputs.devices.InputMobileDevice;
 import com.football.client.json.InputPacket;
 import org.eclipse.jetty.websocket.api.Session;
 
@@ -16,7 +17,7 @@ public class Client {
     private transient final List<InputDevice> inputs;
     private transient final AllInputDevices allInputDevices;
 
-    private transient final PacketHandler packetHandler;
+//    private transient final PacketHandler packetHandler;
 
     public Client(Session session) {
         this.session = session;
@@ -24,7 +25,7 @@ public class Client {
         this.inputs = new ArrayList<>();
         this.allInputDevices = new AllInputDevices(this.inputs);
 
-        this.packetHandler = new PacketHandler();
+//        this.packetHandler = new PacketHandler();
     }
 
     public List<InputDevice> getInputs() {
@@ -58,20 +59,31 @@ public class Client {
             InputPacket.DevicePacket device = packet.devices.get(i);
 
             InputDevice input = inputs.get(i);
-            if (device.type.equals("keyboard")) {
-                if (input instanceof InputKeyboardDevice) {
-                    input.updateInput(device);
-                } else {
-                    input = new InputKeyboardDevice(device);
+            switch (device.type) {
+                case "keyboard" -> {
+                    if (input instanceof InputKeyboardDevice) {
+                        input.updateInput(device);
+                    } else {
+                        input = new InputKeyboardDevice(device);
+                    }
                 }
-            } else if (device.type.equals("controller")) {
-                if (input instanceof InputControllerDevice) {
-                    input.updateInput(device);
-                } else {
-                    input = new InputControllerDevice(device);
+                case "controller" -> {
+                    if (input instanceof InputControllerDevice) {
+                        input.updateInput(device);
+                    } else {
+                        input = new InputControllerDevice(device);
+                    }
                 }
-            } else {
-                continue;
+                case "mobile" -> {
+                    if (input instanceof InputMobileDevice) {
+                        input.updateInput(device);
+                    } else {
+                        input = new InputMobileDevice(device);
+                    }
+                }
+                default -> {
+                    continue;
+                }
             }
 
             this.inputs.set(i, input);

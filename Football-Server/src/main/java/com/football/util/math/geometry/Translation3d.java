@@ -144,6 +144,14 @@ public class Translation3d implements Interpolatable<Translation3d> {
         return this.div(this.getNorm());
     }
 
+    public Translation3d limitNorm(double maximum) {
+        double norm = this.getNorm();
+        if (norm > maximum) {
+            return this.times(maximum / norm);
+        }
+        return this;
+    }
+
     /**
      * Returns the sum of two translations in 3D space.
      *

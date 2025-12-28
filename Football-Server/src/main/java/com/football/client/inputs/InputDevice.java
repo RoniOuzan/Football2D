@@ -2,6 +2,7 @@ package com.football.client.inputs;
 
 import com.football.client.json.InputPacket;
 import com.football.client.keybinds.Keybind;
+import com.football.game.players.Goalkeeper;
 import com.football.game.strategy.TeamStrategy;
 import com.football.game.players.Player;
 import lombok.ToString;
@@ -30,19 +31,31 @@ public abstract class InputDevice implements InputHandler {
         return this.keybinds.get(keybind);
     }
 
+    private boolean isKeybindDown(Keybind keybind) {
+        String key = getKey(keybind);
+        if (key != null && key.equals("")) return true;
+        return this.buttons.contains(key);
+    }
+
+    private boolean isLastKeybindDown(Keybind keybind) {
+        String key = getKey(keybind);
+        if (key != null && key.equals("")) return true;
+        return this.lastButtons.contains(key);
+    }
+
     @Override
     public boolean isPressed(Keybind keybind) {
-        return this.buttons.contains(getKey(keybind)) && !this.lastButtons.contains(getKey(keybind));
+        return this.isKeybindDown(keybind) && !this.isLastKeybindDown(keybind);
     }
 
     @Override
     public boolean isHolding(Keybind keybind) {
-        return this.buttons.contains(getKey(keybind));
+        return this.isKeybindDown(keybind);
     }
 
     @Override
     public boolean isReleased(Keybind keybind) {
-        return !this.buttons.contains(getKey(keybind)) && this.lastButtons.contains(getKey(keybind));
+        return !this.isKeybindDown(keybind) && this.isLastKeybindDown(keybind);
     }
 
     public double getLastHoldTime(Keybind keybind) {

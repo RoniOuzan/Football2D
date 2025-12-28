@@ -3,6 +3,7 @@ package com.football.game.strategy;
 import com.football.client.inputs.InputHandler;
 import com.football.game.Ball;
 import com.football.game.Game;
+import com.football.game.players.Goalkeeper;
 import com.football.game.team.Team;
 import com.football.game.players.Player;
 import com.football.util.math.geometry.Rotation2d;
@@ -88,13 +89,16 @@ public class TeamStrategy {
         return this.playersMovementHandle.getChosenPlayer();
     }
 
+    public Player getDefaultPlayerToSwitchTo() {
+        return this.team.getClosestPlayerToBall(p -> !p.equals(this.getChosenPlayer()) && !(p instanceof Goalkeeper));
+    }
+
     public CameraManager getCameraManager() {
         return this.cameraManager;
     }
 
+
     public Translation2d getRequestedVelocity() {
-        Rotation2d orientation = this.cameraManager.getPosition().getTranslation().toTranslation2d()
-                .minus(this.getChosenPlayer().getPosition()).getAngle().plus(Rotation2d.kCCW_Pi_2);
-        return getInput().getRequestedVelocity().rotateBy(orientation);
+        return this.cameraManager.getOrientedTranslation(this.getInput().getRequestedVelocity());
     }
 }

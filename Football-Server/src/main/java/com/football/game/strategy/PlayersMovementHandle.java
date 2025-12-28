@@ -67,9 +67,11 @@ public class PlayersMovementHandle {
             return this.teamStrategy.ball.getCarrier();
         }
 
-        if (this.chosenPlayer == null || this.chosenPlayer instanceof Goalkeeper ||
-                this.teamStrategy.team.getClient().getInput(this.teamStrategy.inputSlot).isPressed(Keybind.SWITCH_PLAYER)) {
-            return this.teamStrategy.team.getClosestPlayerToBall(p -> !p.equals(this.chosenPlayer) && !(p instanceof Goalkeeper));
+        Player switchPlayer = this.teamStrategy.getInput().getPlayerToSwitchTo(this.teamStrategy);
+        if (switchPlayer != null) {
+            return switchPlayer;
+        }  else if (this.chosenPlayer == null || this.chosenPlayer instanceof Goalkeeper) {
+            return this.teamStrategy.getDefaultPlayerToSwitchTo();
         }
 
         return this.chosenPlayer;

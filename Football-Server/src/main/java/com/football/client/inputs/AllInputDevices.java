@@ -8,6 +8,7 @@ import com.football.util.math.geometry.Translation2d;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 public class AllInputDevices implements InputHandler {
 
@@ -23,6 +24,15 @@ public class AllInputDevices implements InputHandler {
                 .map(InputHandler::getRequestedVelocity)
                 .max(Comparator.comparingDouble(Translation2d::getNorm))
                 .orElse(new Translation2d());
+    }
+
+    @Override
+    public Player getPlayerToSwitchTo(TeamStrategy teamStrategy) {
+        return this.devices.stream()
+                .map(d -> d.getPlayerToSwitchTo(teamStrategy))
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
     }
 
     @Override
