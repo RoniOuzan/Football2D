@@ -1,113 +1,37 @@
-import { useRef, useEffect, useState } from "react";
-import Client from "../Client";
-import InputController from "../InputController";
-import { getClientsTeam, type JsonData } from "../types";
-import GameRenderer3D, { type GameRenderer3DHandle } from "../renderer/GameRenderer";
+import { useRef, useState } from "react";
+import Client from "../client/Client";
+import GameRenderer3D, {
+  type GameRenderer3DHandle,
+} from "../renderer/GameRenderer";
 import MobileControls from "./MobileControls";
 import { isMobile } from "../App";
 import { screenToWorld } from "../renderer/CameraUtil";
+import { getClientsTeam, type GameData } from "../client/jsons/gameTypes";
 
 export const FPS = 30;
 
-export default function Game() {
-  const [score] = useState({ blue: 0, red: 0 });
-  const [data, setData] = useState<JsonData | null>(null);
+interface GameProps {
+  client: Client;
+  data: GameData;
+}
 
-  const client = useRef<Client | null>(null);
-  const input = useRef<InputController | null>(null);
+export default function FixedJoystick({ client, data }: GameProps) {
+  const [score] = useState({ blue: 0, red: 0 });
   const rendererRef = useRef<GameRenderer3DHandle>(null);
 
-  useEffect(() => {
-    if (client.current) return;
-
-    client.current = new Client((gameState) => {
-      setData(gameState);
-    });
-
-    setTimeout(() => {
-      client.current?.connect();
-    }, 0);
-
-    input.current = new InputController(client.current);
-
-    return () => {
-      // optional cleanup later
-    };
-  }, []);
-
   function handleTap(e: React.MouseEvent, pressed: boolean) {
-    if (!data || !rendererRef.current || !input.current) return;
+    if (!data || !rendererRef.current || !client.getInput()) return;
 
     const canvas = rendererRef.current.getCanvas();
     if (!canvas) return;
 
     if (!pressed) {
-      input.current.setClick(null);
+      client.getInput().setClick(null);
       return;
     }
     const camera = getClientsTeam(data).teamStrategy.cameraManager.position;
-    const world = screenToWorld(canvas, {x: e.clientX, y: e.clientY}, camera);
-    input.current.setClick(world);
-  }
-
-  if (!data) {
-    return (
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          background: "radial-gradient(circle at center, #1b1b1b, #000)",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "white",
-          fontFamily: "system-ui, sans-serif",
-          zIndex: 9999,
-        }}
-      >
-        <div
-          style={{
-            fontSize: "42px",
-            fontWeight: 800,
-            marginBottom: "16px",
-            letterSpacing: "1px",
-          }}
-        >
-          ⚠ No Connection
-        </div>
-
-        <div
-          style={{
-            fontSize: "18px",
-            opacity: 0.75,
-            marginBottom: "30px",
-          }}
-        >
-          Trying to reconnect to the server…
-        </div>
-
-        {/* Spinner */}
-        <div
-          style={{
-            width: "48px",
-            height: "48px",
-            borderRadius: "50%",
-            border: "4px solid rgba(255,255,255,0.2)",
-            borderTopColor: "#fff",
-            animation: "spin 0.9s ease infinite",
-          }}
-        />
-
-        <style>
-          {`
-            @keyframes spin {
-              to { transform: rotate(360deg); }
-            }
-          `}
-        </style>
-      </div>
-    );
+    const world = screenToWorld(canvas, { x: e.clientX, y: e.clientY }, camera);
+    client.getInput().setClick(world);
   }
 
   return (
@@ -124,9 +48,9 @@ export default function Game() {
     >
       {isMobile && (
         <MobileControls
-          onMove={(x, y) => input.current?.setJoystick(x, y)}
-          onStop={() => input.current?.setJoystick(0, 0)}
-          onButtonChange={(b, p) => input.current?.setMobileButton(b, p)}
+          onMove={(x, y) => client.getInput().setJoystick(x, y)}
+          onStop={() => client.getInput().setJoystick(0, 0)}
+          onButtonChange={(b, p) => client.getInput().setMobileButton(b, p)}
         />
       )}
 

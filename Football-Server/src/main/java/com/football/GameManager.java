@@ -1,9 +1,13 @@
 package com.football;
 
 import com.football.client.Client;
+import com.football.client.Message;
 import com.football.game.Game;
+import com.football.game.Joinable;
+import com.football.game.NullGame;
 import com.football.game.WaitingGame;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +26,7 @@ public class GameManager {
     public static final double FPS = 30;
     public static final double PERIOD = 1 / FPS;
 
-    private final Map<Client, Game> clients = new ConcurrentHashMap<>();
+    private transient final Map<Client, Joinable> clients = new ConcurrentHashMap<>();
 
     private final List<Game> games = new ArrayList<>();
     private final List<WaitingGame> waitingGames = new ArrayList<>();
@@ -31,7 +35,7 @@ public class GameManager {
     }
 
     public void addClient(Client client) {
-        this.clients.put(client, null);
+        this.clients.put(client, new NullGame());
     }
 
     public void removeClient(Client client) {
@@ -54,16 +58,21 @@ public class GameManager {
 
         this.games.forEach(Game::update);
 
-        this.clients.keySet().forEach(c -> c.sendMessage(getJson(c)));
+        for (Client client : this.clients.keySet()) {
+            try {
+                client.sendMessage(getJson(client));
+            } catch (IOException e) {
+                e.printStackTrace();
+                GameServer.removeClient(client.getSession());
+            }
+        }
     }
 
-    public String getJson(Client client) {
-        if (!this.clients.containsKey(client)) return "{}";
-
-        Game game = this.clients.get(client);
-        if (game == null) {
-            return "{}"; // ...
+    public Message getJson(Client client) {
+        Joinable game = this.clients.get(client);
+        if (game instanceof Game g) {
+            return new Message("game", g.toJson(client));
         }
-        return game.toJson(client);
+        return new Message("lobby", this);
     }
 }

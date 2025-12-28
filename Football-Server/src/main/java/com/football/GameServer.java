@@ -44,8 +44,7 @@ public class GameServer {
                 + " status=" + status
                 + " reason=" + reason);
 
-        clients.remove(session);
-        GameManager.getInstance().removeClient(getClient(session));
+        removeClient(session);
     }
 
     @OnWebSocketMessage
@@ -56,5 +55,10 @@ public class GameServer {
 
     private static Client getClient(Session session) {
         return clients.get(session);
+    }
+
+    public static void removeClient(Session session) {
+        GameManager.getInstance().removeClient(getClient(session));
+        clients.remove(session);
     }
 }

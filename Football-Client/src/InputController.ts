@@ -1,5 +1,5 @@
 import { isMobile } from "./App";
-import Client from "./Client";
+import Client from "./client/Client";
 import { FPS } from "./game/Game";
 import type { Translation2d } from "./types";
 
@@ -34,7 +34,7 @@ export default class InputController {
   public setJoystick(x: number, y: number) {
     this.axes = [x, y];
   }
-  
+
   public setClick(click: Translation2d | null) {
     this.click = click;
   }
@@ -44,10 +44,8 @@ export default class InputController {
   }
 
   public setMobileButton(button: string, pressed: boolean) {
-    if (pressed) 
-      this.mobileButtons.add(button);
-    else 
-      this.mobileButtons.delete(button);
+    if (pressed) this.mobileButtons.add(button);
+    else this.mobileButtons.delete(button);
   }
 
   private sendAllInputs() {
@@ -58,14 +56,14 @@ export default class InputController {
         type: "mobile",
         buttons: Array.from(this.mobileButtons),
         axes: this.axes,
-        click: this.click
+        click: this.click,
       });
     } else {
       devices.push({
         type: "keyboard",
         buttons: Array.from(this.kbKeys),
         axes: this.axes,
-        click: this.click
+        click: this.click,
       });
     }
 

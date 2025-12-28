@@ -4,13 +4,21 @@ import com.football.client.Client;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
-public class WaitingGame {
+public class WaitingGame implements Joinable {
+    private final UUID uuid;
     private final List<Client> clients;
 
     public WaitingGame(Client client) {
+        this.uuid = UUID.randomUUID();
+
         this.clients = new ArrayList<>();
         this.clients.add(client);
+    }
+
+    public UUID getUUID() {
+        return uuid;
     }
 
     public boolean isReadyForGame() {

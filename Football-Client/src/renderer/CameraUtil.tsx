@@ -1,5 +1,6 @@
 import { isMobile } from "../App";
-import type { Translation3d, Translation2d, Camera } from "../types";
+import type { Camera } from "../client/jsons/gameTypes";
+import type { Translation3d, Translation2d } from "../types";
 
 const zoom = () => isMobile ? 1.2 : 1;
 const NEAR = 0.05;

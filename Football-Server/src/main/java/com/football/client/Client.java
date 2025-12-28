@@ -7,7 +7,7 @@ import com.football.client.inputs.devices.InputControllerDevice;
 import com.football.client.inputs.devices.InputKeyboardDevice;
 import com.football.client.inputs.devices.InputMobileDevice;
 import com.football.client.json.InputPacket;
-import lombok.SneakyThrows;
+import com.football.util.json.JsonUtil;
 import org.eclipse.jetty.websocket.api.Session;
 
 import java.io.IOException;
@@ -35,12 +35,16 @@ public class Client {
         return this.inputs.get(slot);
     }
 
-    public void sendMessage(String message) {
-        try {
-            this.session.getRemote().sendString(message);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    public void sendMessage(Message message) throws IOException {
+        this.session.getRemote().sendString(JsonUtil.toJson(message));
+    }
+
+    public void sendMessage(String type, Object data) throws IOException {
+        sendMessage(new Message(type, data));
+    }
+
+    public Session getSession() {
+        return session;
     }
 
     public void updateInput(InputPacket packet) {

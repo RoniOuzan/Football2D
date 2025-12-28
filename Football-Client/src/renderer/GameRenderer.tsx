@@ -1,12 +1,29 @@
-import { useRef, useEffect, useState, forwardRef, useImperativeHandle } from "react";
-import { drawPitch, drawLineFlat, drawCircleWorld, drawRectWorld, drawSphere, drawCylinder, fillPoly, strokePoly3d } from "./RendererUtil";
+import {
+  useRef,
+  useEffect,
+  useState,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
+import {
+  drawPitch,
+  drawLineFlat,
+  drawCircleWorld,
+  drawRectWorld,
+  drawSphere,
+  drawCylinder,
+  fillPoly,
+  strokePoly3d,
+} from "./RendererUtil";
 import { drawStadium } from "./StadiumRenderer";
-import type { JsonData, Translation3d, Translation2d, Camera, Player, Team } from "../types";
-import { getClientsTeam, maxX, maxY, pitchWidth, pitchHeight } from "../types";
+import type { Translation3d, Translation2d } from "../types";
+import { maxX, maxY, pitchWidth, pitchHeight } from "../types";
 import { isPortrait } from "../App";
+import type { GameData, Camera, Player, Team } from "../client/jsons/gameTypes";
+import { getClientsTeam } from "../client/jsons/gameTypes";
 
 interface GameRendererProps {
-  data: JsonData;
+  data: GameData;
 }
 
 interface Draw {
@@ -22,193 +39,201 @@ export interface GameRenderer3DHandle {
   getCanvas: () => HTMLCanvasElement | null;
 }
 
-const GameRenderer3D = forwardRef<GameRenderer3DHandle, GameRendererProps>(({ data }, ref) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [camera, setCamera] = useState<Camera>({
-    translation: { x: 0, y: 0, z: 0 },
-    yaw: { value: 0, cos: 1, sin: 0 },
-    pitch: { value: 0, cos: 1, sin: 0 },
-    fov: { value: 90, cos: 1, sin: 0 },
-  });
+const GameRenderer3D = forwardRef<GameRenderer3DHandle, GameRendererProps>(
+  ({ data }, ref) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [camera, setCamera] = useState<Camera>({
+      translation: { x: 0, y: 0, z: 0 },
+      yaw: { value: 0, cos: 1, sin: 0 },
+      pitch: { value: 0, cos: 1, sin: 0 },
+      fov: { value: 90, cos: 1, sin: 0 },
+    });
 
-  useImperativeHandle(ref, () => ({
-    getCanvas: () => canvasRef.current
-  }));
+    useImperativeHandle(ref, () => ({
+      getCanvas: () => canvasRef.current,
+    }));
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
 
-    const handleResize = () => {
-      // Set physical pixels (crucial for Sharpness & Full Screen)
-      if (isPortrait) {
-        canvas.width = window.innerHeight;
-        canvas.height = window.innerWidth;
+      const handleResize = () => {
+        // Set physical pixels (crucial for Sharpness & Full Screen)
+        if (isPortrait) {
+          canvas.width = window.innerHeight;
+          canvas.height = window.innerWidth;
+        } else {
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+        }
+        render(); // Re-draw immediately on resize
+      };
 
-      } else {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-      }
-      render(); // Re-draw immediately on resize
-    };
+      const render = () => {
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
 
-    const render = () => {
+        const team = getClientsTeam(data);
+        setCamera(team.teamStrategy.cameraManager.position);
 
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
+        // const pitch = radians(-90);
+        // const yaw = radians(0);
+        // setCamera({
+        //   translation: { x: 0, y: 0, z: 150 },
+        //   yaw: { value: yaw, cos: Math.cos(yaw), sin: Math.sin(yaw) },
+        //   pitch: { value: pitch, cos: Math.cos(pitch), sin: Math.sin(pitch) },
+        // })
 
-      const team = getClientsTeam(data);
-      setCamera(team.teamStrategy.cameraManager.position);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // const pitch = radians(-90);
-      // const yaw = radians(0);
-      // setCamera({
-      //   translation: { x: 0, y: 0, z: 150 },
-      //   yaw: { value: yaw, cos: Math.cos(yaw), sin: Math.sin(yaw) },
-      //   pitch: { value: pitch, cos: Math.cos(pitch), sin: Math.sin(pitch) },
-      // })
+        drawStadium(ctx, canvas, camera);
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawPitch(ctx, canvas, camera);
+        drawLineFlat(
+          ctx,
+          canvas,
+          camera,
+          { x: 0, y: maxY },
+          { x: 0, y: -maxY },
+          "white",
+          0.25
+        );
 
-      drawStadium(ctx, canvas, camera);
+        drawCircleWorld(
+          ctx,
+          canvas,
+          camera,
+          { x: 0, y: 0 },
+          9.15,
+          "white",
+          0.25
+        );
+        drawCircleWorld(ctx, canvas, camera, { x: 0, y: 0 }, 0.25, "white", 0);
 
-      drawPitch(ctx, canvas, camera);
-      drawLineFlat(
-        ctx,
-        canvas,
-        camera,
-        { x: 0, y: maxY },
-        { x: 0, y: -maxY },
-        "white",
-        0.25
-      );
+        // Big Rect
+        drawRectWorld(ctx, canvas, 16.5, 40.3, camera, 0.25);
+        drawRectWorld(ctx, canvas, 16.5, 40.3, camera, 0.25, true);
 
-      drawCircleWorld(ctx, canvas, camera, { x: 0, y: 0 }, 9.15, "white", 0.25);
-      drawCircleWorld(ctx, canvas, camera, { x: 0, y: 0 }, 0.25, "white", 0);
+        // Small Rect
+        drawRectWorld(ctx, canvas, 5.5, 18.3, camera, 0.25);
+        drawRectWorld(ctx, canvas, 5.5, 18.3, camera, 0.25, true);
 
-      // Big Rect
-      drawRectWorld(ctx, canvas, 16.5, 40.3, camera, 0.25);
-      drawRectWorld(ctx, canvas, 16.5, 40.3, camera, 0.25, true);
+        // Penealy spot
+        drawCircleWorld(
+          ctx,
+          canvas,
+          camera,
+          { x: maxX - 11, y: 0 },
+          0.25,
+          "white",
+          0
+        );
+        drawCircleWorld(
+          ctx,
+          canvas,
+          camera,
+          { x: -(maxX - 11), y: 0 },
+          0.25,
+          "white",
+          0
+        );
 
-      // Small Rect
-      drawRectWorld(ctx, canvas, 5.5, 18.3, camera, 0.25);
-      drawRectWorld(ctx, canvas, 5.5, 18.3, camera, 0.25, true);
+        // Penelty Arc
+        drawCircleWorld(
+          ctx,
+          canvas,
+          camera,
+          { x: maxX - 11, y: 0 },
+          9.15,
+          "white",
+          0.25,
+          128,
+          232
+        );
+        drawCircleWorld(
+          ctx,
+          canvas,
+          camera,
+          { x: -maxX + 11, y: 0 },
+          9.15,
+          "white",
+          0.25,
+          -52,
+          52
+        );
 
-      // Penealy spot
-      drawCircleWorld(
-        ctx,
-        canvas,
-        camera,
-        { x: maxX - 11, y: 0 },
-        0.25,
-        "white",
-        0
-      );
-      drawCircleWorld(
-        ctx,
-        canvas,
-        camera,
-        { x: -(maxX - 11), y: 0 },
-        0.25,
-        "white",
-        0
-      );
+        const num = 1;
+        if (num != 1) drawHeatmap(ctx, canvas, getClientsTeam(data), camera);
 
-      // Penelty Arc
-      drawCircleWorld(
-        ctx,
-        canvas,
-        camera,
-        { x: maxX - 11, y: 0 },
-        9.15,
-        "white",
-        0.25,
-        128,
-        232
-      );
-      drawCircleWorld(
-        ctx,
-        canvas,
-        camera,
-        { x: -maxX + 11, y: 0 },
-        9.15,
-        "white",
-        0.25,
-        -52,
-        52
-      );
+        const draws: Draw[] = [];
 
-      const num = 1;
-      if (num != 1)
-        drawHeatmap(ctx, canvas, getClientsTeam(data), camera);
+        drawGoals3D(ctx, canvas, camera, draws);
 
-      const draws: Draw[] = [];
-
-      drawGoals3D(ctx, canvas, camera, draws);
-
-      draws.push({
-        pos: data.ball.position,
-        draw: () => drawBall(ctx, canvas, camera, data.ball.position, 0.2),
-      });
-
-      data.team1.players.forEach((p, i) =>
         draws.push({
-          pos: p.position,
-          draw: () =>
-            drawPlayer(
-              ctx,
-              canvas,
-              p,
-              i,
-              data.team1.teamStrategy.chosenPlayerIndex,
-              "red",
-              camera
-            ),
-        })
-      );
-      data.team2.players.forEach((p, i) =>
-        draws.push({
-          pos: p.position,
-          draw: () =>
-            drawPlayer(
-              ctx,
-              canvas,
-              p,
-              i,
-              data.team2.teamStrategy.chosenPlayerIndex,
-              "blue",
-              camera
-            ),
-        })
-      );
+          pos: data.ball.position,
+          draw: () => drawBall(ctx, canvas, camera, data.ball.position, 0.2),
+        });
 
-      draws.sort(
-        (a, b) =>
-          getDistanceToCamera(b.pos, camera) - getDistanceToCamera(a.pos, camera)
-      );
-      draws.forEach((d) => d.draw(ctx, canvas));
-    }
+        data.team1.players.forEach((p, i) =>
+          draws.push({
+            pos: p.position,
+            draw: () =>
+              drawPlayer(
+                ctx,
+                canvas,
+                p,
+                i,
+                data.team1.teamStrategy.chosenPlayerIndex,
+                "red",
+                camera
+              ),
+          })
+        );
+        data.team2.players.forEach((p, i) =>
+          draws.push({
+            pos: p.position,
+            draw: () =>
+              drawPlayer(
+                ctx,
+                canvas,
+                p,
+                i,
+                data.team2.teamStrategy.chosenPlayerIndex,
+                "blue",
+                camera
+              ),
+          })
+        );
 
-    handleResize();
+        draws.sort(
+          (a, b) =>
+            getDistanceToCamera(b.pos, camera) -
+            getDistanceToCamera(a.pos, camera)
+        );
+        draws.forEach((d) => d.draw(ctx, canvas));
+      };
 
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [data]);
+      handleResize();
 
-  return (
-    <canvas 
-      ref={canvasRef} 
-      style={{ 
-        width: "100%", 
-        height: "100%",
-        backgroundColor: "#00a6ffff",
-        position: "absolute",
-        top: 0,
-        left: 0
-      }} 
-    />
-  );
-});
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
+    }, [data]);
+
+    return (
+      <canvas
+        ref={canvasRef}
+        style={{
+          width: "100%",
+          height: "100%",
+          backgroundColor: "#00a6ffff",
+          position: "absolute",
+          top: 0,
+          left: 0,
+        }}
+      />
+    );
+  }
+);
 
 // =====================
 // DRAW HELPERS (SAFE)

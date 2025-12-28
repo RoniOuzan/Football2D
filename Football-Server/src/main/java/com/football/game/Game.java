@@ -8,8 +8,9 @@ import com.google.gson.JsonObject;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
-public class Game {
+public class Game implements Joinable {
 
     public enum State {
         PLAYING,
@@ -35,6 +36,8 @@ public class Game {
     public static final int TEAM_1 = 1;
     public static final int TEAM_2 = -1;
 
+    private final UUID uuid;
+
     private final Team team1;
     private final Team team2;
 
@@ -48,6 +51,8 @@ public class Game {
     private long startTime = -1;
 
     public Game(Client client1, int inputSlot1, Client client2, int inputSlot2) {
+        this.uuid = UUID.randomUUID();
+
         this.ball = new Ball(this);
 
         this.team1 = new Team(this, client1, true, inputSlot1);
@@ -62,6 +67,9 @@ public class Game {
         this.score2 = 0;
     }
 
+    public UUID getUUID() {
+        return this.uuid;
+    }
     public Ball getBall() {
         return this.ball;
     }
