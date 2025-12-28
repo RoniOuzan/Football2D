@@ -6,10 +6,7 @@ import com.football.game.strategy.TeamStrategy;
 import com.football.game.players.Player;
 import lombok.ToString;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @ToString
 public abstract class InputDevice implements InputHandler {
@@ -18,6 +15,8 @@ public abstract class InputDevice implements InputHandler {
 
     protected Set<String> buttons = new HashSet<>();
     private Set<String> lastButtons = new HashSet<>();
+
+    private final Map<Keybind, Set<Keybind>> kickTypes = new HashMap<>();
 
     private final Map<String, Long> pressTimestamps = new HashMap<>();
     private final Map<String, Double> holdDurations = new HashMap<>();
@@ -84,11 +83,23 @@ public abstract class InputDevice implements InputHandler {
             }
 
             if (this.isHolding(keybind)) {
+                Arrays.stream(Keybind.values()).filter(Keybind::isKickType).forEach(k -> {
+                    if (this.isHolding(k)) {
+                        if (!this.kickTypes.containsKey(keybind))
+                            this.kickTypes.put(keybind, new HashSet<>());
+
+                        this.kickTypes.get(keybind).add(k);
+                    }
+                });
+
                 keybind.holding(teamStrategy, player);
             }
 
             if (this.isReleased(keybind)) {
-                keybind.justReleased(teamStrategy, player, getLastHoldTime(keybind));
+                keybind.justReleased(teamStrategy, player, this.kickTypes.getOrDefault(keybind, new HashSet<>()), getLastHoldTime(keybind));
+
+                if (this.kickTypes.containsKey(keybind))
+                    this.kickTypes.get(keybind).clear();
             }
         }
     }

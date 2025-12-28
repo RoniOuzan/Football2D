@@ -197,6 +197,10 @@ public class Rotation2d implements Interpolatable<Rotation2d> {
                 cos * other.cos - sin * other.sin, cos * other.sin + sin * other.cos);
     }
 
+    public Translation2d toTranslation() {
+        return new Translation2d(this.cos, this.sin);
+    }
+
     /**
      * Returns the radian value of the Rotation2d.
      *

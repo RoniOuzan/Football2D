@@ -88,7 +88,7 @@ public class ScoreCalculator {
     }
 
     private double calculateBallScore(Translation2d pose, double score) {
-        return score - BALL_WEIGHT * pose.getDistance(this.teamStrategy.ball.getPosition());
+        return score - BALL_WEIGHT * pose.getDistance(this.teamStrategy.ball.getPosition2d());
     }
 
     /**
@@ -113,7 +113,7 @@ public class ScoreCalculator {
 
     private double getGoalThreatScore(Translation2d target) {
         Translation2d goal = new Translation2d(-Game.MAX_X * this.teamStrategy.sideMultiplier, 0);
-        Translation2d ballPos = this.teamStrategy.ball.getPosition();
+        Translation2d ballPos = this.teamStrategy.ball.getPosition2d();
 
         // If ball far from goal → no need to defend deeply
         double ballDistance = ballPos.getDistance(goal);
@@ -167,8 +167,8 @@ public class ScoreCalculator {
                 score += 20;
             }
 
-            Translation2d delta = new Translation2d(goalX, 0).minus(this.teamStrategy.ball.getPosition());
-            Translation2d blockPosition = this.teamStrategy.ball.getPosition().plus(delta.times(0.5));
+            Translation2d delta = new Translation2d(goalX, 0).minus(this.teamStrategy.ball.getPosition2d());
+            Translation2d blockPosition = this.teamStrategy.ball.getPosition2d().plus(delta.times(0.5));
 
             double distance = target.getDistance(blockPosition);
             if (distance > 20) {

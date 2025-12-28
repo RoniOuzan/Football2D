@@ -1,8 +1,10 @@
 package com.football.game;
 
 import com.football.client.Client;
+import com.football.game.team.Team;
 import com.football.util.json.JsonUtil;
 import com.football.util.math.geometry.Translation2d;
+import com.google.gson.JsonObject;
 
 import java.util.Arrays;
 import java.util.List;
@@ -21,6 +23,7 @@ public class Game {
 
     public static final double GOAL_WIDTH = 7.3;
     public static final double POST_RADIUS = 0.35;
+    public static final double CROSSBAR_HEIGHT = 2.44;
     public static final List<Translation2d> POSTS = Arrays.asList(
             new Translation2d(-Game.MAX_X,  Game.GOAL_WIDTH / 2),
             new Translation2d(-Game.MAX_X, -Game.GOAL_WIDTH / 2),
@@ -124,7 +127,15 @@ public class Game {
         return (System.currentTimeMillis() - this.stateChanged) / 1000.0;
     }
 
-    public String toJson() {
-        return JsonUtil.toJson(this);
+    public String toJson(Client client) {
+        JsonObject json = JsonUtil.toJsonObject(this);
+
+        int clientNumber;
+        if (this.team1.getClient().equals(client)) clientNumber = 1;
+        else if (this.team2.getClient().equals(client)) clientNumber = 2;
+        else clientNumber = 0;
+        json.addProperty("client", clientNumber);
+
+        return JsonUtil.toJson(json);
     }
 }

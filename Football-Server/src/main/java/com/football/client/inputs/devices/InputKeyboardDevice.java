@@ -6,17 +6,27 @@ import com.football.client.keybinds.Keybind;
 import com.football.util.math.geometry.Translation2d;
 import lombok.ToString;
 
+import java.security.Key;
+import java.util.HashMap;
 import java.util.Map;
 
 @ToString
 public class InputKeyboardDevice extends InputDevice {
-    private static final Map<Keybind, String> keybinds = Map.of(
-            Keybind.SWITCH_PLAYER, "q",
-            Keybind.SPRINT, "shift",
-            Keybind.PASS, "e",
-            Keybind.THROUGH, "f",
-            Keybind.SHOOT, "r"
-    );
+    private static final Map<Keybind, String> keybinds = new HashMap<>();
+    static {
+        keybinds.put(Keybind.SWITCH_PLAYER, "q");
+        keybinds.put(Keybind.SWITCH_CAMERA, " ");
+        keybinds.put(Keybind.SPRINT, "shift");
+        keybinds.put(Keybind.PASS, "e");
+        keybinds.put(Keybind.CROSS, "t");
+        keybinds.put(Keybind.THROUGH, "f");
+        keybinds.put(Keybind.SHOOT, "r");
+
+        keybinds.put(Keybind.CHIP, "x");
+        keybinds.put(Keybind.FINESSE, "v");
+        keybinds.put(Keybind.TRIVELA, "c");
+        keybinds.put(Keybind.DRIVEN, "x");
+    }
 
     public InputKeyboardDevice(InputPacket.DevicePacket devicePacket) {
         super(keybinds, devicePacket);

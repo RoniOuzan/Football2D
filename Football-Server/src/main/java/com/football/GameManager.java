@@ -62,10 +62,10 @@ public class GameManager {
         this.game.update();
     }
 
-    public String getJson() {
+    public String getJson(Client client) {
         if (this.game == null) {
             return "";
         }
-        return this.game.toJson();
+        return this.game.toJson(client);
     }
 }
