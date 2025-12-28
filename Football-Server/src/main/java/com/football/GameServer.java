@@ -7,7 +7,6 @@ import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketMessage;
 import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -25,7 +24,6 @@ public class GameServer {
         executor.scheduleAtFixedRate(() -> {
             try {
                 GameManager.getInstance().update();
-                broadcastGame();
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -34,59 +32,26 @@ public class GameServer {
 
     @OnWebSocketConnect
     public void onConnect(Session session) {
+        System.out.println("Client connected " + session.hashCode());
         Client client = new Client(session);
         clients.put(session, client);
-        System.out.println("Client connected " + session.hashCode());
-
         GameManager.getInstance().addClient(client);
     }
 
     @OnWebSocketClose
     public void onClose(Session session, int status, String reason) {
-        GameManager.getInstance().removeClient(getClient(session));
-
-        clients.remove(session);
         System.out.println("Client disconnected: " + session.hashCode()
                 + " status=" + status
                 + " reason=" + reason);
+
+        clients.remove(session);
+        GameManager.getInstance().removeClient(getClient(session));
     }
 
     @OnWebSocketMessage
     public void onMessage(Session session, String message) {
         Client client = getClient(session);
         packetHandler.handlePacket(client, message);
-    }
-
-    private static void broadcast(String message) {
-        for (Client client : clients.values()) {
-            Session s = client.getSession();
-            try {
-                if (s.isOpen()) {
-                    s.getRemote().sendString(message);
-                } else {
-                    clients.remove(s);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-                clients.remove(s);
-            }
-        }
-    }
-
-    private static void broadcastGame() {
-        for (Client client : clients.values()) {
-            Session s = client.getSession();
-            try {
-                if (s.isOpen()) {
-                    s.getRemote().sendString(GameManager.getInstance().getJson(client));
-                } else {
-                    clients.remove(s);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-                clients.remove(s);
-            }
-        }
     }
 
     private static Client getClient(Session session) {

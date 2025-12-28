@@ -2,6 +2,12 @@ package com.football;
 
 import com.football.client.Client;
 import com.football.game.Game;
+import com.football.game.WaitingGame;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class GameManager {
     private static GameManager instance = null;
@@ -16,56 +22,48 @@ public class GameManager {
     public static final double FPS = 30;
     public static final double PERIOD = 1 / FPS;
 
-    private transient Client client1 = null;
-    private transient Client client2 = null;
+    private final Map<Client, Game> clients = new ConcurrentHashMap<>();
 
-    private transient Game game = null;
+    private final List<Game> games = new ArrayList<>();
+    private final List<WaitingGame> waitingGames = new ArrayList<>();
 
     public GameManager() {
     }
 
     public void addClient(Client client) {
-        if (this.client1 == null) {
-            this.client1 = client;
-        } else if (this.client2 == null) {
-            this.client2 = client;
-        }
+        this.clients.put(client, null);
     }
 
     public void removeClient(Client client) {
-        if (client.equals(this.client1)) {
-            this.client1 = null;
-        } else if (client.equals(this.client2)) {
-            this.client2 = null;
-        }
+        this.clients.remove(client);
+    }
 
-        this.game = null;
+    public void startGame(Game game) {
+        this.games.add(game);
+        game.start();
+
+        game.getClients().forEach(c -> this.clients.put(c, game));
     }
 
     public void update() {
-        if (this.client1 != null && this.game == null) {
-            if (this.client1.getInputs().size() >= 2) {
-                this.client2 = this.client1;
-                this.game = new Game(this.client1, 0, this.client2, 1);
-                this.game.start();
-            } else if (this.client2 != null) {
-                this.game = new Game(this.client1, -1, this.client2, -1);
-                this.game.start();
-            }
-        }
+        this.clients.keySet().forEach(Client::update);
 
-        if (this.game == null || this.client1 == null || this.client2 == null) return;
+        this.waitingGames.stream().filter(WaitingGame::isReadyForGame)
+                .forEach(g -> this.startGame(g.getGame()));
+        this.waitingGames.removeIf(WaitingGame::isReadyForGame);
 
-        this.client1.update();
-        this.client2.update();
+        this.games.forEach(Game::update);
 
-        this.game.update();
+        this.clients.keySet().forEach(c -> c.sendMessage(getJson(c)));
     }
 
     public String getJson(Client client) {
-        if (this.game == null) {
-            return "";
+        if (!this.clients.containsKey(client)) return "{}";
+
+        Game game = this.clients.get(client);
+        if (game == null) {
+            return "{}"; // ...
         }
-        return this.game.toJson(client);
+        return game.toJson(client);
     }
 }

@@ -127,6 +127,10 @@ public class Game {
         return (System.currentTimeMillis() - this.stateChanged) / 1000.0;
     }
 
+    public List<Client> getClients() {
+        return Arrays.asList(this.team1.getClient(), this.team2.getClient());
+    }
+
     public String toJson(Client client) {
         JsonObject json = JsonUtil.toJsonObject(this);
 
