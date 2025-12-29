@@ -25,8 +25,8 @@ export default class Client {
   }
 
   connect() {
-    // const host = window.location.hostname;
-    this.socket = new WebSocket(`ws://192.168.129.46:9090/game`);
+    const host = window.location.hostname;
+    this.socket = new WebSocket(`wss://${host}:9090/game`);
 
     this.socket.onopen = () => {
       console.log("WS connected");
@@ -34,8 +34,6 @@ export default class Client {
 
     this.socket.onmessage = (e) => {
       if (!e.data) return;
-      console.log(e.data);
-      
       const msg = JSON.parse(e.data) as ServerMessage;
       this.onMessage(msg);
     };
@@ -50,11 +48,14 @@ export default class Client {
   }
 
   createGame() {
-    // TODO:
     this.sendJSON("create", {});
   }
 
   joinGame(uuid: string) {
     this.sendJSON("join", {uuid})
+  }
+
+  spectateGame(uuid: string) {
+    this.sendJSON("spectate", {uuid})
   }
 }

@@ -11,7 +11,8 @@ public class PacketHandler {
     private static final Map<String, Class<? extends DataPacket>> packetTypes = Map.of(
             "input", InputPacket.class,
             "create", CreatePacket.class,
-            "join", JoinPacket.class
+            "join", JoinPacket.class,
+            "spectate", SpectatePacket.class
     );
 
     public PacketHandler() {

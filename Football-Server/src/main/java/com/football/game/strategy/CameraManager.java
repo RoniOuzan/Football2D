@@ -12,7 +12,7 @@
         private CameraPose position;
         private CameraPositionType positionType;
 
-        protected CameraManager(TeamStrategy teamStrategy) {
+        public CameraManager(TeamStrategy teamStrategy) {
             this.teamStrategy = teamStrategy;
             this.positionType = CameraPositionType.BROADCAST;
 

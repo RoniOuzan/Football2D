@@ -8,7 +8,6 @@ import com.football.game.Joinable;
 import com.football.game.NullGame;
 import com.football.game.WaitingGame;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +55,8 @@ public class GameManager {
                     c.sendMessage(new AlertMessage("OOPS! one client quit!"));
                 });
                 this.games.remove(g);
+            } else if (g.getSpectators().stream().anyMatch(s -> s.getClient().equals(client))) {
+                g.removeSpectator(client);
             }
         }
     }
@@ -68,7 +69,9 @@ public class GameManager {
     }
 
     public void createWaitingGame(Client client) {
-        this.waitingGames.add(new WaitingGame(client));
+        WaitingGame game = new WaitingGame(client);
+        this.waitingGames.add(game);
+        this.clients.put(client, game);
     }
 
     public void joinGame(Client client, UUID uuid) {
@@ -80,6 +83,19 @@ public class GameManager {
         }
 
         game.addClient(client);
+        this.clients.put(client, game);
+    }
+
+    public void spectateGame(Client client, UUID uuid) {
+        Game game = this.games.stream().filter(g -> g.getUUID().equals(uuid)).findFirst().orElse(null);
+
+        if (game == null) {
+            System.out.println("No such game was found!");
+            return;
+        }
+
+        game.addSpectator(client);
+        this.clients.put(client, game);
     }
 
     public void update() {

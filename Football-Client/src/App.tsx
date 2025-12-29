@@ -71,9 +71,7 @@ function App() {
 
   switch (msg.type) {
     case "lobby":
-      content = (
-        <Lobby client={client.current} data={msg.data} />
-      );
+      content = <Lobby client={client.current} data={msg.data} />;
       break;
 
     case "game":
@@ -84,14 +82,11 @@ function App() {
       content = null;
   }
 
-  console.log(msg.type);
-  
   return (
     <div
       style={{
         width: viewport.width,
         height: viewport.height,
-        overflow: "hidden",
         background: "black",
         position: "relative",
       }}

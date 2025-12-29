@@ -21,26 +21,51 @@ public class Main {
         /*
          * HTTPS
          */
-//        // Configure SSL with PKCS12 keystore
-//        SslContextFactory.Server sslContextFactory = new SslContextFactory.Server();
-//        sslContextFactory.setKeyStorePath("../Football-Client/192.168.1.73.p12"); // your converted PKCS12 file
-//        sslContextFactory.setKeyStorePassword("1234");         // password used when exporting PKCS12
-//        sslContextFactory.setKeyStoreType("PKCS12");
-//
-//        // HTTP configuration for HTTPS
-//        HttpConfiguration httpsConfig = new HttpConfiguration();
-//        httpsConfig.setSecureScheme("https");
-//        httpsConfig.setSecurePort(9090);
-//
-//        // Create connector with SSL
-//        ServerConnector sslConnector = new ServerConnector(
-//                server,
-//                new SslConnectionFactory(sslContextFactory, "http/1.1"),
-//                new HttpConnectionFactory(httpsConfig)
-//        );
-//        sslConnector.setPort(9090);
-////        sslConnector.setHost("0.0.0.0"); // listen on all interfaces
-//        server.addConnector(sslConnector);
+        // Configure SSL with PKCS12 keystore
+        SslContextFactory.Server sslContextFactory = new SslContextFactory.Server();
+        sslContextFactory.setKeyStorePath("../Football-Client/192.168.1.73.p12"); // your converted PKCS12 file
+        sslContextFactory.setKeyStorePassword("1234");         // password used when exporting PKCS12
+        sslContextFactory.setKeyStoreType("PKCS12");
+
+        // HTTP configuration for HTTPS
+        HttpConfiguration httpsConfig = new HttpConfiguration();
+        httpsConfig.setSecureScheme("https");
+        httpsConfig.setSecurePort(9090);
+
+        // Create connector with SSL
+        ServerConnector sslConnector = new ServerConnector(
+                server,
+                new SslConnectionFactory(sslContextFactory, "http/1.1"),
+                new HttpConnectionFactory(httpsConfig)
+        );
+        sslConnector.setPort(9090);
+        sslConnector.setHost("0.0.0.0"); // listen on all interfaces
+        server.addConnector(sslConnector);
+
+        // Setup servlet context
+        ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
+        context.setContextPath("/");
+        server.setHandler(context);
+
+        // Setup WebSocket mapping
+        JettyWebSocketServletContainerInitializer.configure(context, (servletContext, wsContainer) ->
+                wsContainer.addMapping("/game", (req, resp) -> new GameServer()));
+
+        // Start server
+        server.start();
+
+        String lanIp = getLocalIp();
+        System.out.println("⚽ Server running on wss://" + lanIp + ":9090/game");
+
+        server.join();
+
+        /*
+         * HTTP
+         */
+//        // Create a non-secure HTTP connector
+//        ServerConnector httpConnector = new ServerConnector(server);
+//        httpConnector.setPort(9090);  // Use port 9090 for HTTP
+//        server.addConnector(httpConnector);
 //
 //        // Setup servlet context
 //        ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
@@ -56,35 +81,9 @@ public class Main {
 //        server.start();
 //
 //        String lanIp = getLocalIp();
-//        System.out.println("⚽ Server running on wss://" + lanIp + ":9090/game");
+//        System.out.println("⚽ Server running on ws://" + lanIp + ":9090/game");
 //
 //        server.join();
-
-        /*
-         * HTTP
-         */
-        // Create a non-secure HTTP connector
-        ServerConnector httpConnector = new ServerConnector(server);
-        httpConnector.setPort(9090);  // Use port 9090 for HTTP
-        server.addConnector(httpConnector);
-
-        // Setup servlet context
-        ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
-        context.setContextPath("/");
-        server.setHandler(context);
-
-        // Setup WebSocket mapping
-        JettyWebSocketServletContainerInitializer.configure(context, (servletContext, wsContainer) -> {
-            wsContainer.addMapping("/game", (req, resp) -> new GameServer());
-        });
-
-        // Start server
-        server.start();
-
-        String lanIp = getLocalIp();
-        System.out.println("⚽ Server running on ws://" + lanIp + ":9090/game");
-
-        server.join();
     }
 
     // Helper to find LAN IP

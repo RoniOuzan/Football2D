@@ -75,7 +75,10 @@ const GameRenderer3D = forwardRef<GameRenderer3DHandle, GameRendererProps>(
         if (!ctx) return;
 
         const team = getClientsTeam(data);
-        setCamera(team.teamStrategy.cameraManager.position);
+        if (team)
+          setCamera(team.teamStrategy.cameraManager.position);
+        else if (data.client <= 0)
+          setCamera(data.spectators[-data.client].cameraManager.position);
 
         // const pitch = radians(-90);
         // const yaw = radians(0);
@@ -164,7 +167,7 @@ const GameRenderer3D = forwardRef<GameRenderer3DHandle, GameRendererProps>(
         );
 
         const num = 1;
-        if (num != 1) drawHeatmap(ctx, canvas, getClientsTeam(data), camera);
+        if (num != 1 && team) drawHeatmap(ctx, canvas, team, camera);
 
         const draws: Draw[] = [];
 

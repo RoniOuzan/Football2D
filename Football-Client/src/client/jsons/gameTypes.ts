@@ -7,13 +7,14 @@ export interface GameData {
   team2: Team;
   score1: number;
   score2: number;
+  spectators: Spectator[];
   client: number;
 }
 
-export function getClientsTeam(data: GameData): Team {
+export function getClientsTeam(data: GameData): Team | null {
   if (data.client == 1) return data.team1;
   if (data.client == 2) return data.team2;
-  return data.team1;
+  return null;
 }
 
 export interface Ball {
@@ -51,4 +52,8 @@ export interface Camera {
   pitch: Rotation2d;
   yaw: Rotation2d;
   fov: Rotation2d;
+}
+
+export interface Spectator {
+  cameraManager: CameraManager;
 }

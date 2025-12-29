@@ -6,9 +6,11 @@ import com.football.util.json.JsonUtil;
 import com.football.util.math.geometry.Translation2d;
 import com.google.gson.JsonObject;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 public class Game implements Joinable {
 
@@ -49,6 +51,8 @@ public class Game implements Joinable {
     private State state;
     private long stateChanged;
     private long startTime = -1;
+
+    private final List<Spectator> spectators = new ArrayList<>();
 
     public Game(Client client1, int inputSlot1, Client client2, int inputSlot2) {
         this.uuid = UUID.randomUUID();
@@ -118,6 +122,8 @@ public class Game implements Joinable {
                 }
             }
         }
+
+        this.spectators.forEach(Spectator::update);
     }
 
     public State getState() {
@@ -137,15 +143,40 @@ public class Game implements Joinable {
         return Arrays.asList(this.team1.getClient(), this.team2.getClient());
     }
 
+    public void addSpectator(Client client) {
+        this.spectators.add(new Spectator(client, this.team1.getTeamStrategy())); // team1 for now
+    }
+
+    public void removeSpectator(Client client) {
+        this.spectators.removeIf(s -> s.getClient().equals(client));
+    }
+
+    public List<Spectator> getSpectators() {
+        return this.spectators;
+    }
+
     public JsonObject toJson(Client client) {
         JsonObject json = JsonUtil.toJsonObject(this);
 
-        int clientNumber;
-        if (this.team1.getClient().equals(client)) clientNumber = 1;
-        else if (this.team2.getClient().equals(client)) clientNumber = 2;
-        else clientNumber = 0;
-        json.addProperty("client", clientNumber);
+        json.addProperty("client", getClientNumber(client));
 
         return json;
+    }
+
+    private int getClientNumber(Client client) {
+        if (this.team1.getClient().equals(client))
+            return 1;
+        else if (this.team2.getClient().equals(client))
+            return 2;
+
+        int index = IntStream.range(0, this.spectators.size())
+                .filter(i -> this.spectators.get(i).getClient().equals(client))
+                .findFirst()
+                .orElse(-1);
+
+        if (index == -1) {
+            return 3;
+        }
+        return -index;
     }
 }

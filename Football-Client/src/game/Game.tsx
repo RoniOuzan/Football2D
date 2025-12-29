@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Client from "../client/Client";
 import GameRenderer3D, {
   type GameRenderer3DHandle,
@@ -29,7 +30,11 @@ export default function FixedJoystick({ client, data }: GameProps) {
       client.getInput().setClick(null);
       return;
     }
-    const camera = getClientsTeam(data).teamStrategy.cameraManager.position;
+    const team = getClientsTeam(data);
+
+    if (!team) return;
+
+    const camera = team.teamStrategy.cameraManager.position;
     const world = screenToWorld(canvas, { x: e.clientX, y: e.clientY }, camera);
     client.getInput().setClick(world);
   }
@@ -42,11 +47,10 @@ export default function FixedJoystick({ client, data }: GameProps) {
         width: "100%",
         height: "100%",
         position: "fixed",
-        overflow: "hidden",
         overscrollBehavior: "none",
       }}
     >
-      {isMobile && (
+      {isMobile && data.client > 0 && (
         <MobileControls
           onMove={(x, y) => client.getInput().setJoystick(x, y)}
           onStop={() => client.getInput().setJoystick(0, 0)}
@@ -93,6 +97,36 @@ export default function FixedJoystick({ client, data }: GameProps) {
         {"  -  "}
         <span style={{ color: "red" }}>{data ? data.score1 : score.red}</span>
       </div>
+
+      <AnimatePresence>
+        {data.spectators.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            style={{
+              position: "fixed",
+              top: "12px",
+              right: "12px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "6px 12px",
+              borderRadius: "20px",
+              backgroundColor: "rgba(0,0,0,0.4)",
+              backdropFilter: "blur(4px)",
+              color: "white",
+              fontSize: "18px",
+              fontWeight: "500",
+              zIndex: 996,
+              border: "1px solid rgba(255,255,255,0.1)"
+            }}
+          >
+            <span style={{ fontSize: "14px", opacity: 0.8 }}>👁️</span>
+            <span style={{ fontSize: "18px" }}>{data.spectators.length}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Render the 3D pitch component full screen */}
       {data && <GameRenderer3D ref={rendererRef} data={data} />}
