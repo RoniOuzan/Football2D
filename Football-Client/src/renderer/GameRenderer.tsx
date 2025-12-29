@@ -87,7 +87,7 @@ const GameRenderer3D = forwardRef<GameRenderer3DHandle, GameRendererProps>(
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // drawStadium(ctx, canvas, camera);
+        drawStadium(ctx, canvas, camera);
 
         drawPitch(ctx, canvas, camera);
         drawLineFlat(

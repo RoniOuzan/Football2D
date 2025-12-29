@@ -1,4 +1,4 @@
-package com.football.client;
+package com.football.client.messages;
 
 import com.football.util.json.JsonUtil;
 

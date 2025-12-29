@@ -1,7 +1,8 @@
 package com.football;
 
 import com.football.client.Client;
-import com.football.client.Message;
+import com.football.client.messages.AlertMessage;
+import com.football.client.messages.Message;
 import com.football.game.Game;
 import com.football.game.Joinable;
 import com.football.game.NullGame;
@@ -50,7 +51,10 @@ public class GameManager {
             }
         } else if (game instanceof Game g) {
             if (g.getClients().contains(client)) {
-                g.getClients().stream().filter(c -> !c.equals(client)).forEach(c -> this.clients.put(c, new NullGame()));
+                g.getClients().stream().filter(c -> !c.equals(client)).forEach(c -> {
+                    this.clients.put(c, new NullGame());
+                    c.sendMessage(new AlertMessage("OOPS! one client quit!"));
+                });
                 this.games.remove(g);
             }
         }
@@ -88,11 +92,7 @@ public class GameManager {
         this.games.forEach(Game::update);
 
         for (Client client : this.clients.keySet()) {
-            try {
-                client.sendMessage(getJson(client));
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            client.sendMessage(getJson(client));
         }
     }
 

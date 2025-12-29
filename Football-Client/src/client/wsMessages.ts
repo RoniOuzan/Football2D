@@ -1,7 +1,7 @@
 import type { GameData } from "./jsons/gameTypes";
 import type { LobbyData } from "./jsons/lobbyTypes";
 
-export type ServerMessage = LobbyMessage | GameMessage | ErrorMessage;
+export type ServerMessage = LobbyMessage | GameMessage | AlertMessage;
 
 export interface LobbyMessage {
   type: "lobby";
@@ -13,8 +13,8 @@ export interface GameMessage {
   data: GameData;
 }
 
-export interface ErrorMessage {
-  type: "error";
+export interface AlertMessage {
+  type: "alert";
   data: {
     message: string;
   };

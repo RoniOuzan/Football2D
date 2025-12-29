@@ -14,6 +14,8 @@ function App() {
   });
 
   const [msg, setMsg] = useState<ServerMessage | null>(null);
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
+
   const client = useRef<Client | null>(null);
 
   useEffect(() => {
@@ -54,6 +56,13 @@ function App() {
     setTimeout(() => loader.remove(), 300);
   }, []);
 
+  useEffect(() => {
+    if (msg && msg.type === "alert") {
+      setAlertMessage(msg.data.message); // Show the alert message
+      setTimeout(() => setAlertMessage(null), 1000); // Hide the alert after 1 second
+    }
+  }, [msg]);
+
   if (!client.current || !msg) {
     return <LoadingScreen />;
   }
@@ -69,10 +78,6 @@ function App() {
 
     case "game":
       content = <Game client={client.current} data={msg.data} />;
-      break;
-
-    case "error":
-      content = <ErrorScreen message={msg.data.message} />;
       break;
 
     default:
@@ -91,6 +96,27 @@ function App() {
         position: "relative",
       }}
     >
+      {alertMessage && (
+        <div
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            backgroundColor: "rgba(0, 0, 0, 0.7)",
+            color: "white",
+            padding: "10px 20px",
+            borderRadius: "5px",
+            fontSize: "18px",
+            zIndex: 100,
+            opacity: 1,
+            transition: "opacity 0.3s ease-out",
+          }}
+        >
+          {alertMessage}
+        </div>
+      )}
+      
       <div
         style={{
           position: "absolute",
@@ -168,24 +194,6 @@ function LoadingScreen() {
           }
         `}
       </style>
-    </div>
-  );
-}
-
-function ErrorScreen({ message }: { message: string }) {
-  return (
-    <div
-      style={{
-        width: "100vw",
-        height: "100vh",
-        background: "black",
-        color: "red",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      {message}
     </div>
   );
 }
