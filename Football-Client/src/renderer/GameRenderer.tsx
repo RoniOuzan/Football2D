@@ -31,6 +31,7 @@ interface Draw {
   draw: (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => void;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function radians(a: number) {
   return a * (Math.PI / 180);
 }
@@ -86,7 +87,7 @@ const GameRenderer3D = forwardRef<GameRenderer3DHandle, GameRendererProps>(
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        drawStadium(ctx, canvas, camera);
+        // drawStadium(ctx, canvas, camera);
 
         drawPitch(ctx, canvas, camera);
         drawLineFlat(
@@ -217,7 +218,7 @@ const GameRenderer3D = forwardRef<GameRenderer3DHandle, GameRendererProps>(
 
       window.addEventListener("resize", handleResize);
       return () => window.removeEventListener("resize", handleResize);
-    }, [data]);
+    }, [camera, data]);
 
     return (
       <canvas

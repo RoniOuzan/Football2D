@@ -15,8 +15,8 @@ export default function DynamicJoystick({ onMove, onStop }: JoystickProps) {
   const [dragging, setDragging] = useState(false);
 
   const handleStart = (e: React.TouchEvent | React.MouseEvent) => {
-    let clientX = "touches" in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-    let clientY = "touches" in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    const clientX = "touches" in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
     
     setBasePos({ x: clientX, y: clientY });
     setDragging(true);
@@ -26,8 +26,8 @@ export default function DynamicJoystick({ onMove, onStop }: JoystickProps) {
   const handleMove = (e: React.TouchEvent | Touch | React.MouseEvent) => {
     if (!dragging || !basePos) return;
 
-    let clientX = "touches" in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-    let clientY = "touches" in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    const clientX = "touches" in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
 
     let dx = clientX - basePos.x;
     let dy = clientY - basePos.y;

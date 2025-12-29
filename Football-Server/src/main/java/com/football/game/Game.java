@@ -59,6 +59,10 @@ public class Game implements Joinable {
         this.team2 = new Team(this, client2, false, inputSlot2);
     }
 
+    public Game(Client client1, Client client2) {
+        this(client1, -1, client2, -1);
+    }
+
     public void start() {
         this.startTime = System.currentTimeMillis();
         this.stateChanged = System.currentTimeMillis();
@@ -78,12 +82,6 @@ public class Game implements Joinable {
     }
     public Team getTeam2() {
         return team2;
-    }
-    public int getScore1() {
-        return score1;
-    }
-    public int getScore2() {
-        return score2;
     }
 
     public double getMatchTime() {
@@ -139,7 +137,7 @@ public class Game implements Joinable {
         return Arrays.asList(this.team1.getClient(), this.team2.getClient());
     }
 
-    public String toJson(Client client) {
+    public JsonObject toJson(Client client) {
         JsonObject json = JsonUtil.toJsonObject(this);
 
         int clientNumber;
@@ -148,6 +146,6 @@ public class Game implements Joinable {
         else clientNumber = 0;
         json.addProperty("client", clientNumber);
 
-        return JsonUtil.toJson(json);
+        return json;
     }
 }

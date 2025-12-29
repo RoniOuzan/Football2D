@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class GameManager {
@@ -39,7 +40,20 @@ public class GameManager {
     }
 
     public void removeClient(Client client) {
-        this.clients.remove(client);
+        Joinable game = this.clients.remove(client);
+
+        if (game instanceof WaitingGame g) {
+            g.removeClient(client);
+
+            if (g.isEmpty()) {
+                this.waitingGames.remove(g);
+            }
+        } else if (game instanceof Game g) {
+            if (g.getClients().contains(client)) {
+                g.getClients().stream().filter(c -> !c.equals(client)).forEach(c -> this.clients.put(c, new NullGame()));
+                this.games.remove(g);
+            }
+        }
     }
 
     public void startGame(Game game) {
@@ -47,6 +61,21 @@ public class GameManager {
         game.start();
 
         game.getClients().forEach(c -> this.clients.put(c, game));
+    }
+
+    public void createWaitingGame(Client client) {
+        this.waitingGames.add(new WaitingGame(client));
+    }
+
+    public void joinGame(Client client, UUID uuid) {
+        WaitingGame game = this.waitingGames.stream().filter(g -> g.getUUID().equals(uuid)).findFirst().orElse(null);
+
+        if (game == null) {
+            System.out.println("Waiting game not found!");
+            return;
+        }
+
+        game.addClient(client);
     }
 
     public void update() {
@@ -63,7 +92,6 @@ public class GameManager {
                 client.sendMessage(getJson(client));
             } catch (IOException e) {
                 e.printStackTrace();
-                GameServer.removeClient(client.getSession());
             }
         }
     }

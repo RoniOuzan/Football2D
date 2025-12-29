@@ -1,4 +1,5 @@
-import type { Camera, Translation3d, Translation2d } from "../types";
+import type { Camera } from "../client/jsons/gameTypes";
+import type { Translation3d, Translation2d } from "../types";
 import { maxX, maxY, pitchWidth } from "../types";
 import { worldToCamera, clipNearPlane, cameraToScreen, worldToScreen } from "./CameraUtil";
 import { radians } from "./GameRenderer";
@@ -78,7 +79,7 @@ export function drawLine3d(
 }
 
 export function getPerpVector(dir: Translation3d, u: Translation3d): Translation3d {
-  let up: Translation3d = u;
+  const up: Translation3d = u;
 
   // Cross product: perp = dir × up
   const perp: Translation3d = {

@@ -1,5 +1,7 @@
 package com.football.client;
 
+import com.football.util.json.JsonUtil;
+
 public class Message {
     private final String type;
     private final Object data;
@@ -15,5 +17,9 @@ public class Message {
 
     public Object getData() {
         return this.data;
+    }
+
+    public String getJson() {
+        return JsonUtil.toJson(this);
     }
 }

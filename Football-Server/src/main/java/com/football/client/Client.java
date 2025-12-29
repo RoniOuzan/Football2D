@@ -35,8 +35,12 @@ public class Client {
         return this.inputs.get(slot);
     }
 
+    public int getAmountOfInputs() {
+        return this.inputs.size();
+    }
+
     public void sendMessage(Message message) throws IOException {
-        this.session.getRemote().sendString(JsonUtil.toJson(message));
+        this.session.getRemote().sendString(message.getJson());
     }
 
     public void sendMessage(String type, Object data) throws IOException {

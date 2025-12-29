@@ -22,11 +22,43 @@ public class WaitingGame implements Joinable {
     }
 
     public boolean isReadyForGame() {
-        return this.clients.size() >= 2;
+        if (this.clients.size() < 2)
+            return false;
+
+        // Same client
+        if (this.clients.get(0).equals(this.clients.get(1))) {
+            return this.clients.get(0).getAmountOfInputs() >= 2;
+        }
+        return true;
+    }
+
+    public boolean isEmpty() {
+        return this.clients.size() == 0;
     }
 
     public Game getGame() {
-        if (!isReadyForGame()) return null;
-        return new Game(this.clients.get(0), 0, this.clients.get(1), 1);
+        if (!isReadyForGame())
+            return null;
+
+        Client client1 = this.clients.get(0);
+        Client client2 = this.clients.get(1);
+
+        if (client1.equals(client2)) {
+            if (client2.getAmountOfInputs() < 2) {
+                System.out.println("Cant start a game with yourself without another device.");
+                return null;
+            }
+            return new Game(client1, 0, client2, 1);
+        }
+
+        return new Game(client1, client2);
+    }
+
+    public void addClient(Client client) {
+        this.clients.add(client);
+    }
+
+    public void removeClient(Client client) {
+        this.clients.remove(client);
     }
 }
