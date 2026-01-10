@@ -3,7 +3,8 @@
   --bg-color: #0d0d0d;
   --card-bg: #161616;
   --row-bg: #1f1f1f;
-  --accent-green: #39ff14; /* Neon pitch green */
+  --accent-green: #37ff14;
+  --accent-green-light: #dcffd6;
   --accent-blue: #00d4ff;
   --text-main: #ffffff;
   --text-muted: #888888;
@@ -47,30 +48,30 @@
   background: var(--accent-green);
   color: #000;
   border: none;
-  padding: 16px 32px;
+  padding: 16px 24px;
   font-size: 1rem;
   font-weight: 800;
   text-transform: uppercase;
   cursor: pointer;
   border-radius: 4px;
   transition: all 0.2s ease;
-  margin-bottom: 50px;
-  box-shadow: 0 0 20px rgba(57, 255, 20, 0.2);
+  margin-bottom: 40px;
+  box-shadow: 0px 0px 30px rgba(57, 255, 20, 0.4);
 }
 
 .create-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 5px 25px rgba(57, 255, 20, 0.4);
-  background: #fff;
+  box-shadow: 0 5px 25px rgba(159, 255, 142, 0.6);
+  background: var(--accent-green-light);
 }
 
 /* Grid Layout */
 .lobby-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 30px;
+  gap: 60px;
   width: 100%;
-  max-width: 1400px;
+  max-width: 1500px;
 }
 
 .lobby-section {
@@ -78,6 +79,7 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 20px;
+  min-height: 650px;
 }
 
 .section-title {

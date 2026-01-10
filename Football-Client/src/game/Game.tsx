@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Client from "../client/Client";
 import GameRenderer3D, {
@@ -11,13 +11,18 @@ import { getClientsTeam, type GameData } from "../client/jsons/gameTypes";
 
 export const FPS = 30;
 
+function formatTime(seconds: number) {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
 interface GameProps {
   client: Client;
   data: GameData;
 }
 
 export default function FixedJoystick({ client, data }: GameProps) {
-  const [score] = useState({ blue: 0, red: 0 });
   const rendererRef = useRef<GameRenderer3DHandle>(null);
 
   function handleTap(e: React.MouseEvent, pressed: boolean) {
@@ -72,30 +77,77 @@ export default function FixedJoystick({ client, data }: GameProps) {
         onPointerLeave={(e) => handleTap(e, false)}
       />
 
-      {/* Score overlay on the field */}
+      {/* FIFA-style TV Scorebar */}
       <div
         style={{
           position: "fixed",
-          top: "20px",
+          top: "24px",
           left: "50%",
           transform: "translateX(-50%)",
           display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: "30px",
-          padding: "10px 30px",
-          borderRadius: "12px",
-          color: "white",
-          fontSize: "42px",
-          fontWeight: "bold",
-          backgroundColor: "rgba(0,0,0,0.4)",
-          boxShadow: "0 0 20px rgba(0,0,0,0.3)",
+          alignItems: "stretch",
+          height: "52px",
+          fontFamily: "Arial, Helvetica, sans-serif",
           zIndex: 997,
+          pointerEvents: "none",
         }}
       >
-        <span style={{ color: "blue" }}>{data ? data.score2 : score.blue}</span>
-        {"  -  "}
-        <span style={{ color: "red" }}>{data ? data.score1 : score.red}</span>
+        {/* BLUE TEAM */}
+        <div
+          style={{
+            minWidth: "64px",
+            padding: "0 14px",
+            backgroundColor: "#1D4ED8",
+            borderRadius: "12px 0px 0px 12px",
+            color: "white",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "32px",
+            fontWeight: 700,
+          }}
+        >
+          {data.score2}
+        </div>
+
+        {/* CENTER BAR */}
+        <div
+          style={{
+            minWidth: "120px",
+            padding: "0 18px",
+            backgroundColor: "#111",
+            color: "white",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "16px",
+            fontWeight: 600,
+            letterSpacing: "1px",
+          }}
+        >
+          <div style={{ fontSize: "32px", marginBottom: "2px" }}>
+            {formatTime(data.matchTime)}
+          </div>
+        </div>
+
+        {/* RED TEAM */}
+        <div
+          style={{
+            minWidth: "64px",
+            padding: "0 14px",
+            backgroundColor: "#DC2626",
+            borderRadius: "0px 12px 12px 0px",
+            color: "white",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "32px",
+            fontWeight: 700,
+          }}
+        >
+          {data.score1}
+        </div>
       </div>
 
       <AnimatePresence>

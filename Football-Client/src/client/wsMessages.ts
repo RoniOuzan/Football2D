@@ -1,7 +1,9 @@
+import type { AlertData } from "./jsons/alertTypes";
+import type { CountdownData } from "./jsons/countdownTypes";
 import type { GameData } from "./jsons/gameTypes";
 import type { LobbyData } from "./jsons/lobbyTypes";
 
-export type ServerMessage = LobbyMessage | GameMessage | AlertMessage;
+export type ServerMessage = LobbyMessage | GameMessage | AlertMessage | CountdownMessage;
 
 export interface LobbyMessage {
   type: "lobby";
@@ -15,7 +17,10 @@ export interface GameMessage {
 
 export interface AlertMessage {
   type: "alert";
-  data: {
-    message: string;
-  };
+  data: AlertData;
+}
+
+export interface CountdownMessage {
+  type: "countdown";
+  data: CountdownData;
 }

@@ -7,6 +7,8 @@ export interface GameData {
   team2: Team;
   score1: number;
   score2: number;
+  matchTime: number;
+  state: string;
   spectators: Spectator[];
   client: number;
 }

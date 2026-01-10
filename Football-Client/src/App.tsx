@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import Game from "./game/Game";
 import Client from "./client/Client";
+import type { AlertData } from "./client/jsons/alertTypes";
+import type { CountdownData } from "./client/jsons/countdownTypes";
 import type { ServerMessage } from "./client/wsMessages";
+import Game from "./game/Game";
 import Lobby from "./lobby/Lobby";
+import Alert from "./other/Alert";
+import Countdown from "./other/Countdown";
 
 export let isMobile = false;
 export let isPortrait = window.innerHeight > window.innerWidth;
@@ -14,7 +18,8 @@ function App() {
   });
 
   const [msg, setMsg] = useState<ServerMessage | null>(null);
-  const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const [alertMessage, setAlertMessage] = useState<AlertData | null>(null);
+  const [countdown, setCountdown] = useState<CountdownData | null>(null);
 
   const client = useRef<Client | null>(null);
 
@@ -57,9 +62,16 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (msg && msg.type === "alert") {
-      setAlertMessage(msg.data.message); // Show the alert message
-      setTimeout(() => setAlertMessage(null), 1000); // Hide the alert after 1 second
+    if (!msg) return;
+
+    switch (msg.type) {
+      case "alert":
+        setAlertMessage(msg.data); // Show the alert message
+        setTimeout(() => setAlertMessage(null), msg.data.time * 1000); // Hide
+        break;
+      case "countdown":
+        setCountdown(msg.data);
+        break;
     }
   }, [msg]);
 
@@ -91,27 +103,9 @@ function App() {
         position: "relative",
       }}
     >
-      {alertMessage && (
-        <div
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            backgroundColor: "rgba(0, 0, 0, 0.7)",
-            color: "white",
-            padding: "10px 20px",
-            borderRadius: "5px",
-            fontSize: "18px",
-            zIndex: 100,
-            opacity: 1,
-            transition: "opacity 0.3s ease-out",
-          }}
-        >
-          {alertMessage}
-        </div>
-      )}
-      
+      {alertMessage && <Alert alertMessage={alertMessage} />}
+      {countdown && <Countdown data={countdown} onFinish={() => setCountdown(null)} />}
+
       <div
         style={{
           position: "absolute",
