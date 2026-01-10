@@ -181,8 +181,8 @@ public class Game implements Joinable {
     }
 
     public void update() {
-        this.team1.update();
-        this.team2.update();
+        this.team1.update(this.state);
+        this.team2.update(this.state);
 
         this.ball.update(this.team1, this.team2);
 

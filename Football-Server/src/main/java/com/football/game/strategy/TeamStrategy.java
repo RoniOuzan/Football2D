@@ -51,12 +51,14 @@ public class TeamStrategy {
     /**
      * Precompute the baseline (player-agnostic) heatmap.
      */
-    public void update() {
+    public void update(Game.State state) {
+        this.cameraManager.update();
+        if (state != Game.State.PLAYING) return;
+
         this.defensiveLineCalculator.update();
         this.offsideCalculator.update();
         this.heatmapGenerator.update();
 
-        this.cameraManager.update();
         this.playersMovementHandle.update();
         this.chosenPlayerIndex = this.players.indexOf(this.playersMovementHandle.getChosenPlayer());
     }

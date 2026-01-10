@@ -88,10 +88,8 @@ public class Team {
         return this.client;
     }
 
-    public void update() {
-        if (this.game.getState() == Game.State.PLAYING) {
-            this.teamStrategy.update();
-        }
+    public void update(Game.State state) {
+        this.teamStrategy.update(state);
 
         for (Player player : this.players) {
             player.update(this);
