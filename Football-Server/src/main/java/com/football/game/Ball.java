@@ -68,7 +68,7 @@ public class Ball {
     }
 
     public Translation3d getPosition(double lookBackTime) {
-        return this.positions.getSample(this.game.getMatchTime() - lookBackTime).orElse(null);
+        return this.positions.getSample(this.game.getRealTime() - lookBackTime).orElse(null);
     }
 
     public Translation3d getPredictedPosition(double seconds) {

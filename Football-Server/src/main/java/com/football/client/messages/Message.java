@@ -3,8 +3,8 @@ package com.football.client.messages;
 import com.football.util.json.JsonUtil;
 
 public class Message {
-    private final String type;
-    private final Object data;
+    protected final String type;
+    protected final Object data;
 
     public Message(String type, Object data) {
         this.type = type;

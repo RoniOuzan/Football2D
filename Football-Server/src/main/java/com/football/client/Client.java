@@ -6,6 +6,7 @@ import com.football.client.inputs.InputHandler;
 import com.football.client.inputs.devices.InputControllerDevice;
 import com.football.client.inputs.devices.InputKeyboardDevice;
 import com.football.client.inputs.devices.InputMobileDevice;
+import com.football.client.inputs.devices.InputNullDevice;
 import com.football.client.json.InputPacket;
 import com.football.client.messages.Message;
 import org.eclipse.jetty.websocket.api.Session;
@@ -31,7 +32,7 @@ public class Client {
         if (slot == -1)
             return this.allInputDevices;
         if (slot >= this.inputs.size())
-            return null;
+            return new InputNullDevice();
         return this.inputs.get(slot);
     }
 

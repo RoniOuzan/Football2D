@@ -26,6 +26,8 @@ public class GameManager {
 
     public static final double FPS = 30;
     public static final double PERIOD = 1 / FPS;
+    public static final double GAME_REAL_TIME = 30; // 6 Minutes
+    public static final double GAME_TIME = 90 * 60;
 
     private transient final Map<Client, Joinable> clients = new ConcurrentHashMap<>();
 
@@ -52,7 +54,7 @@ public class GameManager {
             if (g.getClients().contains(client)) {
                 g.getClients().stream().filter(c -> !c.equals(client)).forEach(c -> {
                     this.clients.put(c, new NullGame());
-                    c.sendMessage(new AlertMessage("OOPS! one client quit!"));
+                    c.sendMessage(new AlertMessage("OOPS! one of the clients has quit the game!", "red", 1, "medium"));
                 });
                 this.games.remove(g);
             } else if (g.getSpectators().stream().anyMatch(s -> s.getClient().equals(client))) {
@@ -105,10 +107,20 @@ public class GameManager {
                 .forEach(g -> this.startGame(g.getGame()));
         this.waitingGames.removeIf(WaitingGame::isReadyForGame);
 
-        this.games.forEach(Game::update);
+        this.updateGames();
 
         for (Client client : this.clients.keySet()) {
             client.sendMessage(getJson(client));
+        }
+    }
+
+    public void updateGames() {
+        for (Game game : this.games) {
+            game.update();
+
+            if (game.getPhase() == Game.Phase.FINISH) {
+
+            }
         }
     }
 
