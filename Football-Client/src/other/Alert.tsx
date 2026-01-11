@@ -5,19 +5,19 @@ const ALERT_SIZES = {
     padding: "14px 20px",
     title: "22px",
     sub: "14px",
-    minWidth: "220px",
+    minWidth: "160px",
   },
   medium: {
     padding: "20px 28px",
     title: "32px",
-    sub: "18px",
-    minWidth: "320px",
+    sub: "24px",
+    minWidth: "220px",
   },
   large: {
     padding: "24px 32px",
     title: "44px",
     sub: "22px",
-    minWidth: "420px",
+    minWidth: "320px",
   },
 } as const;
 

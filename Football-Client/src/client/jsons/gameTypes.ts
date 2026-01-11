@@ -1,5 +1,7 @@
 import type { Translation3d, Translation2d, Rotation2d } from "../../types";
 
+export type Phase = "FIRST_HALF" | "SECOND_HALF" | "EXTRA_TIME" | "FINISH";
+
 export interface GameData {
   uuid: string;
   ball: Ball;
@@ -8,6 +10,8 @@ export interface GameData {
   score1: number;
   score2: number;
   matchTime: number;
+  phase: Phase;
+  addedTime: number;
   state: string;
   spectators: Spectator[];
   client: number;

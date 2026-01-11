@@ -8,14 +8,9 @@ import MobileControls from "./MobileControls";
 import { isMobile } from "../App";
 import { screenToWorld } from "../renderer/CameraUtil";
 import { getClientsTeam, type GameData } from "../client/jsons/gameTypes";
+import Scorebar from "./Scorebar";
 
 export const FPS = 30;
-
-function formatTime(seconds: number) {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-}
 
 interface GameProps {
   client: Client;
@@ -77,78 +72,7 @@ export default function FixedJoystick({ client, data }: GameProps) {
         onPointerLeave={(e) => handleTap(e, false)}
       />
 
-      {/* FIFA-style TV Scorebar */}
-      <div
-        style={{
-          position: "fixed",
-          top: "24px",
-          left: "50%",
-          transform: "translateX(-50%)",
-          display: "flex",
-          alignItems: "stretch",
-          height: "52px",
-          fontFamily: "Arial, Helvetica, sans-serif",
-          zIndex: 997,
-          pointerEvents: "none",
-        }}
-      >
-        {/* BLUE TEAM */}
-        <div
-          style={{
-            minWidth: "64px",
-            padding: "0 14px",
-            backgroundColor: "#1D4ED8",
-            borderRadius: "12px 0px 0px 12px",
-            color: "white",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "32px",
-            fontWeight: 700,
-          }}
-        >
-          {data.score2}
-        </div>
-
-        {/* CENTER BAR */}
-        <div
-          style={{
-            minWidth: "120px",
-            padding: "0 18px",
-            backgroundColor: "#111",
-            color: "white",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "16px",
-            fontWeight: 600,
-            letterSpacing: "1px",
-          }}
-        >
-          <div style={{ fontSize: "32px", marginBottom: "2px" }}>
-            {formatTime(data.matchTime)}
-          </div>
-        </div>
-
-        {/* RED TEAM */}
-        <div
-          style={{
-            minWidth: "64px",
-            padding: "0 14px",
-            backgroundColor: "#DC2626",
-            borderRadius: "0px 12px 12px 0px",
-            color: "white",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "32px",
-            fontWeight: 700,
-          }}
-        >
-          {data.score1}
-        </div>
-      </div>
+      <Scorebar data={data} />
 
       <AnimatePresence>
         {data.spectators.length > 0 && (

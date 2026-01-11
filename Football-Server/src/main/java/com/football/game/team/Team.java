@@ -91,6 +91,7 @@ public class Team {
     public void update(Game.State state) {
         this.teamStrategy.update(state);
 
+        if (state != Game.State.PLAYING) return;
         for (Player player : this.players) {
             player.update(this);
         }

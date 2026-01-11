@@ -7,6 +7,7 @@ import com.football.client.messages.CountdownMessage;
 import com.football.client.messages.Message;
 import com.football.game.team.Team;
 import com.football.util.json.JsonUtil;
+import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Translation2d;
 import com.google.gson.JsonObject;
 
@@ -19,10 +20,20 @@ import java.util.stream.IntStream;
 public class Game implements Joinable {
 
     public enum State {
-        WAIT,
-        PLAYING,
-        GOAL,
-        STOP,
+        START(0),
+        WAIT(0),
+        START_COUNTDOWN(0),
+        BREAK_COUNTDOWN(0),
+        GOAL_COUNTDOWN(0.2),
+        PLAYING(1),
+        GOAL(0.2),
+        STOP(0);
+
+        private final double timeMultiplier;
+
+        State(double timeMultiplier) {
+            this.timeMultiplier = timeMultiplier;
+        }
     }
 
     public enum Phase {
@@ -36,9 +47,15 @@ public class Game implements Joinable {
         Phase(double startTime) {
             this.startTime = startTime;
         }
+
+        public Phase getNext() {
+            if (this == FINISH) return FINISH;
+            return values()[this.ordinal() + 1];
+        }
     }
 
-    public static final double WAIT_TIME = 3;
+    public static final double WAIT_TIME = 1.5;
+    public static final int COUNTDOWN = 3;
 
     public static final double LENGTH = 100;
     public static final double MAX_X = LENGTH / 2;
@@ -73,8 +90,9 @@ public class Game implements Joinable {
 
     private long startTime = -1;
 
-    private double matchTime = 0;
+    private double matchTime;
     private Phase phase;
+    private double addedTime;
 
     private State state;
     private transient long stateChanged;
@@ -99,14 +117,15 @@ public class Game implements Joinable {
 
         this.matchTime = 0;
         this.phase = Phase.FIRST_HALF;
+        this.addedTime = 0;
 
-        this.state = State.WAIT;
+        this.state = State.START;
         this.stateChanged = System.currentTimeMillis();
 
         this.score1 = 0;
         this.score2 = 0;
 
-        sendMessage(new CountdownMessage("Game starts in %d!", 3, 1));
+        sendMessage(new AlertMessage("Game Starts!", "yellow", WAIT_TIME, "large"));
     }
 
     public UUID getUUID() {
@@ -140,14 +159,16 @@ public class Game implements Joinable {
             return;
         }
 
-        if (this.state != State.WAIT) {
-            this.matchTime += GameManager.PERIOD / GameManager.GAME_REAL_TIME * GameManager.GAME_TIME;
-        }
+        double dt = GameManager.PERIOD / GameManager.GAME_REAL_TIME * GameManager.GAME_TIME;
+        dt *= this.state.timeMultiplier;
+        this.matchTime += dt;
 
-        Phase nextPhase = Phase.values()[this.phase.ordinal() + 1];
-        if (this.matchTime >= nextPhase.startTime) {
-            if (this.score1 == this.score2) { // draw
+        Phase nextPhase = this.phase.getNext();
+        if (this.matchTime >= nextPhase.startTime + this.addedTime) {
+            if (nextPhase == Phase.SECOND_HALF || this.score1 == this.score2) { // draw
                 this.phase = nextPhase;
+                this.matchTime = this.phase.startTime;
+                this.addedTime = 0;
             } else {
                 this.phase = Phase.FINISH;
             }
@@ -155,11 +176,11 @@ public class Game implements Joinable {
             if (this.phase == Phase.FINISH) {
                 AlertMessage message;
                 if (this.score1 == this.score2) { // draw
-                    message = new AlertMessage("DRAW!", "Score is tied!", "yellow", 1, "medium");
+                    message = new AlertMessage("DRAW!", "Score is tied!", "yellow", 2, "large");
                 } else if (this.score1 > this.score2) { // red
-                    message = new AlertMessage("RED WON!", "Game Finished!!", "red", 1, "medium");
+                    message = new AlertMessage("RED WON!", "Game Finished!!", "red", 2, "large");
                 } else { // blue
-                    message = new AlertMessage("BLUE WON!", "Game Finished!!", "blue", 1, "medium");
+                    message = new AlertMessage("BLUE WON!", "Game Finished!!", "blue", 2, "large");
                 }
                 sendMessage(message);
                 this.setState(State.STOP);
@@ -167,8 +188,11 @@ public class Game implements Joinable {
             }
 
             if (this.phase == Phase.EXTRA_TIME) {
-                this.sendMessage(new AlertMessage("Extra Time!", "yellow", 1, "large"));
+                this.sendMessage(new AlertMessage("Extra Time!", "yellow", WAIT_TIME, "large"));
+            } else if (this.phase == Phase.SECOND_HALF) {
+                this.sendMessage(new AlertMessage("Half Time!", "yellow", WAIT_TIME, "large"));
             }
+
             this.resetField();
             this.setState(State.WAIT);
         }
@@ -187,8 +211,26 @@ public class Game implements Joinable {
         this.ball.update(this.team1, this.team2);
 
         switch (this.state) {
-            case WAIT, GOAL -> {
+            case START -> {
                 if (getLastTimeChanged() >= WAIT_TIME) {
+                    this.resetField();
+                    this.setState(State.START_COUNTDOWN);
+                }
+            }
+            case WAIT -> {
+                if (getLastTimeChanged() >= WAIT_TIME) {
+                    this.resetField();
+                    this.setState(State.BREAK_COUNTDOWN);
+                }
+            }
+            case GOAL -> {
+                if (getLastTimeChanged() >= WAIT_TIME) {
+                    this.resetField();
+                    this.setState(State.GOAL_COUNTDOWN);
+                }
+            }
+            case START_COUNTDOWN, BREAK_COUNTDOWN, GOAL_COUNTDOWN -> {
+                if (getLastTimeChanged() >= COUNTDOWN) {
                     this.resetField();
                     this.setState(State.PLAYING);
                 }
@@ -198,9 +240,11 @@ public class Game implements Joinable {
                 if (isGoal == TEAM_1) {
                     this.score1++;
                     setState(State.GOAL);
+                    this.addedTime += MathUtil.random(1, 3) * 60;
                 } else if (isGoal == TEAM_2) {
                     this.score2++;
                     setState(State.GOAL);
+                    this.addedTime += MathUtil.random(1, 3) * 60;
                 }
             }
             case STOP -> {
@@ -212,17 +256,17 @@ public class Game implements Joinable {
         this.updateMatchTime();
     }
 
-    public State getState() {
-        return this.state;
-    }
-
     public void setState(State state) {
         this.state = state;
         this.stateChanged = System.currentTimeMillis();
 
-        if (this.state == State.WAIT) {
+        if (this.state == State.START_COUNTDOWN) {
             this.getClients().forEach(c ->
-                    c.sendMessage(new CountdownMessage("Game continues in %d!", 3, 1))
+                    c.sendMessage(new CountdownMessage("Game starts in %d!", COUNTDOWN, 1))
+            );
+        } else if (this.state == State.BREAK_COUNTDOWN || this.state == State.GOAL_COUNTDOWN) {
+            this.getClients().forEach(c ->
+                    c.sendMessage(new CountdownMessage("Game continues in %d!", COUNTDOWN, 1))
             );
         }
     }
