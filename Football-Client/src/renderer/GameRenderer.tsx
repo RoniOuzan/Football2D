@@ -166,8 +166,7 @@ const GameRenderer3D = forwardRef<GameRenderer3DHandle, GameRendererProps>(
           52
         );
 
-        const num = 1;
-        if (num != 1 && team) drawHeatmap(ctx, canvas, team, camera);
+        drawHeatmap(ctx, canvas, team, camera);
 
         const draws: Draw[] = [];
 
@@ -360,7 +359,7 @@ function drawPlayer(
 function drawHeatmap(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
-  team: Team | undefined,
+  team: Team | null,
   camera: Camera
 ) {
   if (!team) return;
@@ -368,8 +367,9 @@ function drawHeatmap(
   const maxValue = Math.min(Math.max(...scoreValues), 50);
   ctx.save();
   ctx.globalAlpha = 0.3;
-  const sizeX = pitchWidth / 40;
-  const sizeY = pitchHeight / 40;
+  const amount = Math.sqrt(team.teamStrategy.scores.length);
+  const sizeX = pitchWidth / amount;
+  const sizeY = pitchHeight / amount;
   for (const entry of team.teamStrategy.scores) {
     const color = scoreToColor(entry.value, -120, maxValue);
     fillPoly(

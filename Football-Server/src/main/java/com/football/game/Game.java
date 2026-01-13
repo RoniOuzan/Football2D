@@ -93,6 +93,7 @@ public class Game implements Joinable {
     private double matchTime;
     private Phase phase;
     private double addedTime;
+    private int switchSide = 1;
 
     private State state;
     private transient long stateChanged;
@@ -118,6 +119,7 @@ public class Game implements Joinable {
         this.matchTime = 0;
         this.phase = Phase.FIRST_HALF;
         this.addedTime = 0;
+        this.switchSide = 1;
 
         this.state = State.START;
         this.stateChanged = System.currentTimeMillis();
@@ -193,9 +195,16 @@ public class Game implements Joinable {
                 this.sendMessage(new AlertMessage("Half Time!", "yellow", WAIT_TIME, "large"));
             }
 
+            this.switchSides();
             this.resetField();
             this.setState(State.WAIT);
         }
+    }
+
+    public void switchSides() {
+        this.switchSide *= -1;
+        this.team1.setSideMultiplier(this.switchSide);
+        this.team2.setSideMultiplier(-this.switchSide);
     }
 
     public void resetField() {

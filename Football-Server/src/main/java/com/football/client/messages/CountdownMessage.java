@@ -8,6 +8,7 @@ public class CountdownMessage extends Message {
     }
 
     @AllArgsConstructor
+    @SuppressWarnings("unused")
     private static class Json {
         public String message;
         public int from;

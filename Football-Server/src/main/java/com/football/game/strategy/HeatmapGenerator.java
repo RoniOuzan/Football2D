@@ -5,7 +5,7 @@ import com.football.util.math.geometry.Translation2d;
 
 public class HeatmapGenerator {
 
-    private static final int AMOUNT_OF_STEPS = 40;
+    private static final int AMOUNT_OF_STEPS = 10;
     private static final double STEPS_X = Game.LENGTH / AMOUNT_OF_STEPS;
     private static final double STEPS_Y = Game.WIDTH / AMOUNT_OF_STEPS;
 

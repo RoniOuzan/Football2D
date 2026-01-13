@@ -1,12 +1,11 @@
 package com.football.game.strategy;
 
+import java.util.Objects;
+
 import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Rotation2d;
-import com.football.util.math.geometry.Translation2d;
 import com.football.util.math.geometry.Translation3d;
 import com.football.util.math.interpolation.Interpolatable;
-
-import java.util.Objects;
 
 public class CameraPose implements Interpolatable<CameraPose> {
     private final Translation3d translation;

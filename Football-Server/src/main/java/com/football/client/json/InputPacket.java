@@ -1,13 +1,13 @@
 package com.football.client.json;
 
-import com.football.client.Client;
-import com.football.util.math.geometry.Translation2d;
-import lombok.AllArgsConstructor;
-import lombok.ToString;
-
 import java.util.List;
 import java.util.Set;
-import java.util.Map;
+
+import com.football.client.Client;
+import com.football.util.math.geometry.Translation2d;
+
+import lombok.AllArgsConstructor;
+import lombok.ToString;
 
 @ToString
 @AllArgsConstructor

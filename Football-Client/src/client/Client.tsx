@@ -26,7 +26,7 @@ export default class Client {
 
   connect() {
     const host = window.location.hostname;
-    this.socket = new WebSocket(`wss://${host}:9090/game`);
+    this.socket = new WebSocket(`ws://${host}:9090/game`);
 
     this.socket.onopen = () => {
       console.log("WS connected");

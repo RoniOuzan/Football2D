@@ -1,13 +1,12 @@
 package com.football.game.strategy;
 
-import com.football.GameManager;
+import java.util.function.Function;
+
 import com.football.game.players.Player;
 import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Rotation2d;
 import com.football.util.math.geometry.Translation2d;
 import com.football.util.math.geometry.Translation3d;
-
-import java.util.function.Function;
 
 public enum CameraPositionType {
     BROADCAST(t -> {

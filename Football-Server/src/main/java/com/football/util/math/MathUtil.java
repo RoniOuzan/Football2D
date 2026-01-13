@@ -4,7 +4,6 @@
 
 package com.football.util.math;
 
-import com.football.GameManager;
 import com.football.util.math.geometry.Translation2d;
 
 /** Math utility functions. */

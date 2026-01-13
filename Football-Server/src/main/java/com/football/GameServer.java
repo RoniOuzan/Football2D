@@ -20,12 +20,23 @@ public class GameServer {
 
     private static final ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
 
+    private static long start = 0;
+    private static int count = 0;
+
     static {
         executor.scheduleAtFixedRate(() -> {
+            if (count == 0) {
+                start = System.currentTimeMillis();
+            }
+            count++;
             try {
                 GameManager.getInstance().update();
             } catch (Exception e) {
                 e.printStackTrace();
+            }
+            if (System.currentTimeMillis() - start >= 1000) {
+                System.out.println(count);
+                count = 0;
             }
         }, 0, (long) (GameManager.PERIOD * 1000), TimeUnit.MILLISECONDS);
     }

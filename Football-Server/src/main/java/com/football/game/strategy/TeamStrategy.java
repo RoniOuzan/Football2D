@@ -1,17 +1,16 @@
 package com.football.game.strategy;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import com.football.client.inputs.InputHandler;
 import com.football.game.Ball;
 import com.football.game.Game;
 import com.football.game.players.Goalkeeper;
-import com.football.game.team.Team;
 import com.football.game.players.Player;
-import com.football.util.math.geometry.Rotation2d;
+import com.football.game.team.Team;
 import com.football.util.math.geometry.Translation2d;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class TeamStrategy {
 
@@ -19,7 +18,7 @@ public class TeamStrategy {
     protected transient final int inputSlot;
     protected transient final List<Player> players;
     protected transient final Ball ball;
-    protected transient final double sideMultiplier;
+    protected transient double sideMultiplier;
 
     @SuppressWarnings(value = {"unused", "FieldCanBeLocal"})
     private int chosenPlayerIndex = -1; // for json
@@ -61,6 +60,10 @@ public class TeamStrategy {
 
         this.playersMovementHandle.update();
         this.chosenPlayerIndex = this.players.indexOf(this.playersMovementHandle.getChosenPlayer());
+    }
+
+    public void setSideMultiplier(double sideMultiplier) {
+        this.sideMultiplier = sideMultiplier;
     }
 
     public InputHandler getInput() {

@@ -12,6 +12,7 @@ public class AlertMessage extends Message {
     }
 
     @AllArgsConstructor
+    @SuppressWarnings("unused")
     private static class Json {
         public String title;
         public String subTitle;

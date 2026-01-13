@@ -56,7 +56,7 @@ export default function FixedJoystick({ data }: Props) {
         style={{
           minWidth: "64px",
           padding: "0 14px",
-          backgroundColor: "#1D4ED8",
+          backgroundColor: "#DC2626",
           borderRadius: "12px 0px 0px 12px",
           color: "white",
           display: "flex",
@@ -66,8 +66,58 @@ export default function FixedJoystick({ data }: Props) {
           fontWeight: 700,
         }}
       >
-        {data.score2}
+        {data.score1}
       </div>
+
+      {/* TIME POPDOWN */}
+      <AnimatePresence>
+        {addedTime && (
+          <motion.div
+            initial={{ opacity: 0.3, y: "-100%", x: "-50%" }}
+            animate={{ opacity: 1, y: 0, x: "-50%" }}
+            exit={{ opacity: 0.3, y: "-100%", x: "-50%" }}
+            transition={{ duration: 0.2 }}
+            style={{
+              position: "absolute",
+              top: "100%",
+              left: "50%",
+              display: "flex",
+              alignItems: "center",
+              fontSize: "18px",
+              fontWeight: 700,
+              letterSpacing: "0.5px",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.35)",
+            }}
+          >
+            {/* ELAPSED ADDED TIME */}
+            <span
+              style={{
+                color: "#111",
+                padding: "4px 8px",
+                textAlign: "center",
+                minWidth: "80px",
+                background: "linear-gradient(180deg, #a9a9a9 0%, #ffffff 50%)",
+                borderRadius: "0 0 0 10px",
+              }}
+            >
+              {formatTime(addedTime)}
+            </span>
+            {/* +ADDED */}
+            <span
+              style={{
+                color: "white",
+                padding: "4px 8px",
+                textAlign: "center",
+                minWidth: "38px",
+                background: "linear-gradient(180deg, #111 0%, #313131 70%)",
+                borderRadius: "0 0 10px 0",
+              }}
+            >
+              +{Math.round(data.addedTime / 60)}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* CENTER BAR */}
       <div
@@ -96,55 +146,6 @@ export default function FixedJoystick({ data }: Props) {
         >
           {formatTime(data.matchTime)}
         </div>
-
-        {/* ADDED TIME POPDOWN */}
-        <AnimatePresence>
-          {addedTime && (
-            <motion.div
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.18 }}
-              style={{
-                position: "absolute",
-                top: "100%",
-                borderTop: "1px solid #111",
-                background: "linear-gradient(180deg, #d4d4d4 0%, #ffffff 70%)",
-                borderRadius: "0 0 6px 6px",
-                display: "flex",
-                alignItems: "center",
-                fontSize: "18px",
-                fontWeight: 700,
-                letterSpacing: "0.5px",
-                boxShadow: "0 2px 4px rgba(0,0,0,0.35)",
-              }}
-            >
-              {/* ELAPSED ADDED TIME */}
-              <span
-                style={{
-                  color: "#111",
-                  padding: "4px 8px",
-                  textAlign: "center",
-                }}
-              >
-                {formatTime(addedTime)}
-              </span>
-              {/* +ADDED */}
-              <span
-                style={{
-                  background: "linear-gradient(180deg, #111 0%, #313131 70%)",
-                  color: "white",
-                  padding: "4px 8px",
-                  minWidth: "36px",
-                  textAlign: "center",
-                  borderRadius: "0 0 6px 0",
-                }}
-              >
-                +{Math.round(data.addedTime / 60)}
-              </span>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
       {/* RED TEAM */}
@@ -152,7 +153,7 @@ export default function FixedJoystick({ data }: Props) {
         style={{
           minWidth: "64px",
           padding: "0 14px",
-          backgroundColor: "#DC2626",
+          backgroundColor: "#1D4ED8",
           borderRadius: "0px 12px 12px 0px",
           color: "white",
           display: "flex",
@@ -162,7 +163,7 @@ export default function FixedJoystick({ data }: Props) {
           fontWeight: 700,
         }}
       >
-        {data.score1}
+        {data.score2}
       </div>
     </div>
   );

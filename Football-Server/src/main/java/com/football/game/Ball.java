@@ -31,7 +31,6 @@ public class Ball {
     private static final double GROUND_RESTITUTION = 0.32; // low bounces
 
     private static final long CARRY_COOLDOWN_MS = 300;
-    private static final long DRIBBLE_COOLDOWN_MS = 200;
 
     private static final double RADIUS = 0.2;
 
@@ -43,7 +42,6 @@ public class Ball {
     private transient Player carrier = null;
 
     private transient long timeReleased;
-    private transient long timeDribbled;
 
     private transient final TimeInterpolatableBuffer<Translation3d> positions = TimeInterpolatableBuffer.createBuffer(1);
 

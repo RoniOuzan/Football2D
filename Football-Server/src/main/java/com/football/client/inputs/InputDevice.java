@@ -1,13 +1,17 @@
 package com.football.client.inputs;
 
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
 import com.football.client.json.InputPacket;
 import com.football.client.keybinds.Keybind;
-import com.football.game.players.Goalkeeper;
-import com.football.game.strategy.TeamStrategy;
 import com.football.game.players.Player;
-import lombok.ToString;
+import com.football.game.strategy.TeamStrategy;
 
-import java.util.*;
+import lombok.ToString;
 
 @ToString
 public abstract class InputDevice implements InputHandler {

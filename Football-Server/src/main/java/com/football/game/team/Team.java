@@ -22,12 +22,14 @@ public class Team {
 
     private final TeamStrategy teamStrategy;
 
-    private transient final int sideMultiplier;
+    private transient boolean isTeam1;
+    private transient int sideMultiplier;
 
     public Team(Game game, Client client, boolean isTeam1, int inputSlot) {
         this.client = client;
         this.game = game;
 
+        this.isTeam1 = isTeam1;
         this.sideMultiplier = isTeam1 ? 1 : -1;
 
         this.players = new ArrayList<>();
@@ -38,17 +40,22 @@ public class Team {
     }
 
     private void initialize() {
-        this.players.add(new Goalkeeper(this, this.game.getBall(), this.formation.getGoalkeeper().times(sideMultiplier)));
+        this.players.add(new Goalkeeper(this, this.game.getBall(), this.formation.getGoalkeeper()));
 
         for (Translation2d position : this.formation.getDefenders()) {
-            this.players.add(new Defender(this, this.game.getBall(),position.times(sideMultiplier)));
+            this.players.add(new Defender(this, this.game.getBall(), position));
         }
         for (Translation2d position : this.formation.getMidfielders()) {
-            this.players.add(new Midfielder(this, this.game.getBall(),position.times(sideMultiplier)));
+            this.players.add(new Midfielder(this, this.game.getBall(), position));
         }
         for (Translation2d position : this.formation.getAttackers()) {
-            this.players.add(new Attacker(this, this.game.getBall(),position.times(sideMultiplier)));
+            this.players.add(new Attacker(this, this.game.getBall(), position));
         }
+    }
+
+    public void setSideMultiplier(int sideMultiplier) {
+        this.sideMultiplier = sideMultiplier;
+        this.teamStrategy.setSideMultiplier(sideMultiplier);
     }
 
     public List<Player> getPlayers() {
@@ -60,7 +67,7 @@ public class Team {
     }
 
     public int getSideMultiplier() {
-        return sideMultiplier;
+        return this.sideMultiplier;
     }
 
     public Player getClosestPlayerToBall(Predicate<Player> filter) {
@@ -102,6 +109,6 @@ public class Team {
     }
 
     public Team getOpponent() {
-        return this.sideMultiplier == 1 ? this.game.getTeam2() : this.game.getTeam1();
+        return this.isTeam1 ? this.game.getTeam2() : this.game.getTeam1();
     }
 }
