@@ -36,6 +36,10 @@ public class Client {
         return this.inputs.get(slot);
     }
 
+    public InputHandler getAllInputDevices() {
+        return this.allInputDevices;
+    }
+
     public int getAmountOfInputs() {
         return this.inputs.size();
     }

@@ -33,6 +33,31 @@ public enum CameraPositionType {
         Rotation2d yaw = offset2d.getAngle().plus(Rotation2d.kCCW_Pi_2);
         return new CameraPose(cameraPos, Rotation2d.fromDegrees(-5), yaw, Rotation2d.fromDegrees(45));
     }, t -> t.getCameraManager().getPosition().getYaw()),
+    // REPLAY(t -> {
+    //     Translation2d ball = t.ball.getPosition2d();
+    //     Translation2d vel  = t.ball.getVelocity2d();
+
+    //     // Predict slightly ahead of the ball
+    //     Translation2d target = ball.plus(vel.times(0.6));
+
+    //     double side = Math.signum(ball.getX()); // camera switches side dynamically
+
+    //     Translation3d cameraPos = new Translation3d(
+    //         target.getX() - side * 18,
+    //         target.getY() - 26,
+    //         18
+    //     );
+
+    //     Rotation2d yaw = target.minus(cameraPos.toTranslation2d()).getAngle();
+    //     Rotation2d pitch = Rotation2d.fromDegrees(-18);
+
+    //     return new CameraPose(
+    //         cameraPos,
+    //         pitch,
+    //         yaw,
+    //         Rotation2d.fromDegrees(40)
+    //     );
+    // }, t -> Rotation2d.kZero)
     ;
 
     private final Function<TeamStrategy, CameraPose> cameraPose;

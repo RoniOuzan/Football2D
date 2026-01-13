@@ -7,6 +7,8 @@ import Game from "./game/Game";
 import Lobby from "./lobby/Lobby";
 import Alert from "./other/Alert";
 import Countdown from "./other/Countdown";
+import type { GameData } from "./client/jsons/gameTypes";
+import type { LobbyData } from "./client/jsons/lobbyTypes";
 
 export let isMobile = false;
 export let isPortrait = window.innerHeight > window.innerWidth;
@@ -17,7 +19,8 @@ function App() {
     height: window.innerHeight,
   });
 
-  const [msg, setMsg] = useState<ServerMessage | null>(null);
+  const [lobbyData, setLobbyData] = useState<LobbyData | null>(null);
+  const [gameData, setGameData] = useState<GameData | null>(null);
   const [alertMessage, setAlertMessage] = useState<AlertData | null>(null);
   const [countdown, setCountdown] = useState<CountdownData | null>(null);
 
@@ -26,7 +29,7 @@ function App() {
   useEffect(() => {
     if (client.current) return;
 
-    client.current = new Client(setMsg);
+    client.current = new Client(handleServerMessage);
   }, []);
 
   useEffect(() => {
@@ -61,37 +64,47 @@ function App() {
     setTimeout(() => loader.remove(), 300);
   }, []);
 
-  useEffect(() => {
-    if (!msg) return;
-
+  const handleServerMessage = (msg: ServerMessage) => {
     switch (msg.type) {
-      case "alert":
-        setAlertMessage(msg.data); // Show the alert message
-        setTimeout(() => setAlertMessage(null), msg.data.time * 1000); // Hide
+      case "lobby":
+        setLobbyData(msg.data);
         break;
+
+      case "game":
+        setGameData(msg.data);
+        break;
+
+      case "replay":
+        setGameData(prev => prev ? {
+          ...prev,
+          replay: {
+            active: true,
+            frames: msg.data.frames
+          }
+        } : null);
+        break;
+
+      case "alert":
+        setAlertMessage(msg.data);
+        setTimeout(() => setAlertMessage(null), msg.data.time * 1000);
+        break;
+
       case "countdown":
         setCountdown(msg.data);
         break;
     }
-  }, [msg]);
+  };
 
-  if (!client.current || !msg) {
+  if (!client.current || (!lobbyData && !gameData)) {
     return <LoadingScreen />;
   }
 
-  let content: React.ReactNode;
+  let content = null;
 
-  switch (msg.type) {
-    case "lobby":
-      content = <Lobby client={client.current} data={msg.data} />;
-      break;
-
-    case "game":
-      content = <Game client={client.current} data={msg.data} />;
-      break;
-
-    default:
-      content = null;
+  if (gameData) {
+    content = <Game client={client.current} game={gameData} />;
+  } else if (lobbyData) {
+    content = <Lobby client={client.current} data={lobbyData} />;
   }
 
   return (

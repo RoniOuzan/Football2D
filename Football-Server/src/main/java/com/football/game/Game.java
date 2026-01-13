@@ -1,7 +1,14 @@
 package com.football.game;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.IntStream;
+
 import com.football.GameManager;
 import com.football.client.Client;
+import com.football.client.keybinds.Keybind;
 import com.football.client.messages.AlertMessage;
 import com.football.client.messages.CountdownMessage;
 import com.football.client.messages.Message;
@@ -10,12 +17,6 @@ import com.football.util.json.JsonUtil;
 import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Translation2d;
 import com.google.gson.JsonObject;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.IntStream;
 
 public class Game implements Joinable {
 
@@ -27,6 +28,7 @@ public class Game implements Joinable {
         GOAL_COUNTDOWN(0.2),
         PLAYING(1),
         GOAL(0.2),
+        REPLAY(0),
         STOP(0);
 
         private final double timeMultiplier;
@@ -98,6 +100,8 @@ public class Game implements Joinable {
     private State state;
     private transient long stateChanged;
 
+    private transient final Replay replay;
+
     private final List<Spectator> spectators = new ArrayList<>();
 
     public Game(Client client1, int inputSlot1, Client client2, int inputSlot2) {
@@ -107,6 +111,8 @@ public class Game implements Joinable {
 
         this.team1 = new Team(this, client1, true, inputSlot1);
         this.team2 = new Team(this, client2, false, inputSlot2);
+
+        this.replay = new Replay();
     }
 
     public Game(Client client1, Client client2) {
@@ -147,7 +153,7 @@ public class Game implements Joinable {
     }
 
     public void sendMessage(Message message) {
-        this.getClients().forEach(c ->
+        this.getPlayingClients().forEach(c ->
                 c.sendMessage(message)
         );
     }
@@ -213,7 +219,16 @@ public class Game implements Joinable {
         this.team2.resetPlayers();
     }
 
+    public boolean isAnyonePressed(Keybind keybind) {
+        return this.team1.getClient().getAllInputDevices().isPressed(keybind) ||
+            this.team2.getClient().getAllInputDevices().isPressed(keybind);
+    }
+
     public void update() {
+        if (this.isAnyonePressed(Keybind.SKIP_REPLAY)) {
+            setState(State.REPLAY);
+        }
+
         this.team1.update(this.state);
         this.team2.update(this.state);
 
@@ -235,7 +250,17 @@ public class Game implements Joinable {
             case GOAL -> {
                 if (getLastTimeChanged() >= WAIT_TIME) {
                     this.resetField();
+                    this.setState(State.REPLAY);
+                }
+            }
+            case REPLAY -> {
+                if (!this.replay.isActive()) {
+                    this.replay.start(getPlayingClients());
+                }
+
+                if (this.isAnyonePressed(Keybind.SKIP_REPLAY)) {
                     this.setState(State.GOAL_COUNTDOWN);
+                    this.replay.stop();
                 }
             }
             case START_COUNTDOWN, BREAK_COUNTDOWN, GOAL_COUNTDOWN -> {
@@ -246,13 +271,11 @@ public class Game implements Joinable {
             }
             case PLAYING -> {
                 int isGoal = this.ball.isAtGoal();
-                if (isGoal == TEAM_1) {
-                    this.score1++;
-                    setState(State.GOAL);
-                    this.addedTime += MathUtil.random(1, 3) * 60;
-                } else if (isGoal == TEAM_2) {
-                    this.score2++;
-                    setState(State.GOAL);
+                if (isGoal != 0) {
+                    if (isGoal == 1) this.score1++;
+                    else this.score2 ++;
+
+                    setState(State.REPLAY);
                     this.addedTime += MathUtil.random(1, 3) * 60;
                 }
             }
@@ -263,6 +286,20 @@ public class Game implements Joinable {
         this.spectators.forEach(Spectator::update);
 
         this.updateMatchTime();
+
+        if (!this.replay.isActive()) {
+            JsonObject json = JsonUtil.toJsonObject(this);
+            this.replay.addFrame(json);
+            for (Client client : this.getPlayingClients()) {
+                json.addProperty("client", getClientNumber(client));
+                client.sendMessage(new Message("game", json));
+            }
+            for (Spectator spectator : this.getSpectators()) {
+                Client client = spectator.getClient();
+                json.addProperty("client", getClientNumber(client));
+                client.sendMessage(new Message("game", json));
+            }
+        }
     }
 
     public void setState(State state) {
@@ -270,11 +307,11 @@ public class Game implements Joinable {
         this.stateChanged = System.currentTimeMillis();
 
         if (this.state == State.START_COUNTDOWN) {
-            this.getClients().forEach(c ->
+            this.getPlayingClients().forEach(c ->
                     c.sendMessage(new CountdownMessage("Game starts in %d!", COUNTDOWN, 1))
             );
         } else if (this.state == State.BREAK_COUNTDOWN || this.state == State.GOAL_COUNTDOWN) {
-            this.getClients().forEach(c ->
+            this.getPlayingClients().forEach(c ->
                     c.sendMessage(new CountdownMessage("Game continues in %d!", COUNTDOWN, 1))
             );
         }
@@ -284,7 +321,7 @@ public class Game implements Joinable {
         return (System.currentTimeMillis() - this.stateChanged) / 1000.0;
     }
 
-    public List<Client> getClients() {
+    public List<Client> getPlayingClients() {
         return Arrays.asList(this.team1.getClient(), this.team2.getClient());
     }
 
@@ -298,14 +335,6 @@ public class Game implements Joinable {
 
     public List<Spectator> getSpectators() {
         return this.spectators;
-    }
-
-    public JsonObject toJson(Client client) {
-        JsonObject json = JsonUtil.toJsonObject(this);
-
-        json.addProperty("client", getClientNumber(client));
-
-        return json;
     }
 
     private int getClientNumber(Client client) {

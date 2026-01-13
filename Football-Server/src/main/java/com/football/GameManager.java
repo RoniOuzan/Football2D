@@ -51,8 +51,8 @@ public class GameManager {
                 this.waitingGames.remove(g);
             }
         } else if (game instanceof Game g) {
-            if (g.getClients().contains(client)) {
-                g.getClients().stream().filter(c -> !c.equals(client)).forEach(c -> {
+            if (g.getPlayingClients().contains(client)) {
+                g.getPlayingClients().stream().filter(c -> !c.equals(client)).forEach(c -> {
                     this.clients.put(c, new NullGame());
                     c.sendMessage(new AlertMessage("OOPS! one of the clients has quit the game!", "red", 1, "medium"));
                 });
@@ -67,7 +67,7 @@ public class GameManager {
         this.games.add(game);
         game.start();
 
-        game.getClients().forEach(c -> this.clients.put(c, game));
+        game.getPlayingClients().forEach(c -> this.clients.put(c, game));
     }
 
     public void createWaitingGame(Client client) {
@@ -109,8 +109,9 @@ public class GameManager {
 
         this.updateGames();
 
-        for (Client client : this.clients.keySet()) {
-            client.sendMessage(getJson(client));
+        for (Map.Entry<Client, Joinable> entry : this.clients.entrySet()) {
+            if (entry.getValue() instanceof Game) continue;
+            entry.getKey().sendMessage(new Message("lobby", this));
         }
     }
 
@@ -122,13 +123,5 @@ public class GameManager {
 
             }
         }
-    }
-
-    public Message getJson(Client client) {
-        Joinable game = this.clients.get(client);
-        if (game instanceof Game g) {
-            return new Message("game", g.toJson(client));
-        }
-        return new Message("lobby", this);
     }
 }

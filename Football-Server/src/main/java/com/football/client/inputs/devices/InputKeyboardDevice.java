@@ -25,6 +25,8 @@ public class InputKeyboardDevice extends InputDevice {
         keybinds.put(Keybind.THROUGH, "f");
         keybinds.put(Keybind.SHOOT, "r");
 
+        keybinds.put(Keybind.SKIP_REPLAY, "enter");
+
         keybinds.put(Keybind.CHIP, "x");
         keybinds.put(Keybind.FINESSE, "v");
         keybinds.put(Keybind.TRIVELA, "c");

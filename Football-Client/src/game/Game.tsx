@@ -1,28 +1,37 @@
-import { useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import Client from "../client/Client";
-import GameRenderer3D, {
-  type GameRenderer3DHandle,
-} from "../renderer/GameRenderer";
-import MobileControls from "./MobileControls";
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useRef } from "react";
 import { isMobile } from "../App";
-import { screenToWorld } from "../renderer/CameraUtil";
+import Client from "../client/Client";
 import { getClientsTeam, type GameData } from "../client/jsons/gameTypes";
+import { screenToWorld } from "../renderer/CameraUtil";
+import GameRenderer3D, { type GameRenderer3DHandle } from "../renderer/GameRenderer";
+import MobileControls from "./MobileControls";
 import Scorebar from "./Scorebar";
+import useReplayController from "./useReplayController";
 
 export const FPS = 30;
 
 interface GameProps {
   client: Client;
-  data: GameData;
+  game: GameData;
 }
 
-export default function FixedJoystick({ client, data }: GameProps) {
+export default function Game({ client, game }: GameProps) {
   const rendererRef = useRef<GameRenderer3DHandle>(null);
 
-  function handleTap(e: React.MouseEvent, pressed: boolean) {
-    if (!data || !rendererRef.current || !client.getInput()) return;
+  const replayController = useReplayController();
 
+  useEffect(() => {
+    if (game.replay?.active && game.replay.frames.length > 0 && !replayController.active) {
+      replayController.start(game.replay.frames);
+    }
+  }, [game.replay, replayController]);
+
+  const currentFrame = replayController.active ? replayController.getCurrentFrame() : game;
+  if (!currentFrame) return null;
+
+  const handleTap = (e: React.MouseEvent, pressed: boolean) => {
+    if (!currentFrame || !rendererRef.current || !client.getInput()) return;
     const canvas = rendererRef.current.getCanvas();
     if (!canvas) return;
 
@@ -30,27 +39,18 @@ export default function FixedJoystick({ client, data }: GameProps) {
       client.getInput().setClick(null);
       return;
     }
-    const team = getClientsTeam(data);
 
+    const team = getClientsTeam(currentFrame);
     if (!team) return;
 
     const camera = team.teamStrategy.cameraManager.position;
     const world = screenToWorld(canvas, { x: e.clientX, y: e.clientY }, camera);
     client.getInput().setClick(world);
-  }
+  };
 
   return (
-    <div
-      style={{
-        margin: "0",
-        padding: "0",
-        width: "100%",
-        height: "100%",
-        position: "fixed",
-        overscrollBehavior: "none",
-      }}
-    >
-      {isMobile && data.client > 0 && (
+    <div style={{ width: "100%", height: "100%", position: "fixed" }}>
+      {isMobile && game?.client! > 0 && (
         <MobileControls
           onMove={(x, y) => client.getInput().setJoystick(x, y)}
           onStop={() => client.getInput().setJoystick(0, 0)}
@@ -59,23 +59,14 @@ export default function FixedJoystick({ client, data }: GameProps) {
       )}
 
       <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          zIndex: 998, // below controls
-        }}
+        style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%" }}
         onPointerDown={(e) => handleTap(e, true)}
         onPointerUp={(e) => handleTap(e, false)}
         onPointerLeave={(e) => handleTap(e, false)}
       />
 
-      <Scorebar data={data} />
-
       <AnimatePresence>
-        {data.spectators.length > 0 && (
+        {game.spectators.length > 0 && (
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -99,13 +90,13 @@ export default function FixedJoystick({ client, data }: GameProps) {
             }}
           >
             <span style={{ fontSize: "14px", opacity: 0.8 }}>👁️</span>
-            <span style={{ fontSize: "18px" }}>{data.spectators.length}</span>
+            <span style={{ fontSize: "18px" }}>{game.spectators.length}</span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Render the 3D pitch component full screen */}
-      {data && <GameRenderer3D ref={rendererRef} data={data} />}
+      <Scorebar data={game} />
+      <GameRenderer3D ref={rendererRef} data={currentFrame} />
     </div>
   );
 }
