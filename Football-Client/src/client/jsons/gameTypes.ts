@@ -3,6 +3,8 @@ import type { Translation3d, Translation2d, Rotation2d } from "../../types";
 export type Phase = "FIRST_HALF" | "SECOND_HALF" | "EXTRA_TIME" | "FINISH";
 
 export interface ReplayData {
+  active: boolean;
+  scoredSide: number;
   frames: GameData[];
 }
 
@@ -20,12 +22,7 @@ export interface GameData {
   spectators: Spectator[];
   client: number;
 
-  replay: Replay;
-}
-
-export interface Replay {
-  active: boolean;
-  frames: GameData[];
+  replay: ReplayData;
 }
 
 export function getClientsTeam(data: GameData): Team | null {

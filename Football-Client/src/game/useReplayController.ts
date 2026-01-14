@@ -26,8 +26,7 @@ export default function useReplayController() {
     intervalRef.current = window.setInterval(() => {
       setCurrentIndex((i) => {
         if (i + 1 >= frames.length) {
-          stop(); // stop at the last frame
-          return i;
+          return 0;
         }
         return i + 1;
       });

@@ -272,9 +272,10 @@ public class Game implements Joinable {
             case PLAYING -> {
                 int isGoal = this.ball.isAtGoal();
                 if (isGoal != 0) {
-                    if (isGoal == 1) this.score1++;
+                    if (isGoal == this.team1.getSideMultiplier()) this.score1++;
                     else this.score2 ++;
 
+                    this.replay.setScoredSide(isGoal);
                     setState(State.REPLAY);
                     this.addedTime += MathUtil.random(1, 3) * 60;
                 }

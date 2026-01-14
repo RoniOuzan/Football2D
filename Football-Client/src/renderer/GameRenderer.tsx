@@ -1,29 +1,31 @@
 import {
-  useRef,
-  useEffect,
-  useState,
   forwardRef,
+  useEffect,
   useImperativeHandle,
+  useRef,
+  useState,
 } from "react";
+import { isPortrait } from "../App";
+import type { Ball, Camera, GameData, Player, ReplayData, Team } from "../client/jsons/gameTypes";
+import { getClientsTeam } from "../client/jsons/gameTypes";
+import type { Translation2d, Translation3d } from "../types";
+import { createRotation2dDeg, createRotation2dRad, maxX, maxY, pitchHeight, pitchWidth } from "../types";
 import {
-  drawPitch,
-  drawLineFlat,
   drawCircleWorld,
+  drawCylinder,
+  drawLineFlat,
+  drawPitch,
   drawRectWorld,
   drawSphere,
-  drawCylinder,
   fillPoly,
   strokePoly3d,
 } from "./RendererUtil";
 import { drawStadium } from "./StadiumRenderer";
-import type { Translation3d, Translation2d } from "../types";
-import { maxX, maxY, pitchWidth, pitchHeight } from "../types";
-import { isPortrait } from "../App";
-import type { GameData, Camera, Player, Team } from "../client/jsons/gameTypes";
-import { getClientsTeam } from "../client/jsons/gameTypes";
+import { FPS } from "../game/Game";
 
 interface GameRendererProps {
   data: GameData;
+  replay: ReplayData | null;
 }
 
 interface Draw {
@@ -41,8 +43,9 @@ export interface GameRenderer3DHandle {
 }
 
 const GameRenderer3D = forwardRef<GameRenderer3DHandle, GameRendererProps>(
-  ({ data }, ref) => {
+  ({ data, replay }, ref) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+
     const [camera, setCamera] = useState<Camera>({
       translation: { x: 0, y: 0, z: 0 },
       yaw: { value: 0, cos: 1, sin: 0 },
@@ -75,10 +78,14 @@ const GameRenderer3D = forwardRef<GameRenderer3DHandle, GameRendererProps>(
         if (!ctx) return;
 
         const team = getClientsTeam(data);
-        if (team)
-          setCamera(team.teamStrategy.cameraManager.position);
-        else if (data.client <= 0)
-          setCamera(data.spectators[-data.client].cameraManager.position);
+        if (replay) {
+          setCamera(prev => calculateReplayCamera(data.ball, replay.scoredSide, prev))
+        } else {
+          if (team)
+            setCamera(team.teamStrategy.cameraManager.position);
+          else if (data.client <= 0)
+            setCamera(data.spectators[-data.client].cameraManager.position);
+        }
 
         // const pitch = radians(-90);
         // const yaw = radians(0);
@@ -508,6 +515,97 @@ function scoreToColor(value: number, min: number, max: number): string {
   const g = Math.floor(255 * (1 - Math.abs(t - 0.5) * 2));
   const b = Math.floor(255 * (1 - t));
   return `rgb(${r}, ${g}, ${b})`;
+}
+
+export function calculateReplayCamera(
+  ball: Ball,
+  scoreSide: number,
+  prevCam: Camera,
+  dt = 1 / FPS
+): Camera {
+  const goal = getGoal(scoreSide);
+
+  // Step 1: Predict future ball
+  const predictionTime = 0.3;
+  const futureBall: Translation2d = {
+    x: ball.position.x + ball.velocity.x * predictionTime,
+    y: ball.position.y + ball.velocity.y * predictionTime,
+  };
+
+  // Step 2: Compute cinematic offsets
+  const nearGoalThreshold = 20;
+  const ballSpeed = Math.hypot(ball.velocity.x, ball.velocity.y);
+  const distanceToGoal = Math.abs(goal.x - ball.position.x);
+
+  let offsetX = 0;
+  let offsetY = 0;
+  let offsetZ = 15;
+
+  if (distanceToGoal < nearGoalThreshold || ballSpeed > 6) {
+    // Goal attempt: pull camera back and to side
+    const side = Math.sign(ball.velocity.y) || 1;
+    offsetX = -side * 18; // orbit from side
+    offsetY = -20;         // pull back
+    offsetZ = 18;          // raise camera
+  } else {
+    // Normal play: slightly behind the ball
+    offsetX = -10; // behind ball along x
+    offsetY = -10; // behind along y
+    offsetZ = 15;
+  }
+
+  // Step 3: Compute desired camera position
+  let desiredCam: Translation3d = {
+    x: futureBall.x + offsetX,
+    y: futureBall.y + offsetY,
+    z: offsetZ,
+  };
+
+  // Smooth camera translation
+  desiredCam = {
+    x: prevCam.translation.x + (desiredCam.x - prevCam.translation.x) * 0.1,
+    y: prevCam.translation.y + (desiredCam.y - prevCam.translation.y) * 0.1,
+    z: prevCam.translation.z + (desiredCam.z - prevCam.translation.z) * 0.1,
+  };
+
+  const targetFocus: Translation2d =
+  distanceToGoal < nearGoalThreshold ? goal : futureBall;
+
+  const dx = targetFocus.x - desiredCam.x;
+  const dy = targetFocus.y - desiredCam.y;
+  const targetZ = 1.5; // ball height
+  const dz = targetZ - desiredCam.z;
+
+  const yaw = Math.atan2(dy, dx) - Math.PI / 2; // yaw 0 = +y
+  const pitch = Math.atan2(dz, Math.hypot(dx, dy)); // look toward target
+
+  // Smooth
+  const smoothYaw = smoothRotation(prevCam.yaw.value, yaw, dt, 5);
+  const smoothPitch = smoothRotation(prevCam.pitch.value, pitch, dt, 5);
+
+  return {
+    translation: desiredCam,
+    yaw: createRotation2dRad(smoothYaw),
+    pitch: createRotation2dRad(smoothPitch),
+    fov: createRotation2dDeg(40),
+  };
+}
+
+function getGoal(side: number): Translation2d {
+  if (side > 0) {
+    return { x: -maxX, y: maxY};
+  } else if (side < 0)
+    return { x: maxX, y: maxY};
+  
+  return { x: 0, y: 0};
+}
+
+// Helper to smooth rotation angles
+function smoothRotation(prev: number, target: number, dt: number, speed: number) {
+  let diff = target - prev;
+  while (diff > Math.PI) diff -= 2 * Math.PI;
+  while (diff < -Math.PI) diff += 2 * Math.PI;
+  return prev + diff * dt * speed;
 }
 
 export default GameRenderer3D;

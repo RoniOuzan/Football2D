@@ -14,10 +14,12 @@ public class Replay {
     private static final int MAX_FRAMES = (int) (GameManager.FPS * 5); // 5 seconds
 
     private boolean active;
+    private int scoredSide;
     private final List<JsonObject> frames;
 
     public Replay() {
         this.active = false;
+        this.scoredSide = 0;
         this.frames = new ArrayList<>();
     }
 
@@ -26,10 +28,16 @@ public class Replay {
 
         JsonObject replayJson = new JsonObject();
         replayJson.add("frames", this.toJsonArray());
+        replayJson.addProperty("active", this.active);
+        replayJson.addProperty("scoredSide", this.scoredSide);
 
         for (Client client : allClients) {
             client.sendMessage(new Message("replay", replayJson));
         }
+    }
+
+    public void setScoredSide(int scoredSide) {
+        this.scoredSide = scoredSide;
     }
 
     public void addFrame(JsonObject jsonObject) {
@@ -49,6 +57,7 @@ public class Replay {
 
     public void stop() {
         this.active = false;
+        this.scoredSide = 0;
         this.frames.clear();
     }
 

@@ -25,7 +25,7 @@ export default function Game({ client, game }: GameProps) {
     if (game.replay?.active && game.replay.frames.length > 0 && !replayController.active) {
       replayController.start(game.replay.frames);
     }
-  }, [game.replay, replayController]);
+  }, [game.replay]);
 
   const currentFrame = replayController.active ? replayController.getCurrentFrame() : game;
   if (!currentFrame) return null;
@@ -96,7 +96,7 @@ export default function Game({ client, game }: GameProps) {
       </AnimatePresence>
 
       <Scorebar data={game} />
-      <GameRenderer3D ref={rendererRef} data={currentFrame} />
+      <GameRenderer3D ref={rendererRef} data={currentFrame} replay={replayController.active ? game.replay : null} />
     </div>
   );
 }

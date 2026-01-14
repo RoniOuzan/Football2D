@@ -77,10 +77,7 @@ function App() {
       case "replay":
         setGameData(prev => prev ? {
           ...prev,
-          replay: {
-            active: true,
-            frames: msg.data.frames
-          }
+          replay: msg.data
         } : null);
         break;
 

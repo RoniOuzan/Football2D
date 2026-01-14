@@ -19,3 +19,16 @@ export interface Rotation2d {
   cos: number;
   sin: number;
 }
+
+export function createRotation2dDeg(degrees: number): Rotation2d {
+  const radians = (degrees * Math.PI) / 180;
+  return createRotation2dRad(radians);
+}
+
+export function createRotation2dRad(radians: number): Rotation2d {
+  return {
+    value: radians,
+    cos: Math.cos(radians),
+    sin: Math.sin(radians),
+  };
+}
