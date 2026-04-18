@@ -40,13 +40,13 @@ public class Pass implements KeybindAction {
                             .getRadians());
 
                     // ---- FIFA-STYLE WEIGHTS ----
-                    // 1. Angle is MOST important (cone targeting)
+                    // Angle is MOST important (cone targeting)
                     double anglePenalty = angle * (holdTime < 0.3 ? 14 : 8);
 
-                    // 2. Distance penalty (pick the distance closest to what the power suggests)
+                    // Distance penalty (pick the distance closest to what the power suggests)
                     double distPenalty = Math.abs(dist - desiredDist) * 0.25;
 
-                    // 3. Backwards passes are discouraged
+                    // Backwards passes are discouraged
                     if (angle > Math.PI * 0.8)
                         anglePenalty += 50;
 

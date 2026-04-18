@@ -9,6 +9,7 @@ import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Rotation2d;
 import com.football.util.math.geometry.Translation2d;
 import com.football.util.math.geometry.Translation3d;
+import lombok.Getter;
 
 public abstract class Player {
 
@@ -16,25 +17,29 @@ public abstract class Player {
     public static final double PLAYER_HEIGHT = 1.8;
 
     public static final double MAX_ACCELERATION = 8;
-    public static final double MAX_DECELERATION = 10;
+    public static final double MAX_DECELERATION = 15;
     public static final double SPRINT_VELOCITY = 10;
     public static final double WALK_VELOCITY = 4;
 
-    public static final double MAX_SKID_ACCELERATION = 10;
+    public static final double MAX_SKID_ACCELERATION = 20;
     public static final double MAX_OMEGA = Math.PI * 4;
     public static final double CARRYING_BALL_MAX_VELOCITY = 7;
 
     protected transient final Team team;
     protected transient final Ball ball;
 
+    @Getter
     protected Translation2d position;
+    @Getter
     protected Rotation2d direction;
 
+    @Getter
     protected Translation2d velocity;
     protected transient Translation2d targetVelocity;
 
     private transient Runnable ballAction = null;
 
+    @Getter
     protected transient Translation2d formationPosition;
     protected transient final Translation2d originalPosition;
 
@@ -44,22 +49,6 @@ public abstract class Player {
 
         this.originalPosition = position;
         this.resetPosition();
-    }
-
-    public Translation2d getPosition() {
-        return this.position;
-    }
-
-    public Translation2d getFormationPosition() {
-        return this.formationPosition;
-    }
-
-    public Translation2d getVelocity() {
-        return this.velocity;
-    }
-
-    public Rotation2d getDirection() {
-        return this.direction;
     }
 
     public boolean hasBall() {
@@ -197,6 +186,19 @@ public abstract class Player {
         // Clamp the rate of change
         double accel = MathUtil.clamp(acceleration, -MAX_DECELERATION, maxAccel);
 
+        Translation2d newVelocity = getTranslation2d(currentSpeed, accel, targetSpeed);
+
+        Translation2d deltaSpeed = newVelocity.minus(this.velocity);
+        deltaSpeed = deltaSpeed.limitNorm(MAX_SKID_ACCELERATION * GameManager.PERIOD);
+
+        this.velocity = this.velocity.plus(deltaSpeed);
+
+        if (this.velocity.getNorm() > 0) {
+            updateDirection();
+        }
+    }
+
+    private Translation2d getTranslation2d(double currentSpeed, double accel, double targetSpeed) {
         double newSpeed = currentSpeed + (accel * GameManager.PERIOD);
         newSpeed = Math.max(newSpeed, 0);
         if (targetSpeed > 0) {
@@ -208,16 +210,7 @@ public abstract class Player {
                 ? this.targetVelocity.getAngle()
                 : (currentSpeed > 0 ? this.velocity.getAngle() : this.direction);
 
-        Translation2d newVelocity = new Translation2d(newSpeed, direction);
-
-        Translation2d deltaSpeed = newVelocity.minus(this.velocity);
-        deltaSpeed = deltaSpeed.limitNorm(MAX_SKID_ACCELERATION * GameManager.PERIOD);
-
-        this.velocity = this.velocity.plus(deltaSpeed);
-
-        if (this.velocity.getNorm() > 0) {
-            updateDirection();
-        }
+        return new Translation2d(newSpeed, direction);
     }
 
     private void updateDirection() {

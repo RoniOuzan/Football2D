@@ -64,13 +64,13 @@ public class Shoot implements KeybindAction {
     }
 
     private Translation2d computeShotTarget(Player player, Team team, Translation2d requestedDirection, double holdTime) {
-        // ---- 1. Where the player is aiming (raw) ----
+        // Where the player is aiming (raw) ----
         Rotation2d direction = requestedDirection.getNorm() < 1e-3 ? player.getDirection() : requestedDirection.getAngle();
 
         // Aim 40 meters forward
         Translation2d manualTarget = player.getPosition().plus(new Translation2d(40, direction));
 
-        // ---- 2. Ideal scoring target (goal center adjusted) ----
+        // Ideal scoring target (goal center adjusted) ----
         Translation2d goalCenter = team.getOpponent().getOwnGoalPosition();
 
         // Best FIFA-style scoring target: slightly offset from center
@@ -84,13 +84,13 @@ public class Shoot implements KeybindAction {
                         ? leftPost
                         : rightPost;
 
-        // ---- 3. Assist factor based on hold time ----
+        // Assist factor based on hold time ----
         // tap = manual, full power = more assist
         double assist = Math.min(holdTime / 0.7, 1.0);
         assist = Math.pow(assist, 1.3);
         assist = 0.6 + assist * 0.4;
 
-        // ---- 4. Interpolate the target ----
+        // Interpolate the target ----
         return manualTarget.times(1 - assist)
                 .plus(bestGoalSpot.times(assist));
     }
