@@ -3,6 +3,7 @@ package com.football.client.keybinds;
 import com.football.client.keybinds.actions.*;
 import com.football.game.players.Player;
 import com.football.game.strategy.TeamStrategy;
+import lombok.Getter;
 
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -23,6 +24,7 @@ public enum Keybind implements KeybindAction {
     ;
 
     private final KeybindAction action;
+    @Getter
     private final boolean isKickType;
 
     Keybind(KeybindAction action) {
@@ -64,7 +66,4 @@ public enum Keybind implements KeybindAction {
         this.action.justReleased(teamStrategy, player, kickTypes, holdTime);
     }
 
-    public boolean isKickType() {
-        return this.isKickType;
-    }
 }

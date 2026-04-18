@@ -33,10 +33,10 @@ public class WaitingGame implements Joinable {
     }
 
     public boolean isEmpty() {
-        return this.clients.size() == 0;
+        return this.clients.isEmpty();
     }
 
-    public Game getGame() {
+    public Game getOnlineGame() {
         if (!isReadyForGame())
             return null;
 

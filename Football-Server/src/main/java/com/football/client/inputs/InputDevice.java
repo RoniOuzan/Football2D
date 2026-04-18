@@ -37,13 +37,13 @@ public abstract class InputDevice implements InputHandler {
 
     private boolean isKeybindDown(Keybind keybind) {
         String key = getKey(keybind);
-        if (key != null && key.equals("")) return true;
+        if (key != null && key.isEmpty()) return true;
         return this.buttons.contains(key);
     }
 
     private boolean isLastKeybindDown(Keybind keybind) {
         String key = getKey(keybind);
-        if (key != null && key.equals("")) return true;
+        if (key != null && key.isEmpty()) return true;
         return this.lastButtons.contains(key);
     }
 

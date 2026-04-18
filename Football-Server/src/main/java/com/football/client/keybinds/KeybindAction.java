@@ -6,6 +6,8 @@ import com.football.game.players.Player;
 import java.util.Set;
 
 public interface KeybindAction {
+    double MAX_HOLD_TIME = 0.7;
+
     void justPressed(TeamStrategy teamStrategy, Player player);
 
     void holding(TeamStrategy teamStrategy, Player player);

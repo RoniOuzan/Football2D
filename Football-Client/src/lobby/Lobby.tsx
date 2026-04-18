@@ -19,9 +19,18 @@ function Lobby({ client, data }: LobbyProps) {
         </h1>
       </header>
 
-      <button className="create-btn" onClick={() => client.createGame()}>
-        + Create Match
-      </button>
+      {/* Button Group for Match Creation */}
+      <div className="create-actions" style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+        <button className="create-btn" onClick={() => client.createGame()}>
+          + Create Match
+        </button>
+        <button className="create-btn bot-btn" onClick={() => client.createBotMatch()}>
+          + Player vs Bot
+        </button>
+        <button className="create-btn bot-vs-bot-btn" onClick={() => client.createBotVsBotMatch()}>
+          + Bot vs Bot
+        </button>
+      </div>
 
       <div className="lobby-grid">
         {/* WAITING GAMES */}

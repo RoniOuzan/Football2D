@@ -117,7 +117,7 @@ public class ScoreCalculator {
 
         // If ball far from goal → no need to defend deeply
         double ballDistance = ballPos.getDistance(goal);
-        if (ballDistance > 35)
+        if (ballDistance > 35) // TODO: change it to percentage
             return 0;
 
         // Defender line direction: ball → goal center

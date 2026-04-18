@@ -5,6 +5,7 @@ import com.football.client.keybinds.Keybind;
 import com.football.game.players.Goalkeeper;
 import com.football.game.players.Player;
 import com.football.util.math.geometry.Translation2d;
+import lombok.Getter;
 
 import java.util.Comparator;
 
@@ -16,6 +17,7 @@ public class PlayersMovementHandle {
     private final PlayerTargetPosition playerTargetPosition;
 
     private boolean justPassed = false;
+    @Getter
     private Player chosenPlayer = null;
 
     public PlayersMovementHandle(TeamStrategy teamStrategy) {
@@ -35,7 +37,7 @@ public class PlayersMovementHandle {
                     continue;
                 }
 
-                player.moveTowards(this.playerTargetPosition.getTargetPosition(player), 1);
+                player.moveTowards(this.getPlayerTargetPosition(player), 1);
             }
         }
     }
@@ -87,12 +89,12 @@ public class PlayersMovementHandle {
         return this.playerTargetPosition.getBallChaser();
     }
 
-    public Player getChosenPlayer() {
-        return this.chosenPlayer;
-    }
-
     public void playerPassedTo(Player player) {
         this.chosenPlayer = player;
         this.justPassed = true;
+    }
+
+    public Translation2d getPlayerTargetPosition(Player player) {
+        return this.playerTargetPosition.getTargetPosition(player);
     }
 }

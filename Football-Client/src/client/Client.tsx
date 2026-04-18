@@ -58,4 +58,12 @@ export default class Client {
   spectateGame(uuid: string) {
     this.sendJSON("spectate", {uuid})
   }
+
+  createBotMatch() {
+    this.sendJSON("bot", {});
+  }
+
+  createBotVsBotMatch() {
+    this.sendJSON("bot_vs_bot", {});
+  }
 }

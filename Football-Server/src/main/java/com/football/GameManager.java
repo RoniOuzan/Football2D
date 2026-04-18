@@ -1,5 +1,6 @@
 package com.football;
 
+import com.football.client.BotClient;
 import com.football.client.Client;
 import com.football.client.messages.AlertMessage;
 import com.football.client.messages.Message;
@@ -26,7 +27,7 @@ public class GameManager {
 
     public static final double FPS = 30;
     public static final double PERIOD = 1 / FPS;
-    public static final double GAME_REAL_TIME = 30; // 6 Minutes
+    public static final double GAME_REAL_TIME = 300; // 6 Minutes
     public static final double GAME_TIME = 90 * 60;
 
     private transient final Map<Client, Joinable> clients = new ConcurrentHashMap<>();
@@ -70,6 +71,23 @@ public class GameManager {
         game.getClients().forEach(c -> this.clients.put(c, game));
     }
 
+    public void startBotGame(Client client) {
+        Game game = new Game(client, new BotClient());
+        this.games.add(game);
+
+        game.start();
+        this.clients.put(client, game);
+    }
+
+    public void startOnlyBotGame(Client client) {
+        Game game = new Game(new BotClient(), new BotClient());
+        this.games.add(game);
+
+        game.start();
+        game.addSpectator(client);
+        this.clients.put(client, game);
+    }
+
     public void createWaitingGame(Client client) {
         WaitingGame game = new WaitingGame(client);
         this.waitingGames.add(game);
@@ -104,7 +122,7 @@ public class GameManager {
         this.clients.keySet().forEach(Client::update);
 
         this.waitingGames.stream().filter(WaitingGame::isReadyForGame)
-                .forEach(g -> this.startGame(g.getGame()));
+                .forEach(g -> this.startGame(g.getOnlineGame()));
         this.waitingGames.removeIf(WaitingGame::isReadyForGame);
 
         this.updateGames();
@@ -119,9 +137,13 @@ public class GameManager {
             game.update();
 
             if (game.getPhase() == Game.Phase.FINISH) {
-
+                // TODO
             }
         }
+    }
+
+    public Joinable getGameForClient(Client client) {
+        return this.clients.get(client);
     }
 
     public Message getJson(Client client) {

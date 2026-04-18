@@ -6,6 +6,7 @@ import com.football.game.Game;
 import com.football.game.players.*;
 import com.football.game.strategy.TeamStrategy;
 import com.football.util.math.geometry.Translation2d;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -14,15 +15,19 @@ import java.util.function.Predicate;
 
 public class Team {
 
+    @Getter
     private transient final Client client;
     private transient final Game game;
 
+    @Getter
     private final List<Player> players;
     private transient final Formation formation;
 
+    @Getter
     private final TeamStrategy teamStrategy;
 
-    private transient boolean isTeam1;
+    private transient final boolean isTeam1;
+    @Getter
     private transient int sideMultiplier;
 
     public Team(Game game, Client client, boolean isTeam1, int inputSlot) {
@@ -58,18 +63,6 @@ public class Team {
         this.teamStrategy.setSideMultiplier(sideMultiplier);
     }
 
-    public List<Player> getPlayers() {
-        return players;
-    }
-
-    public TeamStrategy getTeamStrategy() {
-        return this.teamStrategy;
-    }
-
-    public int getSideMultiplier() {
-        return this.sideMultiplier;
-    }
-
     public Player getClosestPlayerToBall(Predicate<Player> filter) {
         return this.players.stream()
                 .filter(filter)
@@ -91,12 +84,9 @@ public class Team {
         }
     }
 
-    public Client getClient() {
-        return this.client;
-    }
-
     public void update(Game.State state) {
         this.teamStrategy.update(state);
+        this.client.updateStrategy(this.teamStrategy);
 
         if (state != Game.State.PLAYING) return;
         for (Player player : this.players) {

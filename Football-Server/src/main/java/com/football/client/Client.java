@@ -9,6 +9,7 @@ import com.football.client.inputs.devices.InputMobileDevice;
 import com.football.client.inputs.devices.InputNullDevice;
 import com.football.client.json.InputPacket;
 import com.football.client.messages.Message;
+import com.football.game.strategy.TeamStrategy;
 import org.eclipse.jetty.websocket.api.Session;
 
 import java.io.IOException;
@@ -18,7 +19,7 @@ import java.util.List;
 public class Client {
     private transient final Session session;
 
-    private transient final List<InputDevice> inputs;
+    protected transient final List<InputDevice> inputs;
     private transient final AllInputDevices allInputDevices;
 
     public Client(Session session) {
@@ -50,10 +51,6 @@ public class Client {
 
     public void sendMessage(String type, Object data) {
         sendMessage(new Message(type, data));
-    }
-
-    public Session getSession() {
-        return session;
     }
 
     public void updateInput(InputPacket packet) {
@@ -103,5 +100,8 @@ public class Client {
     }
 
     public void update() {
+    }
+
+    public void updateStrategy(TeamStrategy strategy) {
     }
 }

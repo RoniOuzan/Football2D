@@ -1,6 +1,7 @@
 package com.football.game;
 
 import com.football.GameManager;
+import com.football.client.BotClient;
 import com.football.client.Client;
 import com.football.client.messages.AlertMessage;
 import com.football.client.messages.CountdownMessage;
@@ -10,6 +11,7 @@ import com.football.util.json.JsonUtil;
 import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Translation2d;
 import com.google.gson.JsonObject;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -78,9 +80,12 @@ public class Game implements Joinable {
 
     private final UUID uuid;
 
+    @Getter
     private final Team team1;
+    @Getter
     private final Team team2;
 
+    @Getter
     private final Ball ball;
 
     @SuppressWarnings("unused")
@@ -91,6 +96,7 @@ public class Game implements Joinable {
     private long startTime = -1;
 
     private double matchTime;
+    @Getter
     private Phase phase;
     private double addedTime;
     private int switchSide = 1;
@@ -98,6 +104,7 @@ public class Game implements Joinable {
     private State state;
     private transient long stateChanged;
 
+    @Getter
     private final List<Spectator> spectators = new ArrayList<>();
 
     public Game(Client client1, int inputSlot1, Client client2, int inputSlot2) {
@@ -132,18 +139,6 @@ public class Game implements Joinable {
 
     public UUID getUUID() {
         return this.uuid;
-    }
-    public Ball getBall() {
-        return this.ball;
-    }
-    public Team getTeam1() {
-        return team1;
-    }
-    public Team getTeam2() {
-        return team2;
-    }
-    public Phase getPhase() {
-        return phase;
     }
 
     public void sendMessage(Message message) {
@@ -294,10 +289,6 @@ public class Game implements Joinable {
 
     public void removeSpectator(Client client) {
         this.spectators.removeIf(s -> s.getClient().equals(client));
-    }
-
-    public List<Spectator> getSpectators() {
-        return this.spectators;
     }
 
     public JsonObject toJson(Client client) {
