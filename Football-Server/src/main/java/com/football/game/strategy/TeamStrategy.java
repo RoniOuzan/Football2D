@@ -9,7 +9,7 @@ import com.football.game.Ball;
 import com.football.game.Game;
 import com.football.game.players.Goalkeeper;
 import com.football.game.players.Player;
-import com.football.game.team.Team;
+import com.football.game.Team;
 import com.football.util.math.geometry.Translation2d;
 import lombok.Getter;
 import lombok.Setter;
@@ -102,9 +102,5 @@ public class TeamStrategy {
 
     public Translation2d getRequestedVelocity() {
         return this.cameraManager.getOrientedTranslation(this.getInput().getRequestedVelocity());
-    }
-
-    public Translation2d getPlayerTargetPosition(Player player) {
-        return this.playersMovementHandle.getPlayerTargetPosition(player);
     }
 }

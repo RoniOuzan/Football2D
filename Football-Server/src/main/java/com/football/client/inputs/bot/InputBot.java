@@ -5,7 +5,6 @@ import com.football.client.inputs.InputDevice;
 import com.football.client.json.InputPacket;
 import com.football.client.keybinds.Keybind;
 import com.football.client.keybinds.KeybindAction;
-import com.football.game.Ball;
 import com.football.game.players.Player;
 import com.football.game.strategy.TeamStrategy;
 import com.football.util.math.MathUtil;
@@ -74,22 +73,19 @@ public class InputBot extends InputDevice {
             double distToGoal = chosen.getPosition().getDistance(enemyGoal);
 
             // Calculate power: max power at 20 units away.
-            double targetSeconds = MathUtil.clamp(distToGoal / 20.0, 0.3, 1) * KeybindAction.MAX_HOLD_TIME;
+            double targetSeconds = MathUtil.clamp(distToGoal / BotConstants.MAX_POWER_SHOOT_DISTANCE, BotConstants.MIN_POWER_SHOOT_PERCENT, 1) * KeybindAction.MAX_HOLD_TIME;
 
             this.pressButton(Keybind.SHOOT, targetSeconds);
             this.requestedVelocity = enemyGoal.minus(chosen.getPosition()).normalized(); // Aim at goal
 
-            if (shootWeight > 0.8) {
+            if (shootWeight > BotConstants.DRIVEN_SHOT_WEIGHT) {
                 this.pressButton(Keybind.DRIVEN);
             }
         } else if (passWeight > dribbleWeight && this.bestPassTarget != null) {
             // PASSING
             double distToMate = chosen.getPosition().getDistance(this.bestPassTarget.getPosition());
 
-            // Calculate power: max power at 40 units away.
-            // minSeconds ensures a minimum hold time (roughly 5 frames worth).
-            double minSeconds = 5.0 / GameManager.FPS;
-            double targetSeconds = Math.max(minSeconds, Math.min(1.0, distToMate / 40.0) * KeybindAction.MAX_HOLD_TIME);
+            double targetSeconds = MathUtil.clamp(distToMate / BotConstants.MAX_POWER_PASSING_DISTANCE, BotConstants.MIN_POWER_PASSING_PERCENT, 1) * KeybindAction.MAX_HOLD_TIME;
 
             this.pressButton(Keybind.PASS, targetSeconds);
             this.requestedVelocity = this.bestPassTarget.getPosition().minus(chosen.getPosition()).normalized(); // Aim at teammate
@@ -98,7 +94,7 @@ public class InputBot extends InputDevice {
             Translation2d enemyGoal = strategy.getTeam().getOpponent().getOwnGoalPosition();
             this.requestedVelocity = enemyGoal.minus(chosen.getPosition()).normalized();
 
-            if (dribbleWeight > 0.7) {
+            if (dribbleWeight > BotConstants.DRIBBLE_WEIGHT_THRESHOLD_TO_SPRING) {
                 this.pressButton(Keybind.SPRINT);
             }
         }
@@ -123,12 +119,11 @@ public class InputBot extends InputDevice {
         Translation2d enemyGoal = strategy.getTeam().getOpponent().getOwnGoalPosition();
         double distanceToGoal = chosen.getPosition().getDistance(enemyGoal);
 
-        // Max range ~30 units.
-        double score = Math.max(0, 1.0 - (distanceToGoal / 30.0));
+        double score = 1.0 - (distanceToGoal / BotConstants.MAX_SHOOTING_DISTANCE);
 
-        // Don't shoot if a defender is right in front of us
-        if (getDistanceToNearestDefender(strategy, chosen) < 2.0) {
-            score -= 0.3;
+        // Don't shoot if a defender is near of us
+        if (getDistanceToNearestDefender(strategy, chosen) < BotConstants.DEFENDER_CLOSE_DISTANCE_THRESHOLD) {
+            score -= BotConstants.DEFENDER_CLOSE_PENALTY;
         }
 
         return Math.max(0, score);
@@ -150,14 +145,14 @@ public class InputBot extends InputDevice {
             // Only consider passes that advance the ball (or if we are desperate)
             if (mateDistToGoal < myDistToGoal) {
                 // Base score relies on how far forward the teammate is
-                double score = 0.5 + ((myDistToGoal - mateDistToGoal) / 40.0);
+                double score = BotConstants.PASS_BASE_SCORE + ((myDistToGoal - mateDistToGoal) / BotConstants.PASS_ADVANCEMENT_DIVISOR);
 
                 // Penalize extremely long passes
-                score -= (distToMate / 60.0);
+                score -= (distToMate / BotConstants.PASS_DISTANCE_PENALTY_DIVISOR);
 
                 // Check if passing lane is intercepted by an opponent
                 if (isPassingLaneBlocked(strategy, chosen.getPosition(), teammate.getPosition())) {
-                    score -= 0.6; // Heavy penalty for risky passes
+                    score -= BotConstants.PASS_RISK_PENALTY; // Heavy penalty for risky passes
                 }
 
                 if (score > bestScore) {
@@ -173,11 +168,11 @@ public class InputBot extends InputDevice {
         double distToDefender = getDistanceToNearestDefender(strategy, chosen);
 
         // If the nearest defender is far away, dribbling is highly effective
-        if (distToDefender > 10.0) return 0.9;
-        if (distToDefender > 5.0) return 0.6;
+        if (distToDefender > BotConstants.DRIBBLE_SAFE_DISTANCE_THRESHOLD) return BotConstants.DRIBBLE_UTILITY_SAFE;
+        if (distToDefender > BotConstants.DRIBBLE_PRESSURE_DISTANCE_THRESHOLD) return BotConstants.DRIBBLE_UTILITY_PRESSURE;
 
         // If a defender is right in our face, we should probably pass or shoot
-        return 0.2;
+        return BotConstants.DRIBBLE_UTILITY_LOCKED_DOWN;
     }
 
 
@@ -196,7 +191,7 @@ public class InputBot extends InputDevice {
         for (Player enemy : strategy.getTeam().getOpponent().getPlayers()) {
             // If an enemy is within 2 units of the line segment between the passer and receiver, it's blocked
             double distToLane = getDistanceToSegment(start, end, enemy.getPosition());
-            if (distToLane < 2.0) {
+            if (distToLane < BotConstants.PASSING_LANE_INTERCEPT_RADIUS) {
                 return true;
             }
         }
@@ -224,6 +219,7 @@ public class InputBot extends InputDevice {
 
         return P.getDistance(projection);
     }
+
 
     // --- Press Button Logic ---
 

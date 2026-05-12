@@ -1,12 +1,10 @@
 package com.football.game;
 
 import com.football.GameManager;
-import com.football.client.BotClient;
 import com.football.client.Client;
 import com.football.client.messages.AlertMessage;
 import com.football.client.messages.CountdownMessage;
 import com.football.client.messages.Message;
-import com.football.game.team.Team;
 import com.football.util.json.JsonUtil;
 import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Translation2d;

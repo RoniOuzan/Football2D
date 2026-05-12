@@ -2,12 +2,14 @@ package com.football.game.strategy;
 
 import com.football.game.Game;
 import com.football.util.math.MathUtil;
+import lombok.Getter;
 
 import java.util.List;
 
 public class OffsideCalculator {
 
     private final TeamStrategy teamStrategy;
+    @Getter
     private double offsideLine;
 
     public OffsideCalculator(TeamStrategy teamStrategy) {
@@ -26,11 +28,7 @@ public class OffsideCalculator {
                 .toList();
 
         double ballX = this.teamStrategy.ball.getPosition().getX() * this.teamStrategy.sideMultiplier;
-        double line = xs.get(xs.size() - 2);
+        double line = xs.get(xs.size() - 2); // -2 because we want the second not the first
         this.offsideLine = MathUtil.clamp(line, Math.max(ballX, 0), Game.MAX_X) * this.teamStrategy.sideMultiplier;
-    }
-
-    public double getOffsideLine() {
-        return this.offsideLine;
     }
 }

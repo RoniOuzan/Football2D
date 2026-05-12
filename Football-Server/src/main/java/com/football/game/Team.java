@@ -1,8 +1,6 @@
-package com.football.game.team;
+package com.football.game;
 
 import com.football.client.Client;
-import com.football.game.Formation;
-import com.football.game.Game;
 import com.football.game.players.*;
 import com.football.game.strategy.TeamStrategy;
 import com.football.util.math.geometry.Translation2d;
@@ -38,7 +36,7 @@ public class Team {
         this.sideMultiplier = isTeam1 ? 1 : -1;
 
         this.players = new ArrayList<>();
-        this.formation = Formation.FOUR_THREE_THREE;
+        this.formation = Formation.DEFAULT_FORMATION;
         this.teamStrategy = new TeamStrategy(game, this, inputSlot);
 
         initialize();

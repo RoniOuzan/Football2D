@@ -12,8 +12,12 @@ import java.util.Optional;
 
 public class PlayerTargetPosition {
 
-    private static final double FORMATION_WEIGHT = 0.5;           // penalty for being far from formation
-    private static final double SELF_WEIGHT = 0.3;                // penalty for moving too far from current pos
+    private static final double FORMATION_WEIGHT = 0.5; // penalty for being far from formation
+    private static final double SELF_WEIGHT = 0.3; // penalty for moving too far from current pos
+
+    // Control how strong the shift is
+    private static final double X_SHIFT_MULTIPLIER = 30;
+    private static final double Y_SHIFT_MULTIPLIER = 20;
 
     private final TeamStrategy teamStrategy;
 
@@ -63,8 +67,7 @@ public class PlayerTargetPosition {
      * Team lateral shift based on ball X position.
      */
     private Translation2d getTeamShift() {
-        // Control how strong the shift is (tune as needed)
-        return new Translation2d((this.teamStrategy.ball.getPosition().getX() / Game.MAX_X) * 30,
-                (this.teamStrategy.ball.getPosition().getY() / Game.MAX_Y) * 20);
+        return new Translation2d((this.teamStrategy.ball.getPosition().getX() / Game.MAX_X) * X_SHIFT_MULTIPLIER,
+                (this.teamStrategy.ball.getPosition().getY() / Game.MAX_Y) * Y_SHIFT_MULTIPLIER);
     }
 }

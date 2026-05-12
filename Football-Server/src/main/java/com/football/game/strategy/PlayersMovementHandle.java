@@ -13,6 +13,9 @@ import java.util.Comparator;
 public class PlayersMovementHandle {
 
     private static final double BALL_CHASE_LATENCY = 0.3;
+    private static final double BALL_CHASE_SPEED_FACTOR = 0.8;
+    private static final double JUST_PASSED_SPEED_FACTOR = 1.0;
+    private static final double TEAMMATE_POSITIONING_SPEED_FACTOR = 1.0;
 
     private final TeamStrategy teamStrategy;
     private final PlayerTargetPosition playerTargetPosition;
@@ -38,7 +41,7 @@ public class PlayersMovementHandle {
                     continue;
                 }
 
-                player.moveTowards(this.getPlayerTargetPosition(player), 1);
+                player.moveTowards(this.getPlayerTargetPosition(player), TEAMMATE_POSITIONING_SPEED_FACTOR);
             }
         }
     }
@@ -57,8 +60,8 @@ public class PlayersMovementHandle {
         double velocity = input.isHolding(Keybind.SPRINT) ? Player.SPRINT_VELOCITY : Player.WALK_VELOCITY;
 
         if ((player.equals(this.playerTargetPosition.getBallChaser()) || this.justPassed) && this.teamStrategy.ball.getCarrier() == null) {
-            return player.getVelocityToPosition(this.teamStrategy.ball.getPredictedPosition(0.3).toTranslation2d(),
-                    this.justPassed ? 1 : 0.8);
+            return player.getVelocityToPosition(this.teamStrategy.ball.getPredictedPosition(BALL_CHASE_LATENCY).toTranslation2d(),
+                    this.justPassed ? JUST_PASSED_SPEED_FACTOR : BALL_CHASE_SPEED_FACTOR);
         }
 
         this.justPassed = false;

@@ -1,7 +1,7 @@
 package com.football.game.players;
 
 import com.football.game.Ball;
-import com.football.game.team.Team;
+import com.football.game.Team;
 import com.football.util.math.geometry.Translation2d;
 
 public class Midfielder extends Player {
