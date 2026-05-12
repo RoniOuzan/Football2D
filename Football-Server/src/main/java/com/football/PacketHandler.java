@@ -1,9 +1,7 @@
 package com.football;
 
 import com.football.client.Client;
-import com.football.client.json.BasePacket;
-import com.football.client.json.DataPacket;
-import com.football.client.json.InputPacket;
+import com.football.client.json.*;
 import com.football.util.json.JsonUtil;
 
 import java.util.Map;
@@ -11,7 +9,12 @@ import java.util.Map;
 public class PacketHandler {
 
     private static final Map<String, Class<? extends DataPacket>> packetTypes = Map.of(
-            "input", InputPacket.class
+            "input", InputPacket.class,
+            "create", CreatePacket.class,
+            "bot", BotPacket.class,
+            "bot_vs_bot", BotVSBotPacket.class,
+            "join", JoinPacket.class,
+            "spectate", SpectatePacket.class
     );
 
     public PacketHandler() {

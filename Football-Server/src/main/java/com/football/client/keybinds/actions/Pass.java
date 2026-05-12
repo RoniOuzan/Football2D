@@ -21,14 +21,14 @@ public class Pass implements KeybindAction {
         if (!player.hasBall()) return;
 
         Player playerToPass = getPlayerToPass(teamStrategy, player, holdTime);
-        double finalVelocity = computeHoldTime(holdTime, 1.2, 3, 12);
+        double finalVelocity = computeHoldTime(holdTime, KeybindActionConstants.PASS_VELOCITY_HOLD_TIME_FACTOR, KeybindActionConstants.PASS_VELOCITY_MIN_POWER, KeybindActionConstants.PASS_VELOCITY_MAX_POWER);
 
         player.pass(playerToPass, finalVelocity);
         teamStrategy.playerPassedTo(playerToPass);
     }
 
     protected Player getPlayerToPass(TeamStrategy teamStrategy, Player player, double holdTime) {
-        double desiredDist = computeHoldTime(holdTime, 1.6, 4, 50);
+        double desiredDist = computeHoldTime(holdTime, KeybindActionConstants.PASS_DESIRED_DIST_HOLD_TIME_FACTOR, KeybindActionConstants.PASS_DESIRED_DIST_MIN_POWER, KeybindActionConstants.PASS_DESIRED_DIST_MAX_POWER);
 
         return teamStrategy.getTeam().getPlayers().stream()
                 .filter(p -> !p.equals(player))
@@ -40,15 +40,15 @@ public class Pass implements KeybindAction {
                             .getRadians());
 
                     // ---- FIFA-STYLE WEIGHTS ----
-                    // 1. Angle is MOST important (cone targeting)
-                    double anglePenalty = angle * (holdTime < 0.3 ? 14 : 8);
+                    // Angle is MOST important (cone targeting)
+                    double anglePenalty = angle * (holdTime < KeybindActionConstants.PASS_ANGLE_PENALTY_HOLD_TIME_THRESHOLD ? KeybindActionConstants.PASS_ANGLE_PENALTY_TIGHT_CONE_FACTOR : KeybindActionConstants.PASS_ANGLE_PENALTY_LOOSE_CONE_FACTOR);
 
-                    // 2. Distance penalty (pick the distance closest to what the power suggests)
-                    double distPenalty = Math.abs(dist - desiredDist) * 0.25;
+                    // Distance penalty (pick the distance closest to what the power suggests)
+                    double distPenalty = Math.abs(dist - desiredDist) * KeybindActionConstants.PASS_DISTANCE_PENALTY_FACTOR;
 
-                    // 3. Backwards passes are discouraged
-                    if (angle > Math.PI * 0.8)
-                        anglePenalty += 50;
+                    // Backwards passes are discouraged
+                    if (angle > KeybindActionConstants.PASS_BACKWARDS_ANGLE_THRESHOLD)
+                        anglePenalty += KeybindActionConstants.PASS_BACKWARDS_PENALTY;
 
                     return anglePenalty + distPenalty;
                 }))

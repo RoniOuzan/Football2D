@@ -1,13 +1,17 @@
 package com.football.client.inputs;
 
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
 import com.football.client.json.InputPacket;
 import com.football.client.keybinds.Keybind;
-import com.football.game.players.Goalkeeper;
-import com.football.game.strategy.TeamStrategy;
 import com.football.game.players.Player;
-import lombok.ToString;
+import com.football.game.strategy.TeamStrategy;
 
-import java.util.*;
+import lombok.ToString;
 
 @ToString
 public abstract class InputDevice implements InputHandler {
@@ -15,7 +19,7 @@ public abstract class InputDevice implements InputHandler {
     private final Map<Keybind, String> keybinds;
 
     protected Set<String> buttons = new HashSet<>();
-    private Set<String> lastButtons = new HashSet<>();
+    public Set<String> lastButtons = new HashSet<>();
 
     private final Map<Keybind, Set<Keybind>> kickTypes = new HashMap<>();
 
@@ -27,19 +31,19 @@ public abstract class InputDevice implements InputHandler {
         this.updateInput(devicePacket);
     }
 
-    private String getKey(Keybind keybind) {
+    public String getKey(Keybind keybind) {
         return this.keybinds.get(keybind);
     }
 
     private boolean isKeybindDown(Keybind keybind) {
         String key = getKey(keybind);
-        if (key != null && key.equals("")) return true;
+        if (key != null && key.isEmpty()) return true;
         return this.buttons.contains(key);
     }
 
     private boolean isLastKeybindDown(Keybind keybind) {
         String key = getKey(keybind);
-        if (key != null && key.equals("")) return true;
+        if (key != null && key.isEmpty()) return true;
         return this.lastButtons.contains(key);
     }
 

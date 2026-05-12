@@ -1,47 +1,56 @@
 package com.football.client;
 
-import com.football.PacketHandler;
-import com.football.client.inputs.*;
+import com.football.client.inputs.AllInputDevices;
+import com.football.client.inputs.InputDevice;
+import com.football.client.inputs.InputHandler;
 import com.football.client.inputs.devices.InputControllerDevice;
 import com.football.client.inputs.devices.InputKeyboardDevice;
 import com.football.client.inputs.devices.InputMobileDevice;
+import com.football.client.inputs.devices.InputNullDevice;
 import com.football.client.json.InputPacket;
+import com.football.client.messages.Message;
+import com.football.game.strategy.TeamStrategy;
 import org.eclipse.jetty.websocket.api.Session;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Client {
     private transient final Session session;
 
-    private transient final List<InputDevice> inputs;
+    protected transient final List<InputDevice> inputs;
     private transient final AllInputDevices allInputDevices;
-
-//    private transient final PacketHandler packetHandler;
 
     public Client(Session session) {
         this.session = session;
 
         this.inputs = new ArrayList<>();
         this.allInputDevices = new AllInputDevices(this.inputs);
-
-//        this.packetHandler = new PacketHandler();
-    }
-
-    public List<InputDevice> getInputs() {
-        return this.inputs;
     }
 
     public InputHandler getInput(int slot) {
         if (slot == -1)
             return this.allInputDevices;
         if (slot >= this.inputs.size())
-            return null;
+            return new InputNullDevice();
         return this.inputs.get(slot);
     }
 
-    public Session getSession() {
-        return session;
+    public int getAmountOfInputs() {
+        return this.inputs.size();
+    }
+
+    public void sendMessage(Message message) {
+        try {
+            this.session.getRemote().sendString(message.getJson());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void sendMessage(String type, Object data) {
+        sendMessage(new Message(type, data));
     }
 
     public void updateInput(InputPacket packet) {
@@ -91,5 +100,8 @@ public class Client {
     }
 
     public void update() {
+    }
+
+    public void updateStrategy(TeamStrategy strategy) {
     }
 }

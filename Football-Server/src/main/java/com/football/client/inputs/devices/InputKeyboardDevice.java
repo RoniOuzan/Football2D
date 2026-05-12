@@ -1,18 +1,17 @@
 package com.football.client.inputs.devices;
 
-import com.football.client.json.InputPacket;
-import com.football.client.inputs.InputDevice;
-import com.football.client.keybinds.Keybind;
-import com.football.game.players.Goalkeeper;
-import com.football.game.players.Player;
-import com.football.game.strategy.TeamStrategy;
-import com.football.util.math.geometry.Translation2d;
-import lombok.ToString;
-
-import java.security.Key;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+
+import com.football.client.inputs.InputDevice;
+import com.football.client.json.InputPacket;
+import com.football.client.keybinds.Keybind;
+import com.football.game.players.Player;
+import com.football.game.strategy.TeamStrategy;
+import com.football.util.math.geometry.Translation2d;
+
+import lombok.ToString;
 
 @ToString
 public class InputKeyboardDevice extends InputDevice {

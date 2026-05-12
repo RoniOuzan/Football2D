@@ -3,12 +3,13 @@ package com.football.game.players;
 import com.football.GameManager;
 import com.football.game.Ball;
 import com.football.game.Game;
-import com.football.game.team.Team;
+import com.football.game.Team;
 import com.football.game.strategy.TeamStrategy;
 import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Rotation2d;
 import com.football.util.math.geometry.Translation2d;
 import com.football.util.math.geometry.Translation3d;
+import lombok.Getter;
 
 public abstract class Player {
 
@@ -16,63 +17,67 @@ public abstract class Player {
     public static final double PLAYER_HEIGHT = 1.8;
 
     public static final double MAX_ACCELERATION = 8;
-    public static final double MAX_DECELERATION = 10;
+    public static final double MAX_DECELERATION = 15;
     public static final double SPRINT_VELOCITY = 10;
     public static final double WALK_VELOCITY = 4;
 
-    public static final double MAX_SKID_ACCELERATION = 10;
-    public static final double MAX_OMEGA = Math.PI * 4;
+    /** Acceleration applied when changing direction sharply (skidding). */
+    public static final double MAX_SKID_ACCELERATION = 20;
+    /** Maximum angular velocity (rotation speed) in radians per second. */
+    public static final double MAX_OMEGA = Math.PI * 4; // 720 deg/s
+    /** Speed limit imposed on the player while they are in possession of the ball. */
     public static final double CARRYING_BALL_MAX_VELOCITY = 7;
 
+    private static final double NEAR_BALL_THRESHOLD = 0.75;
+    private static final double SLOWDOWN_DISTANCE_THRESHOLD = 5.0;
+    private static final double DRIBBLE_KICK_HEIGHT = 0.2;
+    private static final double DRIBBLE_PREDICTION_TIME = 0.3;
+    private static final double BACKWARD_ROTATION_SPEED_FACTOR = 0.3;
+
     protected transient final Team team;
+    /** Reference to the game ball. */
     protected transient final Ball ball;
 
+    @Getter
     protected Translation2d position;
+    @Getter
     protected Rotation2d direction;
 
+    @Getter
     protected Translation2d velocity;
     protected transient Translation2d targetVelocity;
-
+    
+    /** A pending action (kick/pass/shoot) to be executed when the player is close enough to the ball. */
     private transient Runnable ballAction = null;
 
-    protected transient final Translation2d initialPosition;
-    protected transient final Translation2d formationPosition;
+    @Getter
+    protected transient Translation2d formationPosition;
+    protected transient final Translation2d originalPosition;
 
     protected Player(Team team, Ball ball, Translation2d position) {
         this.team = team;
         this.ball = ball;
 
-        this.position = position;
-        this.initialPosition = position;
-        this.formationPosition = new Translation2d(position.getX() * 2 + Game.MAX_X * team.getSideMultiplier(), position.getY());
-        this.direction = new Rotation2d();
-
-        this.velocity = new Translation2d();
-        this.targetVelocity = new Translation2d();
+        this.originalPosition = position;
+        this.resetPosition();
     }
 
-    public Translation2d getPosition() {
-        return this.position;
-    }
-
-    public Translation2d getFormationPosition() {
-        return formationPosition;
-    }
-
-    public Translation2d getVelocity() {
-        return this.velocity;
-    }
-
-    public Rotation2d getDirection() {
-        return direction;
-    }
-
+    /**
+     * Checks if this player is currently carrying the ball.
+     */
     public boolean hasBall() {
         return this.equals(this.ball.getCarrier());
     }
 
+    /**
+     * Resets the player to their starting formation position and clears velocity.
+     * Positions are mirrored based on the team's side multiplier.
+     */
     public void resetPosition() {
-        this.position = this.initialPosition;
+        this.formationPosition = new Translation2d(this.originalPosition.getX() * 2 + Game.MAX_X, this.originalPosition.getY())
+            .times(this.team.getSideMultiplier());
+        this.position = this.originalPosition.times(this.team.getSideMultiplier());
+
         this.velocity = new Translation2d();
         this.targetVelocity = new Translation2d();
         this.direction = new Rotation2d();
@@ -85,14 +90,24 @@ public abstract class Player {
         this.targetVelocity = targetVelocity;
     }
 
+    /**
+     * Calculates a velocity vector aimed at a target position.
+     * Automatically applies a slowdown effect as the player approaches the target.
+     * 
+     * @param targetPosition The coordinate to move toward.
+     * @param speedPercent   A multiplier for the base SPRINT_VELOCITY (0.0 to 1.0).
+     */
     public Translation2d getVelocityToPosition(Translation2d targetPosition, double speedPercent) {
         Translation2d delta = targetPosition.minus(this.position);
-        if (delta.getNorm() < 5) {
-            speedPercent = Math.min(speedPercent, delta.getNorm() / 5);
+        if (delta.getNorm() < SLOWDOWN_DISTANCE_THRESHOLD) {
+            speedPercent = Math.min(speedPercent, delta.getNorm() / SLOWDOWN_DISTANCE_THRESHOLD);
         }
         return delta.normalized().times(SPRINT_VELOCITY * speedPercent);
     }
 
+    /**
+     * Sets the player's target velocity to move toward a specific position.
+     */
     public void moveTowards(Translation2d targetPosition, double speedPercent) {
         setTargetVelocity(getVelocityToPosition(targetPosition, speedPercent));
     }
@@ -101,6 +116,10 @@ public abstract class Player {
         this.ballAction = ballAction;
     }
 
+    /**
+     * Schedules a direct pass to a teammate. 
+     * Predicts the teammate's position slightly ahead based on their current velocity.
+     */
     public void pass(Player targetPlayer, double finalVelocity) {
         this.addBallAction(() -> {
             Translation2d target = targetPlayer.getPosition()
@@ -110,6 +129,10 @@ public abstract class Player {
         });
     }
 
+    /**
+     * Schedules a through-ball pass.
+     * Solves for the intersection of the ball's friction-decelerated path and the player's movement.
+     */
     public void through(Player targetPlayer, double finalVelocity) {
         this.addBallAction(() -> {
             double[] times = MathUtil.quadraticSolver(-0.5 * Ball.FRICTION_ACCEL, finalVelocity, -this.position.getDistance(targetPlayer.getPosition()));
@@ -120,6 +143,9 @@ public abstract class Player {
         });
     }
 
+    /**
+     * Schedules a cross. Similar to a pass but with a high vertical height scale.
+     */
     public void cross(Player targetPlayer, double finalVelocity) {
         this.addBallAction(() -> {
             Translation2d target = targetPlayer.getPosition()
@@ -129,22 +155,37 @@ public abstract class Player {
         });
     }
 
+    /**
+     * Schedules a shot with specific target coordinates and spin.
+     */
     public void shoot(Translation3d target, double finalVelocity, double heightScale, Translation3d spin) {
         this.addBallAction(() -> this.ball.kick(target, finalVelocity, heightScale, spin));
     }
 
+    /**
+     * Schedules a shot with a pre-calculated velocity vector.
+     */
     public void shoot(Translation3d velocity, Translation3d spin) {
         this.addBallAction(() -> this.ball.kick(velocity, spin));
     }
 
+    // 0 on default, should be overrided when wanting to add specific role score
     public double getTargetScore(Player player, Translation2d target, TeamStrategy strategy) {
         return 0;
     }
 
+    /**
+     * Returns true if the player is within physical range to interact with the ball.
+     */
     private boolean isNearBall() {
-        return this.position.getDistance(this.ball.getPosition2d()) <= 0.75;
+        return this.position.getDistance(this.ball.getPosition2d()) <= NEAR_BALL_THRESHOLD;
     }
 
+    /**
+     * Updates the player's physics state, processes ball actions, 
+     * resolves collisions with other players, and enforces field boundaries.
+     * Called every game tick.
+     */
     public void update(Team team) {
         updateVelocity();
         this.position = this.position.plus(this.velocity.times(GameManager.PERIOD));
@@ -168,18 +209,24 @@ public abstract class Player {
 
     //----------------- Movement ----------------
 
+    /**
+     * Handles the specific movement logic for a player in possession of the ball.
+     * Simulates "dribbling" by applying small kicks to the ball in the direction of movement.
+     * 
+     * @param wantedVelocity The direction the player intends to move.
+     */
     public void updateHasBall(Translation2d wantedVelocity) {
         if (this.isNearBall() && wantedVelocity.getNorm() > 0.5) {
             double velocity = this.velocity.dot(wantedVelocity.normalized());
             velocity = Math.max(velocity, 0);
-            velocity = velocity * 0.5 + wantedVelocity.getNorm() * 0.5;
+            velocity = (velocity + wantedVelocity.getNorm()) / 2.0;
 
-            Translation3d kick = new Translation3d(velocity, wantedVelocity.getAngle(), 0.2);
+            Translation3d kick = new Translation3d(velocity, wantedVelocity.getAngle(), DRIBBLE_KICK_HEIGHT);
             this.ball.dribble(kick, new Translation3d(0, velocity, 0));
         }
 
         double targetVel = wantedVelocity.getNorm();
-        Translation2d targetPos = this.ball.getPredictedPosition(0.3).toTranslation2d();
+        Translation2d targetPos = this.ball.getPredictedPosition(DRIBBLE_PREDICTION_TIME).toTranslation2d();
 
         if (!this.isNearBall()) {
             targetVel = Math.max(targetVel, getVelocityToPosition(targetPos, 1).getNorm());
@@ -189,6 +236,10 @@ public abstract class Player {
         this.setTargetVelocity(delta);
     }
 
+    /**
+     * Interpolates the current velocity toward the target velocity.
+     * Respects acceleration limits and simulates "skidding" when making sharp turns.
+     */
     private void updateVelocity() {
         double currentSpeed = this.velocity.getNorm();
         double targetSpeed = this.targetVelocity.getNorm();
@@ -199,18 +250,7 @@ public abstract class Player {
         // Clamp the rate of change
         double accel = MathUtil.clamp(acceleration, -MAX_DECELERATION, maxAccel);
 
-        double newSpeed = currentSpeed + (accel * GameManager.PERIOD);
-        newSpeed = Math.max(newSpeed, 0);
-        if (targetSpeed > 0) {
-            newSpeed = Math.min(newSpeed, targetSpeed);
-        }
-
-        // Keep direction consistent with either target or current velocity
-        Rotation2d direction = (targetSpeed > 0)
-                ? this.targetVelocity.getAngle()
-                : (currentSpeed > 0 ? this.velocity.getAngle() : this.direction);
-
-        Translation2d newVelocity = new Translation2d(newSpeed, direction);
+        Translation2d newVelocity = getTranslation2d(currentSpeed, accel, targetSpeed);
 
         Translation2d deltaSpeed = newVelocity.minus(this.velocity);
         deltaSpeed = deltaSpeed.limitNorm(MAX_SKID_ACCELERATION * GameManager.PERIOD);
@@ -222,6 +262,25 @@ public abstract class Player {
         }
     }
 
+    private Translation2d getTranslation2d(double currentSpeed, double accel, double targetSpeed) {
+        double newSpeed = currentSpeed + (accel * GameManager.PERIOD);
+        newSpeed = Math.max(newSpeed, 0);
+        if (targetSpeed > 0) {
+            newSpeed = Math.min(newSpeed, targetSpeed);
+        }
+
+        // Keep direction consistent with either target or current velocity
+        Rotation2d direction = (targetSpeed > 0)
+                ? this.targetVelocity.getAngle()
+                : (currentSpeed > 0 ? this.velocity.getAngle() : this.direction);
+
+        return new Translation2d(newSpeed, direction);
+    }
+
+    /**
+     * Rotates the player's direction to match their movement.
+     * Allows for slower rotation when the player is moving backward relative to their facing.
+     */
     private void updateDirection() {
         // Choose movement direction (target or current velocity)
         Translation2d movementDirection = this.targetVelocity.getNorm() > 0 ? this.targetVelocity : this.velocity;
@@ -237,7 +296,7 @@ public abstract class Player {
         // Smoothly rotate toward movement direction over time
         // When moving backward, we allow a small rotation toward movement gradually
         double omega = movementDirection.getAngle().minus(this.direction).getRadians() / GameManager.PERIOD;
-        double maxOmega = movingBackward ? MAX_OMEGA * 0.3 : MAX_OMEGA; // slower rotation while walking backward
+        double maxOmega = movingBackward ? MAX_OMEGA * BACKWARD_ROTATION_SPEED_FACTOR : MAX_OMEGA; 
         omega = MathUtil.clamp(omega, -maxOmega, maxOmega);
 
         this.direction = this.direction.plus(new Rotation2d(omega * GameManager.PERIOD));
@@ -245,6 +304,11 @@ public abstract class Player {
 
     //----------------- Physics ----------------
 
+    /**
+     * Simple circle-circle collision resolution.
+     * Pushes players apart if they overlap and adjusts velocities to prevent 
+     * them from passing through one another.
+     */
     private void resolveCollision(Player other) {
         double minDist = PLAYER_RADIUS * 2;
         double distance = this.position.getDistance(other.position);
@@ -274,6 +338,10 @@ public abstract class Player {
         }
     }
 
+    /**
+     * Constraints the player's position to within the pitch boundaries.
+     * Account for the extra depth available inside the goal nets.
+     */
     private void keepInsideField() {
         double x = this.position.getX();
         double y = this.position.getY();

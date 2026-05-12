@@ -7,11 +7,6 @@ import com.football.game.strategy.TeamStrategy;
 import java.util.Set;
 
 public class Cross extends Pass {
-    @Override
-    public void justPressed(TeamStrategy teamStrategy, Player player) {}
-
-    @Override
-    public void holding(TeamStrategy teamStrategy, Player player) {}
 
     @Override
     public void justReleased(TeamStrategy teamStrategy, Player player, Set<Keybind> kickTypes, double holdTime) {
@@ -19,7 +14,7 @@ public class Cross extends Pass {
 
         Player playerToPass = getPlayerToPass(teamStrategy, player, holdTime);
 
-        double finalVelocity = computeHoldTime(holdTime, 1.2, 4, 8);
+        double finalVelocity = computeHoldTime(holdTime, KeybindActionConstants.CROSS_VELOCITY_HOLD_TIME_FACTOR, KeybindActionConstants.CROSS_VELOCITY_MIN_POWER, KeybindActionConstants.CROSS_VELOCITY_MAX_POWER);
 
         player.cross(playerToPass, finalVelocity);
         teamStrategy.playerPassedTo(playerToPass);

@@ -2,12 +2,12 @@ package com.football.game;
 
 import com.football.GameManager;
 import com.football.game.players.Player;
-import com.football.game.team.Team;
 import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Rotation2d;
 import com.football.util.math.geometry.Translation2d;
 import com.football.util.math.geometry.Translation3d;
 import com.football.util.math.interpolation.TimeInterpolatableBuffer;
+import lombok.Getter;
 
 public class Ball {
 
@@ -31,19 +31,20 @@ public class Ball {
     private static final double GROUND_RESTITUTION = 0.32; // low bounces
 
     private static final long CARRY_COOLDOWN_MS = 300;
-    private static final long DRIBBLE_COOLDOWN_MS = 200;
 
     private static final double RADIUS = 0.2;
 
     private transient final Game game;
 
+    @Getter
     private Translation3d position;
+    @Getter
     private Translation3d velocity;
     private Translation3d spin;
+    @Getter
     private transient Player carrier = null;
 
     private transient long timeReleased;
-    private transient long timeDribbled;
 
     private transient final TimeInterpolatableBuffer<Translation3d> positions = TimeInterpolatableBuffer.createBuffer(1);
 
@@ -59,32 +60,20 @@ public class Ball {
         this.positions.addSample(0, this.position);
     }
 
-    public Translation3d getPosition() {
-        return this.position;
-    }
-
     public Translation2d getPosition2d() {
         return this.position.toTranslation2d();
     }
 
     public Translation3d getPosition(double lookBackTime) {
-        return this.positions.getSample(this.game.getMatchTime() - lookBackTime).orElse(null);
+        return this.positions.getSample(this.game.getRealTime() - lookBackTime).orElse(null);
     }
 
     public Translation3d getPredictedPosition(double seconds) {
         return this.position.plus(this.velocity.times(seconds));
     }
 
-    public Translation3d getVelocity() {
-        return this.velocity;
-    }
-
     public Translation2d getVelocity2d() {
         return this.velocity.toTranslation2d();
-    }
-
-    public Player getCarrier() {
-        return carrier;
     }
 
     public void setCarrier(Player carrier) {

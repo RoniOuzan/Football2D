@@ -7,11 +7,6 @@ import com.football.game.players.Player;
 import java.util.Set;
 
 public class Through extends Pass {
-    @Override
-    public void justPressed(TeamStrategy teamStrategy, Player player) {}
-
-    @Override
-    public void holding(TeamStrategy teamStrategy, Player player) {}
 
     @Override
     public void justReleased(TeamStrategy teamStrategy, Player player, Set<Keybind> kickTypes, double holdTime) {
@@ -19,7 +14,7 @@ public class Through extends Pass {
 
         Player playerToPass = getPlayerToPass(teamStrategy, player, holdTime);
 
-        player.through(playerToPass, 6);
+        player.through(playerToPass, KeybindActionConstants.THROUGH_DEFAULT_VELOCITY);
         teamStrategy.playerPassedTo(playerToPass);
     }
 }

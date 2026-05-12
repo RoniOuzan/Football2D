@@ -1,18 +1,18 @@
-package com.football.game.strategy;
+package com.football.game.strategy.camera;
 
-import com.football.GameManager;
+import java.util.function.Function;
+
 import com.football.game.players.Player;
+import com.football.game.strategy.TeamStrategy;
 import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Rotation2d;
 import com.football.util.math.geometry.Translation2d;
 import com.football.util.math.geometry.Translation3d;
 
-import java.util.function.Function;
-
 public enum CameraPositionType {
     BROADCAST(t -> {
-        double cameraX = t.ball.getPosition().getX() * 0.3;
-        double cameraY = MathUtil.clamp(t.ball.getPosition().getY(), -16, 16) * 0.1;
+        double cameraX = t.getBall().getPosition().getX() * 0.3;
+        double cameraY = MathUtil.clamp(t.getBall().getPosition().getY(), -16, 16) * 0.1;
         return new CameraPose(
                 new Translation3d(cameraX, -60 + cameraY, 30),
                 Rotation2d.fromDegrees(-28 + cameraY),
@@ -25,7 +25,7 @@ public enum CameraPositionType {
         Translation2d playerPos = player.getPosition();
 
         // Player body forward (can be independent of ball)
-        Translation2d forward = t.ball.getPosition2d().minus(playerPos).normalized();
+        Translation2d forward = t.getBall().getPosition2d().minus(playerPos).normalized();
 
         // Target camera position: behind player
         Translation2d offset2d = forward.times(-4.5);
