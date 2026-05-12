@@ -2,12 +2,15 @@ package com.football.game;
 
 import com.football.client.Client;
 
+import lombok.Getter;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 public class WaitingGame implements Joinable {
     private final UUID uuid;
+    @Getter
     private final List<Client> clients;
 
     public WaitingGame(Client client) {

@@ -5,8 +5,6 @@ import java.util.List;
 import java.util.Set;
 
 import com.football.client.Client;
-import com.football.client.inputs.InputDevice;
-import com.football.client.inputs.bot.InputBot;
 import com.football.util.math.geometry.Translation2d;
 
 import lombok.AllArgsConstructor;

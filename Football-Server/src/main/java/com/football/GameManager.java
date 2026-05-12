@@ -68,7 +68,7 @@ public class GameManager {
         this.games.add(game);
         game.start();
 
-        game.getClients().forEach(c -> this.clients.put(c, game));
+        game.getClients().forEach(c -> this.setClientsGame(c, game));
     }
 
     public void startBotGame(Client client) {
@@ -76,7 +76,7 @@ public class GameManager {
         this.games.add(game);
 
         game.start();
-        this.clients.put(client, game);
+        this.setClientsGame(client, game);
     }
 
     public void startOnlyBotGame(Client client) {
@@ -85,13 +85,13 @@ public class GameManager {
 
         game.start();
         game.addSpectator(client);
-        this.clients.put(client, game);
+        this.setClientsGame(client, game);
     }
 
     public void createWaitingGame(Client client) {
         WaitingGame game = new WaitingGame(client);
         this.waitingGames.add(game);
-        this.clients.put(client, game);
+        this.setClientsGame(client, game);
     }
 
     public void joinGame(Client client, UUID uuid) {
@@ -103,7 +103,7 @@ public class GameManager {
         }
 
         game.addClient(client);
-        this.clients.put(client, game);
+        this.setClientsGame(client, game);
     }
 
     public void spectateGame(Client client, UUID uuid) {
@@ -115,7 +115,15 @@ public class GameManager {
         }
 
         game.addSpectator(client);
-        this.clients.put(client, game);
+        this.setClientsGame(client, game);
+    }
+
+    private void setClientsGame(Client client, Joinable joinable) {
+        this.clients.put(client, joinable);
+
+        if (joinable instanceof Game) {
+            this.waitingGames.removeIf(w -> w.getClients().contains(client));
+        }
     }
 
     public void update() {
