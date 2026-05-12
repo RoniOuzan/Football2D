@@ -1,4 +1,4 @@
-package com.football.game.strategy;
+package com.football.game.strategy.camera;
 
 import java.util.Objects;
 

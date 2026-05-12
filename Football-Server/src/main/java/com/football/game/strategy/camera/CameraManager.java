@@ -1,6 +1,7 @@
-    package com.football.game.strategy;
+    package com.football.game.strategy.camera;
 
     import com.football.GameManager;
+    import com.football.game.strategy.TeamStrategy;
     import com.football.util.math.geometry.Rotation2d;
     import com.football.util.math.geometry.Translation2d;
     import lombok.Getter;

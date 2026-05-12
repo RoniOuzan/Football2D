@@ -15,6 +15,12 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * AI implementation of an {@link InputDevice}.
+ * This bot evaluates the game state using a utility-based system to decide
+ * whether to shoot, pass, or dribble when in possession, and how to intercept
+ * the ball when defending.
+ */
 public class InputBot extends InputDevice {
 
     private Translation2d requestedVelocity = new Translation2d(0, 0);
@@ -35,13 +41,20 @@ public class InputBot extends InputDevice {
         return this.requestedVelocity;
     }
 
+    /**
+     * The main entry point for the bot's logic. Called every frame by the GameManager.
+     * Resets inputs, calculates new AI decisions, and updates the device packet.
+     * @param strategy The current tactical state of the team.
+     */
     public void updateInput(TeamStrategy strategy) {
+        // Resets
         this.virtualButtons = new HashSet<>();
         this.requestedVelocity = new Translation2d(0, 0);
 
+        // Calculation
         this.calculateAI(strategy);
 
-        // reset the charge counter
+        // Reset the charge counter
         this.chargeSeconds.keySet().removeIf(kb -> !this.virtualButtons.contains(kb.name()));
 
         InputPacket.DevicePacket botPacket = new InputPacket.DevicePacket();
@@ -50,6 +63,10 @@ public class InputBot extends InputDevice {
         super.updateInput(botPacket);
     }
 
+    /**
+     * Determines whether the bot should act offensively or defensively
+     * based on team ball possession.
+     */
     private void calculateAI(TeamStrategy strategy) {
         Player chosen = strategy.getChosenPlayer();
         if (chosen == null) return;
@@ -61,21 +78,24 @@ public class InputBot extends InputDevice {
         }
     }
 
+    /**
+     * Handles logic when the team has the ball. Evaluates weights for
+     * shooting, passing, and dribbling to choose the best action.
+     */
     private void handleOffense(TeamStrategy strategy, Player chosen) {
         double shootWeight = evaluateShootUtility(strategy, chosen);
         double passWeight = evaluatePassUtility(strategy, chosen);
         double dribbleWeight = evaluateDribbleUtility(strategy, chosen);
-
-
+        
         if (shootWeight > passWeight && shootWeight > dribbleWeight) {
             // SHOOTING
             Translation2d enemyGoal = strategy.getTeam().getOpponent().getOwnGoalPosition();
             double distToGoal = chosen.getPosition().getDistance(enemyGoal);
 
-            // Calculate power: max power at 20 units away.
-            double targetSeconds = MathUtil.clamp(distToGoal / BotConstants.MAX_POWER_SHOOT_DISTANCE, BotConstants.MIN_POWER_SHOOT_PERCENT, 1) * KeybindAction.MAX_HOLD_TIME;
+            // Calculate power
+            double powerSeconds = MathUtil.clamp(distToGoal / BotConstants.MAX_POWER_SHOOT_DISTANCE, BotConstants.MIN_POWER_SHOOT_PERCENT, 1) * KeybindAction.MAX_HOLD_TIME;
 
-            this.pressButton(Keybind.SHOOT, targetSeconds);
+            this.pressButton(Keybind.SHOOT, powerSeconds);
             this.requestedVelocity = enemyGoal.minus(chosen.getPosition()).normalized(); // Aim at goal
 
             if (shootWeight > BotConstants.DRIVEN_SHOT_WEIGHT) {
@@ -85,9 +105,9 @@ public class InputBot extends InputDevice {
             // PASSING
             double distToMate = chosen.getPosition().getDistance(this.bestPassTarget.getPosition());
 
-            double targetSeconds = MathUtil.clamp(distToMate / BotConstants.MAX_POWER_PASSING_DISTANCE, BotConstants.MIN_POWER_PASSING_PERCENT, 1) * KeybindAction.MAX_HOLD_TIME;
+            double powerSeconds = MathUtil.clamp(distToMate / BotConstants.MAX_POWER_PASSING_DISTANCE, BotConstants.MIN_POWER_PASSING_PERCENT, 1) * KeybindAction.MAX_HOLD_TIME;
 
-            this.pressButton(Keybind.PASS, targetSeconds);
+            this.pressButton(Keybind.PASS, powerSeconds);
             this.requestedVelocity = this.bestPassTarget.getPosition().minus(chosen.getPosition()).normalized(); // Aim at teammate
         } else {
             // DRIBBLING
@@ -100,14 +120,17 @@ public class InputBot extends InputDevice {
         }
     }
 
+    /**
+     * Handles logic when the opponent has the ball. Focuses on switching
+     * to the closest defender and closing the gap to the ball.
+     */
     private void handleDefense(TeamStrategy strategy, Player chosen) {
-        Player bestDefender = strategy.getTeam().getClosestPlayerToBall();
-        if (bestDefender != null && !chosen.equals(bestDefender)) {
-            strategy.setChosenPlayer(bestDefender);
+        Player bestPlayer = strategy.getTeam().getClosestPlayerToBall();
+        if (bestPlayer != null && !chosen.equals(bestPlayer)) {
+            strategy.setChosenPlayer(bestPlayer);
         }
 
-        // Move towards the ball's current position to close the gap
-        // Using a smaller prediction (0.2s) or current position is better for high-pressure defense
+        // Move towards the ball's position to close the gap
         Translation2d targetPos = strategy.getBall().getPosition2d();
         this.requestedVelocity = targetPos.minus(chosen.getPosition()).normalized();
         this.pressButton(Keybind.SPRINT);
@@ -115,6 +138,11 @@ public class InputBot extends InputDevice {
 
     // --- Utility Functions (0.0 to 1.0) ---
 
+    /**
+     * Calculates how viable a shot is.
+     * Score increases as the player gets closer to the goal and
+     * decreases if defenders are nearby.
+     */
     private double evaluateShootUtility(TeamStrategy strategy, Player chosen) {
         Translation2d enemyGoal = strategy.getTeam().getOpponent().getOwnGoalPosition();
         double distanceToGoal = chosen.getPosition().getDistance(enemyGoal);
@@ -129,6 +157,11 @@ public class InputBot extends InputDevice {
         return Math.max(0, score);
     }
 
+    /**
+     * Iterates through teammates to find the best passing option.
+     * Factors in advancement (moving the ball forward), distance, and 
+     * interception risks.
+     */
     private double evaluatePassUtility(TeamStrategy strategy, Player chosen) {
         double bestScore = 0.0;
         this.bestPassTarget = null;
@@ -161,9 +194,14 @@ public class InputBot extends InputDevice {
                 }
             }
         }
-        return Math.max(0, Math.min(1.0, bestScore));
+        return MathUtil.clamp(bestScore, 0, 1);
     }
 
+    /**
+     * Calculates the utility of keeping the ball.
+     * High utility if there is open space, low utility if under 
+     * immediate pressure.
+     */
     private double evaluateDribbleUtility(TeamStrategy strategy, Player chosen) {
         double distToDefender = getDistanceToNearestDefender(strategy, chosen);
 
@@ -175,7 +213,10 @@ public class InputBot extends InputDevice {
         return BotConstants.DRIBBLE_UTILITY_LOCKED_DOWN;
     }
 
-
+    /**
+     * Finds the distance from the chosen player to the nearest 
+     * opponent on the field.
+     */
     private double getDistanceToNearestDefender(TeamStrategy strategy, Player chosen) {
         double minDistance = Double.MAX_VALUE;
         for (Player enemy : strategy.getTeam().getOpponent().getPlayers()) {
@@ -187,6 +228,10 @@ public class InputBot extends InputDevice {
         return minDistance;
     }
 
+    /**
+     * Checks if any opponent is close enough to the imaginary line 
+     * between the passer and receiver to potentially intercept.
+     */
     private boolean isPassingLaneBlocked(TeamStrategy strategy, Translation2d start, Translation2d end) {
         for (Player enemy : strategy.getTeam().getOpponent().getPlayers()) {
             // If an enemy is within 2 units of the line segment between the passer and receiver, it's blocked
@@ -198,7 +243,9 @@ public class InputBot extends InputDevice {
         return false;
     }
 
-    // Standard vector math to find the shortest distance from a point to a line segment
+    /**
+     * Standard vector math to find the shortest distance from a point P to a line segment AB.
+     */
     private double getDistanceToSegment(Translation2d A, Translation2d B, Translation2d P) {
         Translation2d AB = B.minus(A);
         Translation2d AP = P.minus(A);
@@ -223,12 +270,21 @@ public class InputBot extends InputDevice {
 
     // --- Press Button Logic ---
 
-    // Standard press for things like sprinting or switching players
+    /**
+     * Sets a button as pressed for the current frame.
+     * Used for binary states like Sprinting.
+     */
     private void pressButton(Keybind keybind) {
         this.virtualButtons.add(keybind.name());
     }
 
-    // Dynamic press for kicking (holds the button for X seconds to build power, then releases)
+    /**
+     * Manages a timed button press to simulate "charging" power.
+     * The button will be held until targetSeconds is reached, then released.
+     * 
+     * @param keybind The button to hold.
+     * @param targetSeconds Total duration to hold the button for.
+     */
     private void pressButton(Keybind keybind, double targetSeconds) {
         double currentSeconds = this.chargeSeconds.getOrDefault(keybind, 0.0);
 

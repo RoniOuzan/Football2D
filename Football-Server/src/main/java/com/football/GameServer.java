@@ -14,6 +14,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 @WebSocket
+@SuppressWarnings("unused")
 public class GameServer {
     private static final Map<Session, Client> clients = new ConcurrentHashMap<>();
     private static final PacketHandler packetHandler = new PacketHandler();
@@ -32,7 +33,7 @@ public class GameServer {
             try {
                 GameManager.getInstance().update();
             } catch (Exception e) {
-                e.printStackTrace();
+//                e.printStackTrace();
             }
             if (System.currentTimeMillis() - start >= 1000) {
                 System.out.println(count);

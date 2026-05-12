@@ -149,6 +149,10 @@ public class Game implements Joinable {
         return (System.currentTimeMillis() - this.startTime) / 1000.0;
     }
 
+    private boolean shouldGoToPhase(Phase nextPhase) {
+        return this.matchTime >= nextPhase.startTime + this.addedTime;
+    }
+
     private void updateMatchTime() {
         if (this.phase == Phase.FINISH) {
             return;
@@ -159,7 +163,8 @@ public class Game implements Joinable {
         this.matchTime += dt;
 
         Phase nextPhase = this.phase.getNext();
-        if (this.matchTime >= nextPhase.startTime + this.addedTime) {
+        // Should go to next state
+        if (shouldGoToPhase(nextPhase)) {
             if (nextPhase == Phase.SECOND_HALF || this.score1 == this.score2) { // draw
                 this.phase = nextPhase;
                 this.matchTime = this.phase.startTime;
@@ -212,6 +217,14 @@ public class Game implements Joinable {
 
         this.ball.update(this.team1, this.team2);
 
+        this.updateState();
+
+        this.spectators.forEach(Spectator::update);
+
+        this.updateMatchTime();
+    }
+
+    private void updateState() {
         switch (this.state) {
             case START -> {
                 if (getLastTimeChanged() >= WAIT_TIME) {
@@ -252,10 +265,6 @@ public class Game implements Joinable {
             case STOP -> {
             }
         }
-
-        this.spectators.forEach(Spectator::update);
-
-        this.updateMatchTime();
     }
 
     public void setState(State state) {
