@@ -110,18 +110,18 @@ export function screenToWorld(
   const focal = 1 / Math.tan(camera.fov.value / 2);
   const aspect = canvas.width / canvas.height;
 
-  // 1. Normalize screen coordinates to Normalized Device Coordinates (NDC)
+  // Normalize screen coordinates to Normalized Device Coordinates (NDC)
   // Range: -1 to 1
   const normX = (screen.x - canvas.width / 2) / (canvas.width / 2);
   const normY = (canvas.height / 2 - screen.y) / (canvas.height / 2);
 
-  // 2. Convert NDC to Camera Space direction vector
+  // Convert NDC to Camera Space direction vector
   // We use y=1 as the forward direction (matching your worldToCamera logic)
   const camDirX = (normX * aspect) / (focal * zoom());
   const camDirY = 1; 
   const camDirZ = normY / (focal * zoom());
 
-  // 3. Reverse Pitch (around X axis)
+  // Reverse Pitch (around X axis)
   const cp = Math.cos(camera.pitch.value); // Use positive pitch to reverse
   const sp = Math.sin(camera.pitch.value);
   
@@ -129,7 +129,7 @@ export function screenToWorld(
   const zPitch = camDirY * sp + camDirZ * cp;
   const xPitch = camDirX;
 
-  // 4. Reverse Yaw (around Z axis)
+  // Reverse Yaw (around Z axis)
   const cy = Math.cos(camera.yaw.value); // Use positive yaw to reverse
   const sy = Math.sin(camera.yaw.value);
 
@@ -137,7 +137,7 @@ export function screenToWorld(
   const worldDirY = xPitch * sy + yPitch * cy;
   const worldDirZ = zPitch;
 
-  // 5. Intersection with the Z plane
+  // Intersection with the Z plane
   // Equation: camera.translation.z + scale * worldDirZ = targetWorldZ
   const dz = zWorld - camera.translation.z;
   
