@@ -1,0 +1,102 @@
+package com.football.game;
+
+import com.football.client.Client;
+import com.football.game.players.*;
+import com.football.game.strategy.TeamStrategy;
+import com.football.util.math.geometry.Translation2d;
+import lombok.Getter;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.function.Predicate;
+
+public class Team {
+
+    @Getter
+    private transient final Client client;
+    private transient final Game game;
+
+    @Getter
+    private final List<Player> players;
+    private transient final Formation formation;
+
+    @Getter
+    private final TeamStrategy teamStrategy;
+
+    private transient final boolean isTeam1;
+    @Getter
+    private transient int sideMultiplier;
+
+    public Team(Game game, Client client, boolean isTeam1, int inputSlot) {
+        this.client = client;
+        this.game = game;
+
+        this.isTeam1 = isTeam1;
+        this.sideMultiplier = isTeam1 ? 1 : -1;
+
+        this.players = new ArrayList<>();
+        this.formation = Formation.DEFAULT_FORMATION;
+        this.teamStrategy = new TeamStrategy(game, this, inputSlot);
+
+        initialize();
+    }
+
+    private void initialize() {
+        this.players.add(new Goalkeeper(this, this.game.getBall(), this.formation.getGoalkeeper()));
+
+        for (Translation2d position : this.formation.getDefenders()) {
+            this.players.add(new Defender(this, this.game.getBall(), position));
+        }
+        for (Translation2d position : this.formation.getMidfielders()) {
+            this.players.add(new Midfielder(this, this.game.getBall(), position));
+        }
+        for (Translation2d position : this.formation.getAttackers()) {
+            this.players.add(new Attacker(this, this.game.getBall(), position));
+        }
+    }
+
+    public void setSideMultiplier(int sideMultiplier) {
+        this.sideMultiplier = sideMultiplier;
+        this.teamStrategy.setSideMultiplier(sideMultiplier);
+    }
+
+    public Player getClosestPlayerToBall(Predicate<Player> filter) {
+        return this.players.stream()
+                .filter(filter)
+                .min(Comparator.comparingDouble(p -> this.game.getBall().getPredictedPosition(1).getDistance(p.getPosition())))
+                .orElse(null);
+    }
+
+    public Player getClosestPlayerToBall() {
+        return this.getClosestPlayerToBall(p -> true);
+    }
+
+    public boolean hasBall() {
+        return this.players.contains(this.game.getBall().getCarrier());
+    }
+
+    public void resetPlayers() {
+        for (Player player : this.players) {
+            player.resetPosition();
+        }
+    }
+
+    public void update(Game.State state) {
+        this.teamStrategy.update(state);
+        this.client.updateStrategy(this.teamStrategy);
+
+        if (state != Game.State.PLAYING) return;
+        for (Player player : this.players) {
+            player.update(this);
+        }
+    }
+
+    public Translation2d getOwnGoalPosition() {
+        return new Translation2d(-Game.MAX_X, 0).times(this.sideMultiplier);
+    }
+
+    public Team getOpponent() {
+        return this.isTeam1 ? this.game.getTeam2() : this.game.getTeam1();
+    }
+}

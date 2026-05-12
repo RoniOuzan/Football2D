@@ -1,0 +1,26 @@
+import type { AlertData } from "./jsons/alertTypes";
+import type { CountdownData } from "./jsons/countdownTypes";
+import type { GameData } from "./jsons/gameTypes";
+import type { LobbyData } from "./jsons/lobbyTypes";
+
+export type ServerMessage = LobbyMessage | GameMessage | AlertMessage | CountdownMessage;
+
+export interface LobbyMessage {
+  type: "lobby";
+  data: LobbyData;
+}
+
+export interface GameMessage {
+  type: "game";
+  data: GameData;
+}
+
+export interface AlertMessage {
+  type: "alert";
+  data: AlertData;
+}
+
+export interface CountdownMessage {
+  type: "countdown";
+  data: CountdownData;
+}

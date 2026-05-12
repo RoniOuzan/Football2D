@@ -187,6 +187,22 @@ public class Translation2d implements Interpolatable<Translation2d> {
         return new Translation2d(x * scalar, y * scalar);
     }
 
+    public Translation2d times(double xScalar, double yScalar) {
+        return new Translation2d(x * xScalar, y * yScalar);
+    }
+
+    public Translation2d normalized() {
+        if (this.getNorm() < 1e-9) {
+            return new Translation2d();
+        }
+
+        return this.div(this.getNorm());
+    }
+
+    public Translation2d limitNorm(double maximum) {
+        return new Translation2d(Math.min(this.getNorm(), maximum), this.getAngle());
+    }
+
     /**
      * Returns the translation divided by a scalar.
      *
@@ -237,6 +253,10 @@ public class Translation2d implements Interpolatable<Translation2d> {
         return new Translation2d(
                 MathUtil.interpolate(this.getX(), endValue.getX(), t),
                 MathUtil.interpolate(this.getY(), endValue.getY(), t));
+    }
+
+    public double dot(Translation2d other) {
+        return this.x * other.x + this.y * other.y;
     }
 }
 
