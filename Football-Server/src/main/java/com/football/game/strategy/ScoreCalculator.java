@@ -87,13 +87,19 @@ public class ScoreCalculator {
         return score;
     }
 
+    /**
+     *
+     * @param pose
+     * @param score
+     * @return
+     */
     private double calculateBallScore(Translation2d pose, double score) {
         return score - BALL_WEIGHT * pose.getDistance(this.teamStrategy.ball.getPosition2d());
     }
 
     /**
      * Attackers get a small bonus for occupying space that's relatively far from opponents
-     * but not ridiculously far (SPACE_MIN..SPACE_MAX).
+     * but not ridiculously far (SPACE_MIN…SPACE_MAX).
      */
     private double getSpaceExploitScore(Translation2d target) {
         double bonus = 0;
@@ -117,7 +123,7 @@ public class ScoreCalculator {
 
         // If ball far from goal → no need to defend deeply
         double ballDistance = ballPos.getDistance(goal);
-        if (ballDistance > 35) // TODO: change it to percentage
+        if (ballDistance > 35)
             return 0;
 
         // Defender line direction: ball → goal center
@@ -155,6 +161,11 @@ public class ScoreCalculator {
         return (30 / d) * urgency;
     }
 
+    /**
+     *
+     * @param target
+     * @return
+     */
     private double getBlockGoalScore(Translation2d target) {
         // Encourage defenders to block the ball when it's near our goal
         double ballX = this.teamStrategy.ball.getPosition().getX();

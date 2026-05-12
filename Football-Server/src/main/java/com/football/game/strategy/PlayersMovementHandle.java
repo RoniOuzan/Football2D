@@ -6,6 +6,7 @@ import com.football.game.players.Goalkeeper;
 import com.football.game.players.Player;
 import com.football.util.math.geometry.Translation2d;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.util.Comparator;
 
@@ -17,7 +18,7 @@ public class PlayersMovementHandle {
     private final PlayerTargetPosition playerTargetPosition;
 
     private boolean justPassed = false;
-    @Getter
+    @Getter @Setter
     private Player chosenPlayer = null;
 
     public PlayersMovementHandle(TeamStrategy teamStrategy) {
@@ -56,8 +57,8 @@ public class PlayersMovementHandle {
         double velocity = input.isHolding(Keybind.SPRINT) ? Player.SPRINT_VELOCITY : Player.WALK_VELOCITY;
 
         if ((player.equals(this.playerTargetPosition.getBallChaser()) || this.justPassed) && this.teamStrategy.ball.getCarrier() == null) {
-            return player.getVelocityToPosition(this.teamStrategy.ball.getPredictedPosition(0.5).toTranslation2d(),
-                    this.justPassed ? 0.8 : 1);
+            return player.getVelocityToPosition(this.teamStrategy.ball.getPredictedPosition(0.3).toTranslation2d(),
+                    this.justPassed ? 1 : 0.8);
         }
 
         this.justPassed = false;

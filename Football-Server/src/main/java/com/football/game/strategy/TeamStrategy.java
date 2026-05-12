@@ -92,6 +92,10 @@ public class TeamStrategy {
         return this.playersMovementHandle.getChosenPlayer();
     }
 
+    public void setChosenPlayer(Player player) {
+        this.playersMovementHandle.setChosenPlayer(player);
+    }
+
     public Player getDefaultPlayerToSwitchTo() {
         return this.team.getClosestPlayerToBall(p -> !p.equals(this.getChosenPlayer()) && !(p instanceof Goalkeeper));
     }

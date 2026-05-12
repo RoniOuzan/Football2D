@@ -135,10 +135,6 @@ public class GameManager {
     public void updateGames() {
         for (Game game : this.games) {
             game.update();
-
-            if (game.getPhase() == Game.Phase.FINISH) {
-                // TODO
-            }
         }
     }
 

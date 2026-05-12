@@ -19,7 +19,7 @@ public abstract class InputDevice implements InputHandler {
     private final Map<Keybind, String> keybinds;
 
     protected Set<String> buttons = new HashSet<>();
-    private Set<String> lastButtons = new HashSet<>();
+    public Set<String> lastButtons = new HashSet<>();
 
     private final Map<Keybind, Set<Keybind>> kickTypes = new HashMap<>();
 
@@ -31,7 +31,7 @@ public abstract class InputDevice implements InputHandler {
         this.updateInput(devicePacket);
     }
 
-    private String getKey(Keybind keybind) {
+    public String getKey(Keybind keybind) {
         return this.keybinds.get(keybind);
     }
 

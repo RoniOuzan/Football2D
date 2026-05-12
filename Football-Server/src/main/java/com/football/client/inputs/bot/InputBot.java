@@ -8,6 +8,7 @@ import com.football.client.keybinds.KeybindAction;
 import com.football.game.Ball;
 import com.football.game.players.Player;
 import com.football.game.strategy.TeamStrategy;
+import com.football.util.math.MathUtil;
 import com.football.util.math.geometry.Translation2d;
 
 import java.util.HashMap;
@@ -21,7 +22,7 @@ public class InputBot extends InputDevice {
     private Set<String> virtualButtons = new HashSet<>();
 
     // Map to track how long we've been holding a button for kick power
-    private final Map<Keybind, Integer> chargeTicks = new HashMap<>();
+    private final Map<Keybind, Double> chargeSeconds = new HashMap<>();
 
     // Store this so we know who to aim at if we decide to pass
     private Player bestPassTarget = null;
@@ -42,7 +43,7 @@ public class InputBot extends InputDevice {
         this.calculateAI(strategy);
 
         // reset the charge counter
-        this.chargeTicks.keySet().removeIf(kb -> !this.virtualButtons.contains(kb.name()));
+        this.chargeSeconds.keySet().removeIf(kb -> !this.virtualButtons.contains(kb.name()));
 
         InputPacket.DevicePacket botPacket = new InputPacket.DevicePacket();
         botPacket.buttons = this.virtualButtons;
@@ -54,17 +55,10 @@ public class InputBot extends InputDevice {
         Player chosen = strategy.getChosenPlayer();
         if (chosen == null) return;
 
-        Ball ball = strategy.getBall();
-
-        boolean hasBall = strategy.getTeam().hasBall();
-        boolean isCarrier = ball.getCarrier() != null && ball.getCarrier().equals(chosen);
-
-        if (isCarrier) {
+        if (strategy.getTeam().hasBall()) {
             handleOffense(strategy, chosen);
-        } else if (!hasBall) {
-            handleDefense(strategy, chosen, ball);
         } else {
-            handleOffTheBallMovement(strategy, chosen);
+            handleDefense(strategy, chosen);
         }
     }
 
@@ -73,17 +67,16 @@ public class InputBot extends InputDevice {
         double passWeight = evaluatePassUtility(strategy, chosen);
         double dribbleWeight = evaluateDribbleUtility(strategy, chosen);
 
-        final double MAX_POWER_TICKS = KeybindAction.MAX_HOLD_TIME * GameManager.FPS;
 
         if (shootWeight > passWeight && shootWeight > dribbleWeight) {
             // SHOOTING
             Translation2d enemyGoal = strategy.getTeam().getOpponent().getOwnGoalPosition();
             double distToGoal = chosen.getPosition().getDistance(enemyGoal);
 
-            // Calculate power: max power at 30 units away. Holds for at least 5 frames.
-            int targetTicks = (int) Math.max(5, Math.min(1.0, distToGoal / 30.0) * MAX_POWER_TICKS);
+            // Calculate power: max power at 20 units away.
+            double targetSeconds = MathUtil.clamp(distToGoal / 20.0, 0.3, 1) * KeybindAction.MAX_HOLD_TIME;
 
-            this.pressButton(Keybind.SHOOT, targetTicks);
+            this.pressButton(Keybind.SHOOT, targetSeconds);
             this.requestedVelocity = enemyGoal.minus(chosen.getPosition()).normalized(); // Aim at goal
 
             if (shootWeight > 0.8) {
@@ -93,10 +86,12 @@ public class InputBot extends InputDevice {
             // PASSING
             double distToMate = chosen.getPosition().getDistance(this.bestPassTarget.getPosition());
 
-            // Calculate power: max power at 40 units away. Holds for at least 5 frames.
-            int targetTicks = (int) Math.max(5, Math.min(1.0, distToMate / 40.0) * MAX_POWER_TICKS);
+            // Calculate power: max power at 40 units away.
+            // minSeconds ensures a minimum hold time (roughly 5 frames worth).
+            double minSeconds = 5.0 / GameManager.FPS;
+            double targetSeconds = Math.max(minSeconds, Math.min(1.0, distToMate / 40.0) * KeybindAction.MAX_HOLD_TIME);
 
-            this.pressButton(Keybind.PASS, targetTicks);
+            this.pressButton(Keybind.PASS, targetSeconds);
             this.requestedVelocity = this.bestPassTarget.getPosition().minus(chosen.getPosition()).normalized(); // Aim at teammate
         } else {
             // DRIBBLING
@@ -109,26 +104,17 @@ public class InputBot extends InputDevice {
         }
     }
 
-    private void handleDefense(TeamStrategy strategy, Player chosen, Ball ball) {
-        Player bestDefender = strategy.getDefaultPlayerToSwitchTo();
-        if (bestDefender != null && !chosen.equals(strategy.getBallChaser())) {
-            this.pressButton(Keybind.SWITCH_PLAYER);
-            return;
+    private void handleDefense(TeamStrategy strategy, Player chosen) {
+        Player bestDefender = strategy.getTeam().getClosestPlayerToBall();
+        if (bestDefender != null && !chosen.equals(bestDefender)) {
+            strategy.setChosenPlayer(bestDefender);
         }
 
-        // Move towards the ball to intercept
-        Translation2d targetPos = ball.getPredictedPosition(1.0).toTranslation2d();
+        // Move towards the ball's current position to close the gap
+        // Using a smaller prediction (0.2s) or current position is better for high-pressure defense
+        Translation2d targetPos = strategy.getBall().getPosition2d();
         this.requestedVelocity = targetPos.minus(chosen.getPosition()).normalized();
         this.pressButton(Keybind.SPRINT);
-    }
-
-    private void handleOffTheBallMovement(TeamStrategy strategy, Player chosen) {
-        Translation2d targetPosition = strategy.getPlayerTargetPosition(chosen);
-        if (targetPosition != null && chosen.getPosition().getDistance(targetPosition) > 0.5) {
-            this.requestedVelocity = targetPosition.minus(chosen.getPosition()).normalized();
-        } else {
-            this.requestedVelocity = new Translation2d(0, 0); // Stand still if at target
-        }
     }
 
     // --- Utility Functions (0.0 to 1.0) ---
@@ -246,17 +232,17 @@ public class InputBot extends InputDevice {
         this.virtualButtons.add(keybind.name());
     }
 
-    // Dynamic press for kicking (holds the button for X ticks to build power, then releases)
-    private void pressButton(Keybind keybind, int targetTicks) {
-        int currentTicks = this.chargeTicks.getOrDefault(keybind, 0);
+    // Dynamic press for kicking (holds the button for X seconds to build power, then releases)
+    private void pressButton(Keybind keybind, double targetSeconds) {
+        double currentSeconds = this.chargeSeconds.getOrDefault(keybind, 0.0);
 
-        if (currentTicks >= targetTicks) {
+        if (currentSeconds >= targetSeconds) {
             // We've held it long enough to build the right power.
             // Force the release by NOT adding it to virtualButtons, and reset the counter.
-            this.chargeTicks.put(keybind, 0);
+            this.chargeSeconds.put(keybind, 0.0);
         } else {
-            // Keep holding it to build more power
-            this.chargeTicks.put(keybind, currentTicks + 1);
+            // Keep holding it to build more power. We add the time of one frame (1/FPS)
+            this.chargeSeconds.put(keybind, currentSeconds + (1.0 / GameManager.FPS));
             this.virtualButtons.add(keybind.name());
         }
     }

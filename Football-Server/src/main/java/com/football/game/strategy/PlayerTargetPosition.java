@@ -3,6 +3,8 @@ package com.football.game.strategy;
 import com.football.game.Game;
 import com.football.game.players.Player;
 import com.football.util.math.geometry.Translation2d;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.Comparator;
 import java.util.Map;
@@ -15,6 +17,8 @@ public class PlayerTargetPosition {
 
     private final TeamStrategy teamStrategy;
 
+    @Setter
+    @Getter
     private transient Player ballChaser = null;
 
     public PlayerTargetPosition(TeamStrategy teamStrategy) {
@@ -26,7 +30,7 @@ public class PlayerTargetPosition {
      */
     public Translation2d getTargetPosition(Player player) {
         if (player.equals(this.ballChaser)) {
-            return this.teamStrategy.ball.getPosition2d(); // chase the ball position before 0.5 seconds, so it will have a bit of delay
+            return this.teamStrategy.ball.getPosition(0.3).toTranslation2d(); // chase the ball position before 0.3 seconds, so it will have a bit of delay
         }
 
         Optional<Map.Entry<Translation2d, Double>> bestEntry = this.teamStrategy.scores.entrySet().stream()
@@ -62,13 +66,5 @@ public class PlayerTargetPosition {
         // Control how strong the shift is (tune as needed)
         return new Translation2d((this.teamStrategy.ball.getPosition().getX() / Game.MAX_X) * 30,
                 (this.teamStrategy.ball.getPosition().getY() / Game.MAX_Y) * 20);
-    }
-
-    public Player getBallChaser() {
-        return this.ballChaser;
-    }
-
-    public void setBallChaser(Player ballChaser) {
-        this.ballChaser = ballChaser;
     }
 }
