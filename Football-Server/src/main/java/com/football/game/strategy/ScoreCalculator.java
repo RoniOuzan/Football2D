@@ -31,19 +31,19 @@ public class ScoreCalculator {
     private static final double OFFSIDE_PENALTY = -500.0;
 
     // Defensive positioning
-    private static final double GOAL_THREAT_BALL_DIST_THRESHOLD = 35.0;
-    private static final double GOAL_THREAT_URGENCY_DIVISOR = 40.0;
-    private static final double GOAL_THREAT_WEIGHT = 30.0;
+    private static final double GOAL_THREAT_BALL_DIST_THRESHOLD = 45.0;
+    private static final double GOAL_THREAT_URGENCY_DIVISOR = 30.0;
+    private static final double GOAL_THREAT_WEIGHT = 50.0;
     private static final double MIN_PERPENDICULAR_DIST = 0.5;
     private static final double EPSILON = 1e-5;
 
     // Goal blocking
     private static final double BLOCK_GOAL_BALL_THRESHOLD = 40.0;
-    private static final double BLOCK_GOAL_BASE_SCORE = 20.0;
+    private static final double BLOCK_GOAL_BASE_SCORE = 30.0;
     private static final double BLOCK_POSITION_RATIO = 0.5;
     private static final double BLOCK_DISTANCE_FAR = 20.0;
     private static final double BLOCK_DISTANCE_NEAR = 10.0;
-    private static final double BLOCK_PROXIMITY_SCALER = 2.0;
+    private static final double BLOCK_PROXIMITY_SCALER = 3.0;
 
     private final TeamStrategy teamStrategy;
 

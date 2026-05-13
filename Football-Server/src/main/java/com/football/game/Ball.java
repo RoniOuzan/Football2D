@@ -30,7 +30,7 @@ public class Ball {
     private static final double BOUNCE_DAMPING = 0.55; // walls & posts
     private static final double GROUND_RESTITUTION = 0.32; // low bounces
 
-    private static final long CARRY_COOLDOWN_MS = 300;
+    private static final long CARRY_COOLDOWN_MS = 500;
 
     private static final double RADIUS = 0.2;
 

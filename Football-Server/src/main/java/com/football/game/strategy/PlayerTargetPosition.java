@@ -20,7 +20,7 @@ import java.util.Optional;
 public class PlayerTargetPosition {
 
     /** Penalty factor for being far from the designated formation anchor. */
-    private static final double FORMATION_WEIGHT = 0.5;
+    private static final double FORMATION_WEIGHT = 0.4;
     /** Penalty factor for moving too far from the current position (encourages persistence). */
     private static final double SELF_WEIGHT = 0.3;
 

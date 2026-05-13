@@ -166,7 +166,7 @@ const GameRenderer3D = forwardRef<GameRenderer3DHandle, GameRendererProps>(
           52
         );
 
-        // drawHeatmap(ctx, canvas, team, camera);
+        drawHeatmap(ctx, canvas, team, camera);
 
         const draws: Draw[] = [];
 

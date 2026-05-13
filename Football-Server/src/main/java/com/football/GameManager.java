@@ -27,7 +27,7 @@ public class GameManager {
 
     public static final double FPS = 30;
     public static final double PERIOD = 1 / FPS;
-    public static final double GAME_REAL_TIME = 300; // 6 Minutes
+    public static final double GAME_REAL_TIME = 180; // 3 Minutes
     public static final double GAME_TIME = 90 * 60;
 
     private transient final Map<Client, Joinable> clients = new ConcurrentHashMap<>();

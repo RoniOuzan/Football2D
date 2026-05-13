@@ -14,7 +14,7 @@ import java.util.Comparator;
 public class Defender extends Player {
 
     private static final double MARKING_IDEAL_DISTANCE = 5.0;
-    private static final double MARKING_WEIGHT = 1.0;
+    private static final double MARKING_WEIGHT = 1.5;
 
     /** Constant used to reduce marking urgency as the opponent gets further away. */
     private static final double MARKING_DISTANCE_DECAY = 0.2;
